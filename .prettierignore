@@ -1,0 +1,28 @@
+# Dependencies & caches
+node_modules/
+.pnp.cjs
+.pnp.loader.mjs
+.turbo/
+**/.cache/
+**/.eslintcache
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Next.js (monorepo)
+.next/
+apps/**/.next/
+
+# Vercel/hosting
+.vercel/
+
+# Lockfiles (skip for speed)
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Misc
+*.log
+.DS_Store

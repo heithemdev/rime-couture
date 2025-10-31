@@ -1,4 +1,22 @@
-import { nextJsConfig } from "@repo/eslint-config/next-js";
+// apps/web/eslint.config.js
+import { nextJsConfig as sharedNext } from "@repo/eslint-config/next-js";
+import globals from "globals";
 
-/** @type {import("eslint").Linter.Config[]} */
-export default nextJsConfig;
+export default [
+  ...sharedNext,
+
+  // next.config.js runs in Node — give it Node globals like `process`
+  {
+    files: ["next.config.*", "postcss.config.*"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+    // Turbo rule can be noisy here even when NODE_ENV is in turbo.json.
+    // Disable it only for config files.
+    rules: {
+      "turbo/no-undeclared-env-vars": "off",
+    },
+  },
+];

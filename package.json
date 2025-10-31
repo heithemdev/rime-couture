@@ -2,14 +2,20 @@
   "name": "bz-market",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "build": "turbo run build --no-daemon",
+    "dev": "turbo run dev --no-daemon",
+    "lint": "turbo run lint --no-daemon",
+    "check-types": "turbo run check-types --no-daemon",
+    "format": "prettier --cache --write .",
+    "format:check": "prettier --cache --check .",
+    "db:generate": "pnpm --filter @repo/db exec prisma generate",
+    "db:seed": "pnpm --filter @repo/db exec prisma db seed",
+    "web:dev": "pnpm --filter ./apps/web run dev"
   },
   "devDependencies": {
+    "@types/node": "^22.15.3",
     "prettier": "^3.6.2",
+    "tsx": "^4.20.6",
     "turbo": "^2.5.8",
     "typescript": "5.9.2"
   },

@@ -1,0 +1,344 @@
+// ---------------------------------------------------------
+// BZ Market — Prisma schema (PostgreSQL)
+// - Postgres 16+
+// - Extensions required (add in first migration SQL):
+//     CREATE EXTENSION IF NOT EXISTS citext;
+// - Money stored as integers (DA)
+// - Case-insensitive unique email/name via CITEXT
+// - Soft deletes on critical tables
+// - Keyset-friendly indexes
+// - Append-only ledger for balances (SALE_NET, REFUND, PAYOUT)
+// ---------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------ Enums --------------------------
+
+enum Role {
+  CLIENT
+  SHOP_OWNER
+}
+
+enum ReactionValue {
+  LIKE
+  DISLIKE
+}
+
+enum DeliveryType {
+  HOME
+  CENTER
+}
+
+enum PaymentMethod {
+  BARIDI_MOB
+}
+
+enum ShopOrderStatus {
+  ORDERED
+  SHIPPED
+  REFUNDED
+}
+
+enum LedgerEntryType {
+  SALE_NET
+  REFUND
+  PAYOUT
+}
+
+enum TokenPurpose {
+  SIGNUP
+  RESET
+}
+
+enum PayoutStatus {
+  PENDING
+  SENT
+  PROCESSED
+  REJECTED
+}
+
+enum ShippingCarrier {
+  YALIDINE
+}
+
+// ------------------------ Core ---------------------------
+
+model User {
+  id               String   @id @default(uuid()) @db.Uuid
+  email            String   @unique @db.Citext          // case-insensitive unique
+  name             String   @unique @db.Citext          // username/display name (unique, case-insensitive)
+  phone            String   @unique                     // store E.164 in app layer
+  passwordHash     String
+  role             Role
+
+  isEmailVerified  Boolean  @default(false)
+  acceptedTermsAt  DateTime
+  termsVersion     String
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  shop             Shop?
+  sessions         Session[]
+  reactions        ProductReaction[]
+  orders           Order[]  @relation("ClientOrders")
+
+  @@map("users")
+}
+
+model Session {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  sessionIdHash String   @unique              // hash of random session token
+  ip            String?  @db.Inet
+  userAgent     String?
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  id         String       @id @default(uuid()) @db.Uuid
+  email      String       @db.Citext
+  purpose    TokenPurpose
+  tokenHash  String       @unique              // store hashed token only
+  attempts   Int          @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime     @default(now())
+
+  @@index([email, purpose])
+  @@map("verification_tokens")
+}
+
+// ------------------------ Catalogs -----------------------
+
+model Wilaya {
+  id             Int       @id                 // 1..58
+  name           String    @unique
+
+  shops          Shop[]
+  shippingFrom   ShippingPrice[] @relation("ShippingFrom")
+  shippingTo     ShippingPrice[] @relation("ShippingTo")
+  orderDest      Order[]         @relation("OrderDestination")
+
+  @@map("wilayas")
+}
+
+model Category {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  products  Product[]
+
+  @@map("categories")
+}
+
+// ------------------------ Shop & Products ----------------
+
+model Shop {
+  id               String        @id @default(uuid()) @db.Uuid
+  ownerId          String        @unique @db.Uuid
+  name             String
+  bio              String?
+  profilePhotoUrl  String?
+  bannerUrl        String?
+
+  wilayaId         Int
+  city             String?
+  ccpNumber        String?                           // (optionally encrypt at app level)
+  preferredCarrier ShippingCarrier @default(YALIDINE)
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  deletedAt        DateTime?
+
+  owner            User          @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  wilaya           Wilaya        @relation(fields: [wilayaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  products         Product[]
+  orders           Order[]       @relation("ShopOrders")
+  ledgerEntries    ShopLedgerEntry[]
+  payoutRequests   PayoutRequest[]
+
+  @@index([wilayaId])
+  @@index([deletedAt])
+  @@map("shops")
+}
+
+model Product {
+  id            String    @id @default(uuid()) @db.Uuid
+  shopId        String    @db.Uuid
+  categoryId    String    @db.Uuid
+  name          String
+  priceDA       Int                                     // DA integer
+  description   String?
+  imageUrl      String                                  // single main image
+  likesCount    Int       @default(0)                   // cached (rebuildable)
+  dislikesCount Int       @default(0)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  shop          Shop      @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  category      Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  reactions     ProductReaction[]
+  orders        Order[]
+
+  @@index([shopId, createdAt, id])
+  @@index([createdAt, id]) // keyset-friendly
+  @@index([deletedAt])
+  @@map("products")
+}
+
+model ProductReaction {
+  id         String        @id @default(uuid()) @db.Uuid
+  productId  String        @db.Uuid
+  userId     String        @db.Uuid
+  value      ReactionValue
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  product    Product       @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([productId, userId]) // one reaction per user per product
+  @@index([userId])
+  @@index([productId, value])
+  @@map("product_reactions")
+}
+
+// ------------------------ Shipping -----------------------
+
+model ShippingPrice {
+  fromWilayaId Int
+  toWilayaId   Int
+  deliveryType DeliveryType
+  priceDA      Int
+
+  fromWilaya   Wilaya @relation("ShippingFrom", fields: [fromWilayaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  toWilaya     Wilaya @relation("ShippingTo", fields: [toWilayaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@id([fromWilayaId, toWilayaId, deliveryType])  // unique per (from, to, type)
+  @@index([toWilayaId])
+  @@map("shipping_prices")
+}
+
+// ------------------------ Orders & Money -----------------
+
+model Order {
+  id                      String          @id @default(uuid()) @db.Uuid
+  productId               String          @db.Uuid
+  shopId                  String          @db.Uuid
+  clientId                String          @db.Uuid
+  quantity                Int             @default(1)
+
+  // Snapshots (lock business math at purchase time)
+  productNameAtOrder      String
+  productPriceDAAtOrder   Int
+  shippingPriceDAAtOrder  Int
+
+  // Delivery
+  deliveryType            DeliveryType
+  destinationWilayaId     Int
+  baladiya                String?         // for HOME
+  street                  String?         // for HOME
+  exactLocation           String?         // for HOME
+  pickupCity              String?         // for CENTER
+
+  // Payment
+  paymentMethod           PaymentMethod   @default(BARIDI_MOB)
+  paymentProofUrl         String          // image or PDF
+  paidAmountDA            Int             // equals productPriceDAAtOrder (for now)
+
+  // Shop-side organizational status
+  status                  ShopOrderStatus @default(ORDERED)
+
+  // Refund signals
+  refundRequestedAt       DateTime?
+  refundProcessedAt       DateTime?
+
+  // Visibility windows
+  clientVisibleUntil      DateTime
+  shopVisibleUntil        DateTime
+
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  deletedAt               DateTime?
+
+  product                 Product         @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  shop                    Shop            @relation("ShopOrders", fields: [shopId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  client                  User            @relation("ClientOrders", fields: [clientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  destinationWilaya       Wilaya          @relation("OrderDestination", fields: [destinationWilayaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  ledgerEntries           ShopLedgerEntry[]
+
+  // Keyset & dashboard indexes
+  @@index([shopId, status, createdAt, id])
+  @@index([clientId, createdAt, id])
+  @@index([createdAt, id])          // keyset-friendly
+  @@index([clientVisibleUntil])
+  @@index([shopVisibleUntil])
+  @@index([deletedAt])
+  @@map("orders")
+}
+
+model ShopLedgerEntry {
+  id               String          @id @default(uuid()) @db.Uuid
+  shopId           String          @db.Uuid
+  orderId          String?         @db.Uuid
+  payoutRequestId  String?         @db.Uuid
+  type             LedgerEntryType
+  amountDA         Int                                // + credit to shop, − debit
+  createdAt        DateTime        @default(now())
+
+  shop             Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  order            Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  payoutRequest    PayoutRequest?  @relation(fields: [payoutRequestId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([shopId, createdAt])
+  @@map("shop_ledger_entries")
+}
+
+model PayoutRequest {
+  id             String         @id @default(uuid()) @db.Uuid
+  shopId         String         @db.Uuid
+  amountDA       Int
+  status         PayoutStatus   @default(PENDING)
+  requestedAt    DateTime       @default(now())
+  processedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  shop           Shop           @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ledgerEntries  ShopLedgerEntry[]
+
+  @@index([shopId, createdAt])
+  @@map("payout_requests")
+}
+
+// Singleton config (commission & payout min)
+model PlatformConfig {
+  id                 Int      @id @default(1)
+  commissionRateBps  Int      @default(0)     // e.g., 300 = 3%, set via seed/admin
+  payoutMinAmountDA  Int      @default(500)   // always 500 or more, per your rule
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("platform_config")
+}
