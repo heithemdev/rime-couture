@@ -1,12 +1,14 @@
-// /packages/db/prisma.config.ts
-import { defineConfig } from "prisma/config";
+import "dotenv/config";
+import { defineConfig, env } from "prisma/config";
 
 export default defineConfig({
-  // point Prisma to your schema
   schema: "prisma/schema.prisma",
-
-  // tell Prisma how to run your TS seed file and load .env in this package
   migrations: {
-    seed: "tsx --env-file=.env prisma/seed.ts",
+    path: "prisma/migrations",
+    seed: "tsx prisma/seed.ts",
+  },
+  datasource: {
+    // This tells Prisma CLI to use DIRECT_URL for migrations
+    url: env("DIRECT_URL"),
   },
 });

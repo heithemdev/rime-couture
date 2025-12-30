@@ -1,50 +1,70 @@
-/* eslint-disable no-console */
-import { randomUUID } from 'crypto'
-import { prisma } from '../src/prisma'
+// /packages/db/prisma/seed.ts
+// Purpose: minimal, deterministic, idempotent seed (only creates/ensures an Admin user).
+// Complexity: O(1) DB writes.
 
-const WILAYAS: Array<{ id: number; name: string }> = [
-  { id: 1, name: 'Adrar' }, { id: 2, name: 'Chlef' }, { id: 3, name: 'Laghouat' },
-  { id: 4, name: 'Oum El Bouaghi' }, { id: 5, name: 'Batna' }, { id: 6, name: 'Béjaïa' },
-  { id: 7, name: 'Biskra' }, { id: 8, name: 'Béchar' }, { id: 9, name: 'Blida' },
-  { id: 10, name: 'Bouira' }, { id: 11, name: 'Tamanrasset' }, { id: 12, name: 'Tébessa' },
-  { id: 13, name: 'Tlemcen' }, { id: 14, name: 'Tiaret' }, { id: 15, name: 'Tizi Ouzou' },
-  { id: 16, name: 'Alger' }, { id: 17, name: 'Djelfa' }, { id: 18, name: 'Jijel' },
-  { id: 19, name: 'Sétif' }, { id: 20, name: 'Saïda' }, { id: 21, name: 'Skikda' },
-  { id: 22, name: 'Sidi Bel Abbès' }, { id: 23, name: 'Annaba' }, { id: 24, name: 'Guelma' },
-  { id: 25, name: 'Constantine' }, { id: 26, name: 'Médéa' }, { id: 27, name: 'Mostaganem' },
-  { id: 28, name: 'M’Sila' }, { id: 29, name: 'Mascara' }, { id: 30, name: 'Ouargla' },
-  { id: 31, name: 'Oran' }, { id: 32, name: 'El Bayadh' }, { id: 33, name: 'Illizi' },
-  { id: 34, name: 'Bordj Bou Arréridj' }, { id: 35, name: 'Boumerdès' }, { id: 36, name: 'El Tarf' },
-  { id: 37, name: 'Tindouf' }, { id: 38, name: 'Tissemsilt' }, { id: 39, name: 'El Oued' },
-  { id: 40, name: 'Khenchela' }, { id: 41, name: 'Souk Ahras' }, { id: 42, name: 'Tipaza' },
-  { id: 43, name: 'Mila' }, { id: 44, name: 'Aïn Defla' }, { id: 45, name: 'Naâma' },
-  { id: 46, name: 'Aïn Témouchent' }, { id: 47, name: 'Ghardaïa' }, { id: 48, name: 'Relizane' },
-  { id: 49, name: 'Timimoun' }, { id: 50, name: 'Bordj Badji Mokhtar' }, { id: 51, name: 'Ouled Djellal' },
-  { id: 52, name: 'Béni Abbès' }, { id: 53, name: 'In Salah' }, { id: 54, name: 'In Guezzam' },
-  { id: 55, name: 'Touggourt' }, { id: 56, name: 'Djanet' }, { id: 57, name: 'El M’ghair' },
-  { id: 58, name: 'El Meniaa' }
-]
+import argon2 from "argon2";
+import { prisma as prismaTyped } from "../src/prisma";
+
+const prisma = prismaTyped as unknown as any; // Why: keeps seed unblocked even if Prisma types are stale in the editor.
+
+const ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL ?? "admin@local.test").trim();
+const ADMIN_PASSWORD = (process.env.SEED_ADMIN_PASSWORD ?? "Admin123456!").trim();
+
+async function getEnumValue(enumName: string, key: string, fallback: string) {
+  // Why: avoids TS “no exported member” errors when Prisma Client types are stale.
+  const mod = (await import("@prisma/client")) as any;
+  return mod?.[enumName]?.[key] ?? fallback;
+}
+
+async function upsertAdmin() {
+  const roleAdmin = await getEnumValue("UserRole", "ADMIN", "ADMIN");
+  const localeEn = await getEnumValue("Locale", "EN", "EN");
+
+  const existing = await prisma.user.findUnique({
+    where: { email: ADMIN_EMAIL },
+    select: { id: true, passwordHash: true },
+  });
+
+  // Why: don’t overwrite an existing password on reseed unless it was missing.
+  const passwordHash =
+    existing?.passwordHash ?? (await argon2.hash(ADMIN_PASSWORD));
+
+  await prisma.user.upsert({
+    where: { email: ADMIN_EMAIL },
+    create: {
+      email: ADMIN_EMAIL,
+      role: roleAdmin,
+      displayName: "Admin",
+      passwordHash,
+      preferredLocale: localeEn,
+      emailVerifiedAt: new Date(),
+    },
+    update: {
+      role: roleAdmin,
+      displayName: "Admin",
+      preferredLocale: localeEn,
+      emailVerifiedAt: new Date(),
+      deletedAt: null,
+      passwordHash: existing?.passwordHash ? undefined : passwordHash,
+    },
+  });
+
+  return { adminEmail: ADMIN_EMAIL };
+}
 
 async function main() {
-  console.log('🌱 Seeding baseline config + wilayas...')
+  await prismaTyped.$connect();
 
-  // Singleton platform config with safe defaults (you can edit later in admin)
-  await prisma.platformConfig.upsert({
-    where: { id: 1 },
-    update: {},
-    create: { id: 1, commissionRateBps: 300, payoutMinAmountDA: 500 }
-  })
+  const res = await upsertAdmin();
 
-  // All wilayas (idempotent)
-  await prisma.wilaya.createMany({ data: WILAYAS, skipDuplicates: true })
-
-  console.log('✅ Done.')
+  console.log("[seed] done:", res);
 }
 
 main()
-  .then(async () => { await prisma.$disconnect() })
-  .catch(async (e) => {
-    console.error('❌ Seed failed:', e)
-    await prisma.$disconnect()
-    process.exit(1)
+  .catch((err) => {
+    console.error("[seed] failed:", err);
+    process.exitCode = 1;
   })
+  .finally(async () => {
+    await prismaTyped.$disconnect();
+  });

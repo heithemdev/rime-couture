@@ -1,344 +1,851 @@
-// ---------------------------------------------------------
-// BZ Market — Prisma schema (PostgreSQL)
-// - Postgres 16+
-// - Extensions required (add in first migration SQL):
-//     CREATE EXTENSION IF NOT EXISTS citext;
-// - Money stored as integers (DA)
-// - Case-insensitive unique email/name via CITEXT
-// - Soft deletes on critical tables
-// - Keyset-friendly indexes
-// - Append-only ledger for balances (SALE_NET, REFUND, PAYOUT)
-// ---------------------------------------------------------
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-// ------------------------ Enums --------------------------
 
-enum Role {
+/**
+ * ============================================================================
+ * ENUMS
+ * ============================================================================
+ */
+enum Locale {
+  EN
+  FR
+  AR
+}
+
+enum Currency {
+  DZD
+}
+
+enum UserRole {
   CLIENT
-  SHOP_OWNER
+  ADMIN
 }
 
-enum ReactionValue {
-  LIKE
-  DISLIKE
+enum MediaKind {
+  IMAGE
+  VIDEO
+  PDF
 }
 
-enum DeliveryType {
-  HOME
-  CENTER
+enum TagType {
+  MATERIAL
+  MOOD_SEASON
+  PATTERN
+  OCCASION
 }
 
-enum PaymentMethod {
-  BARIDI_MOB
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
 }
 
-enum ShopOrderStatus {
-  ORDERED
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  CONFIRMED
+  IN_PREPARATION
   SHIPPED
+  DELIVERED
+  CANCELED
+  RETURN_REQUESTED
+  RETURNED
+}
+
+enum PaymentProvider {
+  CHARGILY
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELED
   REFUNDED
 }
 
-enum LedgerEntryType {
-  SALE_NET
+enum PaymentKind {
+  CHARGE
   REFUND
-  PAYOUT
+  ADJUSTMENT
 }
 
-enum TokenPurpose {
-  SIGNUP
-  RESET
-}
-
-enum PayoutStatus {
-  PENDING
-  SENT
-  PROCESSED
-  REJECTED
-}
-
-enum ShippingCarrier {
+enum ShipmentProvider {
   YALIDINE
 }
 
-// ------------------------ Core ---------------------------
+enum ShipmentStatus {
+  CREATED
+  LABEL_READY
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  RETURNED
+  CANCELED
+  UNKNOWN
+}
 
+enum ReturnStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  RECEIVED
+  CLOSED
+}
+
+enum ReturnResolution {
+  REFUND
+  REPLACE
+  REJECT
+}
+
+enum AnalyticsEventType {
+  PAGE_VIEW
+  VIEW_PRODUCT
+  SEARCH
+  START_CHECKOUT
+  CART_ADD
+  CART_REMOVE
+  CART_ABANDONED
+  PURCHASE
+  ADD_TO_WISHLIST
+  REMOVE_FROM_WISHLIST
+  IMAGE_SEARCH
+}
+
+enum AiActor {
+  PUBLIC
+  CLIENT
+  ADMIN
+}
+
+enum AiEndpoint {
+  CHAT
+  IMAGE_TAGS
+}
+
+/**
+ * ============================================================================
+ * USERS
+ * ============================================================================
+ */
 model User {
-  id               String   @id @default(uuid()) @db.Uuid
-  email            String   @unique @db.Citext          // case-insensitive unique
-  name             String   @unique @db.Citext          // username/display name (unique, case-insensitive)
-  phone            String   @unique                     // store E.164 in app layer
-  passwordHash     String
-  role             Role
+  id   String   @id @default(uuid()) @db.Uuid
+  role UserRole @default(CLIENT)
 
-  isEmailVerified  Boolean  @default(false)
-  acceptedTermsAt  DateTime
-  termsVersion     String
+  email        String  @unique
+  phone        String?
+  displayName  String?
+  passwordHash String?
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  preferredLocale Locale    @default(EN)
+  emailVerifiedAt DateTime?
 
-  // Relations
-  shop             Shop?
-  sessions         Session[]
-  reactions        ProductReaction[]
-  orders           Order[]  @relation("ClientOrders")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  @@map("users")
+  wishlistItems   WishlistItem[]
+  carts           Cart[]
+  orders          Order[]
+  reviews         Review[]
+  reviewsHidden   Review[]         @relation("ReviewHiddenBy")
+  returnDecisions ReturnRequest[]  @relation("ReturnDecisionBy")
+  analyticsEvents AnalyticsEvent[]
+  aiRequests      AiRequestLog[]
+
+  @@index([role])
+  @@index([deletedAt])
 }
 
-model Session {
-  id            String   @id @default(uuid()) @db.Uuid
-  userId        String   @db.Uuid
-  sessionIdHash String   @unique              // hash of random session token
-  ip            String?  @db.Inet
-  userAgent     String?
-  expiresAt     DateTime
-  revokedAt     DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+/**
+ * ============================================================================
+ * CMS
+ * ============================================================================
+ */
+model CmsPage {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique
+  isPublished Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-
-  @@index([userId])
-  @@index([expiresAt])
-  @@map("sessions")
+  translations CmsPageTranslation[]
 }
 
-model VerificationToken {
-  id         String       @id @default(uuid()) @db.Uuid
-  email      String       @db.Citext
-  purpose    TokenPurpose
-  tokenHash  String       @unique              // store hashed token only
-  attempts   Int          @default(0)
-  expiresAt  DateTime
-  consumedAt DateTime?
-  createdAt  DateTime     @default(now())
+model CmsPageTranslation {
+  id             String  @id @default(uuid()) @db.Uuid
+  pageId         String  @db.Uuid
+  locale         Locale
+  title          String
+  body           String
+  seoTitle       String?
+  seoDescription String?
 
-  @@index([email, purpose])
-  @@map("verification_tokens")
+  page CmsPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, locale])
+  @@index([locale])
 }
 
-// ------------------------ Catalogs -----------------------
-
-model Wilaya {
-  id             Int       @id                 // 1..58
-  name           String    @unique
-
-  shops          Shop[]
-  shippingFrom   ShippingPrice[] @relation("ShippingFrom")
-  shippingTo     ShippingPrice[] @relation("ShippingTo")
-  orderDest      Order[]         @relation("OrderDestination")
-
-  @@map("wilayas")
-}
-
+/**
+ * ============================================================================
+ * TAXONOMY
+ * ============================================================================
+ */
 model Category {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations CategoryTranslation[]
+  products     Product[]
+
+  @@index([isActive, sortOrder])
+}
+
+model CategoryTranslation {
+  id          String  @id @default(uuid()) @db.Uuid
+  categoryId  String  @db.Uuid
+  locale      Locale
+  name        String
+  description String?
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@index([locale])
+}
+
+model Size {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations SizeTranslation[]
+  variants     ProductVariant[]
+
+  @@index([isActive, sortOrder])
+}
+
+model SizeTranslation {
+  id     String @id @default(uuid()) @db.Uuid
+  sizeId String @db.Uuid
+  locale Locale
+  label  String
+
+  size Size @relation(fields: [sizeId], references: [id], onDelete: Cascade)
+
+  @@unique([sizeId, locale])
+  @@index([locale])
+}
+
+model Color {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  hex       String?
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations ColorTranslation[]
+  variants     ProductVariant[]
+
+  @@index([isActive, sortOrder])
+}
+
+model ColorTranslation {
+  id      String @id @default(uuid()) @db.Uuid
+  colorId String @db.Uuid
+  locale  Locale
+  label   String
+
+  color Color @relation(fields: [colorId], references: [id], onDelete: Cascade)
+
+  @@unique([colorId, locale])
+  @@index([locale])
+}
+
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  type      TagType
+  slug      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations TagTranslation[]
+  productLinks ProductTag[]
+
+  @@unique([type, slug])
+  @@index([type, isActive, sortOrder])
+}
+
+model TagTranslation {
+  id     String @id @default(uuid()) @db.Uuid
+  tagId  String @db.Uuid
+  locale Locale
+  label  String
+
+  tag Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, locale])
+  @@index([locale])
+}
+
+/**
+ * ============================================================================
+ * MEDIA
+ * ============================================================================
+ */
+model MediaAsset {
   id        String    @id @default(uuid()) @db.Uuid
-  name      String    @unique
-  products  Product[]
+  kind      MediaKind
+  url       String
+  mimeType  String?
+  bytes     Int?
+  width     Int?
+  height    Int?
+  durationS Int?
+  provider  String?
+  meta      Json?
+  createdAt DateTime  @default(now())
 
-  @@map("categories")
+  productLinks     ProductMedia[]
+  shipmentLabelFor Shipment?
+
+  @@index([kind])
 }
 
-// ------------------------ Shop & Products ----------------
-
-model Shop {
-  id               String        @id @default(uuid()) @db.Uuid
-  ownerId          String        @unique @db.Uuid
-  name             String
-  bio              String?
-  profilePhotoUrl  String?
-  bannerUrl        String?
-
-  wilayaId         Int
-  city             String?
-  ccpNumber        String?                           // (optionally encrypt at app level)
-  preferredCarrier ShippingCarrier @default(YALIDINE)
-
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  deletedAt        DateTime?
-
-  owner            User          @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  wilaya           Wilaya        @relation(fields: [wilayaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-
-  products         Product[]
-  orders           Order[]       @relation("ShopOrders")
-  ledgerEntries    ShopLedgerEntry[]
-  payoutRequests   PayoutRequest[]
-
-  @@index([wilayaId])
-  @@index([deletedAt])
-  @@map("shops")
-}
-
+/**
+ * ============================================================================
+ * PRODUCTS
+ * ============================================================================
+ */
 model Product {
-  id            String    @id @default(uuid()) @db.Uuid
-  shopId        String    @db.Uuid
-  categoryId    String    @db.Uuid
-  name          String
-  priceDA       Int                                     // DA integer
-  description   String?
-  imageUrl      String                                  // single main image
-  likesCount    Int       @default(0)                   // cached (rebuildable)
-  dislikesCount Int       @default(0)
+  id             String        @id @default(uuid()) @db.Uuid
+  slug           String        @unique
+  categoryId     String        @db.Uuid
+  status         ProductStatus @default(DRAFT)
+  currency       Currency      @default(DZD)
+  basePriceMinor Int
+  isCustomizable Boolean       @default(false)
+  isMadeToOrder  Boolean       @default(false)
+  leadTimeDays   Int?
+  isFeatured     Boolean       @default(false)
+  featuredOrder  Int?          @default(0)
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  shop          Shop      @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  category      Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  reactions     ProductReaction[]
-  orders        Order[]
+  salesCount    Int   @default(0)
+  wishlistCount Int   @default(0)
+  reviewCount   Int   @default(0)
+  avgRating     Float @default(0)
 
-  @@index([shopId, createdAt, id])
-  @@index([createdAt, id]) // keyset-friendly
+  category        Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  translations    ProductTranslation[]
+  variants        ProductVariant[]
+  media           ProductMedia[]
+  tags            ProductTag[]
+  orderItems      OrderItem[]
+  reviews         Review[]
+  wishlistItems   WishlistItem[]
+  analyticsEvents AnalyticsEvent[]
+  cartItems       CartItem[] // opposite of CartItem.product
+
+  @@index([categoryId, status, isActive])
+  @@index([createdAt])
   @@index([deletedAt])
-  @@map("products")
+  @@index([isFeatured, featuredOrder])
 }
 
-model ProductReaction {
-  id         String        @id @default(uuid()) @db.Uuid
-  productId  String        @db.Uuid
-  userId     String        @db.Uuid
-  value      ReactionValue
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+model ProductTranslation {
+  id             String  @id @default(uuid()) @db.Uuid
+  productId      String  @db.Uuid
+  locale         Locale
+  name           String
+  description    String
+  seoTitle       String?
+  seoDescription String?
 
-  product    Product       @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@unique([productId, userId]) // one reaction per user per product
-  @@index([userId])
-  @@index([productId, value])
-  @@map("product_reactions")
+  @@unique([productId, locale])
+  @@index([locale])
 }
 
-// ------------------------ Shipping -----------------------
+model ProductVariant {
+  id         String   @id @default(uuid()) @db.Uuid
+  productId  String   @db.Uuid
+  variantKey String
+  sku        String   @unique
+  sizeId     String?  @db.Uuid
+  colorId    String?  @db.Uuid
+  priceMinor Int?
+  stock      Int      @default(0)
+  reserved   Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-model ShippingPrice {
-  fromWilayaId Int
-  toWilayaId   Int
-  deliveryType DeliveryType
-  priceDA      Int
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size    Size?   @relation(fields: [sizeId], references: [id], onDelete: Restrict)
+  color   Color?  @relation(fields: [colorId], references: [id], onDelete: Restrict)
 
-  fromWilaya   Wilaya @relation("ShippingFrom", fields: [fromWilayaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  toWilaya     Wilaya @relation("ShippingTo", fields: [toWilayaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  orderItems OrderItem[]
+  cartItems  CartItem[]
 
-  @@id([fromWilayaId, toWilayaId, deliveryType])  // unique per (from, to, type)
-  @@index([toWilayaId])
-  @@map("shipping_prices")
+  @@unique([productId, variantKey])
+  @@index([productId, isActive])
+  @@index([sizeId])
+  @@index([colorId])
 }
 
-// ------------------------ Orders & Money -----------------
+model ProductMedia {
+  id        String  @id @default(uuid()) @db.Uuid
+  productId String  @db.Uuid
+  mediaId   String  @db.Uuid
+  position  Int     @default(0)
+  isThumb   Boolean @default(false)
 
+  product Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  media   MediaAsset @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+
+  @@unique([productId, mediaId])
+  @@unique([productId, position])
+  @@index([productId, position])
+  @@index([isThumb])
+}
+
+model ProductTag {
+  productId String @db.Uuid
+  tagId     String @db.Uuid
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Restrict)
+
+  @@id([productId, tagId])
+  @@index([tagId, productId])
+}
+
+/**
+ * ============================================================================
+ * CARTS
+ * ============================================================================
+ */
+model Cart {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String?   @db.Uuid
+  guestToken  String?   @unique
+  currency    Currency  @default(DZD)
+  locale      Locale    @default(EN)
+  isActive    Boolean   @default(true)
+  abandonedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items           CartItem[]
+  analyticsEvents AnalyticsEvent[] // opposite for AnalyticsEvent.cart
+
+  @@index([userId, isActive])
+  @@index([guestToken])
+}
+
+model CartItem {
+  id             String   @id @default(uuid()) @db.Uuid
+  cartId         String   @db.Uuid
+  productId      String   @db.Uuid
+  variantId      String   @db.Uuid
+  quantity       Int
+  unitPriceMinor Int
+  addedAt        DateTime @default(now())
+
+  cart    Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+  @@index([variantId])
+}
+
+/**
+ * ============================================================================
+ * WISHLIST
+ * ============================================================================
+ */
+model WishlistItem {
+  userId    String   @db.Uuid
+  productId String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+  @@index([createdAt])
+}
+
+/**
+ * ============================================================================
+ * ORDERS + PAYMENTS + SHIPPING
+ * ============================================================================
+ */
 model Order {
-  id                      String          @id @default(uuid()) @db.Uuid
-  productId               String          @db.Uuid
-  shopId                  String          @db.Uuid
-  clientId                String          @db.Uuid
-  quantity                Int             @default(1)
+  id             String        @id @default(uuid()) @db.Uuid
+  orderNumber    String        @unique
+  userId         String?       @db.Uuid
+  checkoutLocale Locale        @default(EN)
+  currency       Currency      @default(DZD)
+  status         OrderStatus   @default(PENDING_PAYMENT)
+  paymentStatus  PaymentStatus @default(PENDING)
 
-  // Snapshots (lock business math at purchase time)
-  productNameAtOrder      String
-  productPriceDAAtOrder   Int
-  shippingPriceDAAtOrder  Int
+  subtotalMinor Int
+  shippingMinor Int
+  totalMinor    Int
+  depositMinor  Int @default(0)
 
-  // Delivery
-  deliveryType            DeliveryType
-  destinationWilayaId     Int
-  baladiya                String?         // for HOME
-  street                  String?         // for HOME
-  exactLocation           String?         // for HOME
-  pickupCity              String?         // for CENTER
+  customerName  String
+  customerPhone String
+  customerEmail String?
+  addressLine1  String
+  addressLine2  String?
+  wilayaCode    Int
+  wilayaName    String
+  commune       String
+  postalCode    String?
+  customerNote  String?
 
-  // Payment
-  paymentMethod           PaymentMethod   @default(BARIDI_MOB)
-  paymentProofUrl         String          // image or PDF
-  paidAmountDA            Int             // equals productPriceDAAtOrder (for now)
+  confirmedAt  DateTime?
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+  canceledAt   DateTime?
+  cancelReason String?
 
-  // Shop-side organizational status
-  status                  ShopOrderStatus @default(ORDERED)
+  exportedToSheetsAt DateTime?
 
-  // Refund signals
-  refundRequestedAt       DateTime?
-  refundProcessedAt       DateTime?
+  utmSource      String?
+  utmMedium      String?
+  utmCampaign    String?
+  sessionId      String?
+  cartIdSnapshot String?
 
-  // Visibility windows
-  clientVisibleUntil      DateTime
-  shopVisibleUntil        DateTime
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  createdAt               DateTime        @default(now())
-  updatedAt               DateTime        @updatedAt
-  deletedAt               DateTime?
+  user            User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+  payments        PaymentTransaction[]
+  shipment        Shipment?
+  returns         ReturnRequest[]
+  analyticsEvents AnalyticsEvent[]
 
-  product                 Product         @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  shop                    Shop            @relation("ShopOrders", fields: [shopId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  client                  User            @relation("ClientOrders", fields: [clientId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  destinationWilaya       Wilaya          @relation("OrderDestination", fields: [destinationWilayaId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-
-  ledgerEntries           ShopLedgerEntry[]
-
-  // Keyset & dashboard indexes
-  @@index([shopId, status, createdAt, id])
-  @@index([clientId, createdAt, id])
-  @@index([createdAt, id])          // keyset-friendly
-  @@index([clientVisibleUntil])
-  @@index([shopVisibleUntil])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([paymentStatus, createdAt])
   @@index([deletedAt])
-  @@map("orders")
+  @@index([sessionId, createdAt])
 }
 
-model ShopLedgerEntry {
-  id               String          @id @default(uuid()) @db.Uuid
-  shopId           String          @db.Uuid
-  orderId          String?         @db.Uuid
-  payoutRequestId  String?         @db.Uuid
-  type             LedgerEntryType
-  amountDA         Int                                // + credit to shop, − debit
-  createdAt        DateTime        @default(now())
+model OrderItem {
+  id              String   @id @default(uuid()) @db.Uuid
+  orderId         String   @db.Uuid
+  productId       String?  @db.Uuid
+  variantId       String?  @db.Uuid
+  quantity        Int
+  unitPriceMinor  Int
+  lineTotalMinor  Int
+  productName     String
+  productSlug     String
+  productImageUrl String?
+  sizeLabel       String?
+  colorLabel      String?
+  createdAt       DateTime @default(now())
 
-  shop             Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  order            Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  payoutRequest    PayoutRequest?  @relation(fields: [payoutRequestId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  review      Review?
+  returnItems ReturnItem[]
 
-  @@index([shopId, createdAt])
-  @@map("shop_ledger_entries")
+  @@index([orderId])
+  @@index([productId, createdAt])
 }
 
-model PayoutRequest {
+model PaymentTransaction {
+  id                 String          @id @default(uuid()) @db.Uuid
+  orderId            String          @db.Uuid
+  provider           PaymentProvider @default(CHARGILY)
+  status             PaymentStatus   @default(PENDING)
+  kind               PaymentKind     @default(CHARGE)
+  amountMinor        Int
+  currency           Currency        @default(DZD)
+  providerCheckoutId String?
+  providerPaymentId  String?
+  paymentMethod      String?
+  parentPaymentId    String?
+
+  payload     Json?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@index([provider, providerCheckoutId])
+  @@index([provider, providerPaymentId])
+  @@index([status, createdAt])
+  @@index([kind, createdAt])
+}
+
+model Shipment {
+  id                 String           @id @default(uuid()) @db.Uuid
+  orderId            String           @unique @db.Uuid
+  provider           ShipmentProvider @default(YALIDINE)
+  status             ShipmentStatus   @default(CREATED)
+  providerShipmentId String?
+  trackingCode       String?          @unique
+  labelPdfUrl        String?
+  labelPdfAssetId    String?          @unique @db.Uuid
+  rawCreatePayload   Json?
+  rawLatestPayload   Json?
+  syncedAt           DateTime?
+  nextSyncAt         DateTime?
+  lastWebhookAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  labelPdfAsset MediaAsset?     @relation(fields: [labelPdfAssetId], references: [id], onDelete: SetNull)
+  events        ShipmentEvent[]
+
+  @@index([status, createdAt])
+}
+
+model ShipmentEvent {
   id             String         @id @default(uuid()) @db.Uuid
-  shopId         String         @db.Uuid
-  amountDA       Int
-  status         PayoutStatus   @default(PENDING)
-  requestedAt    DateTime       @default(now())
-  processedAt    DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  shipmentId     String         @db.Uuid
+  status         ShipmentStatus @default(UNKNOWN)
+  externalStatus String?
+  description    String?
+  location       String?
+  occurredAt     DateTime
+  rawPayload     Json?
 
-  shop           Shop           @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  ledgerEntries  ShopLedgerEntry[]
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
 
-  @@index([shopId, createdAt])
-  @@map("payout_requests")
+  @@index([shipmentId, occurredAt])
+  @@index([status, occurredAt])
 }
 
-// Singleton config (commission & payout min)
-model PlatformConfig {
-  id                 Int      @id @default(1)
-  commissionRateBps  Int      @default(0)     // e.g., 300 = 3%, set via seed/admin
-  payoutMinAmountDA  Int      @default(500)   // always 500 or more, per your rule
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+/**
+ * ============================================================================
+ * REVIEWS
+ * ============================================================================
+ */
+model Review {
+  id                String  @id @default(uuid()) @db.Uuid
+  productId         String  @db.Uuid
+  orderItemId       String  @unique @db.Uuid
+  userId            String? @db.Uuid
+  guestEmail        String?
+  guestPhone        String?
+  verificationToken String?
 
-  @@map("platform_config")
+  rating  Int
+  title   String?
+  comment String?
+
+  isHidden       Boolean   @default(false)
+  hiddenReason   String?
+  hiddenByUserId String?   @db.Uuid
+  hiddenAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItem    OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  hiddenByUser User?     @relation("ReviewHiddenBy", fields: [hiddenByUserId], references: [id], onDelete: SetNull)
+
+  @@index([productId, createdAt])
+  @@index([userId, createdAt])
+  @@index([isHidden, createdAt])
+}
+
+/**
+ * ============================================================================
+ * RETURNS
+ * ============================================================================
+ */
+model ReturnRequest {
+  id              String            @id @default(uuid()) @db.Uuid
+  orderId         String            @db.Uuid
+  status          ReturnStatus      @default(REQUESTED)
+  resolution      ReturnResolution?
+  reason          String?
+  notes           String?
+  decidedByUserId String?           @db.Uuid
+  resolvedAt      DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  decidedBy User?        @relation("ReturnDecisionBy", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  items     ReturnItem[]
+
+  @@index([status, createdAt])
+  @@index([orderId])
+}
+
+model ReturnItem {
+  id                String       @id @default(uuid()) @db.Uuid
+  returnRequestId   String       @db.Uuid
+  orderItemId       String       @db.Uuid
+  quantity          Int
+  refundAmountMinor Int?
+  status            ReturnStatus @default(REQUESTED)
+
+  returnRequest ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
+  orderItem     OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+
+  @@unique([returnRequestId, orderItemId])
+  @@index([orderItemId])
+}
+
+/**
+ * ============================================================================
+ * ANALYTICS
+ * ============================================================================
+ */
+model AnalyticsEvent {
+  id          String             @id @default(uuid()) @db.Uuid
+  type        AnalyticsEventType
+  occurredAt  DateTime           @default(now())
+  sessionId   String?
+  userId      String?            @db.Uuid
+  ipHash      String?
+  userAgent   String?
+  path        String?
+  referrer    String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  productId   String?            @db.Uuid
+  orderId     String?            @db.Uuid
+  cartId      String?            @db.Uuid
+  meta        Json?
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  order   Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  cart    Cart?    @relation(fields: [cartId], references: [id], onDelete: SetNull)
+
+  @@index([type, occurredAt])
+  @@index([productId, occurredAt])
+  @@index([orderId, occurredAt])
+  @@index([cartId, occurredAt])
+  @@index([userId, occurredAt])
+}
+
+/**
+ * ============================================================================
+ * AI
+ * ============================================================================
+ */
+model AiCacheEntry {
+  id        String     @id @default(uuid()) @db.Uuid
+  endpoint  AiEndpoint
+  actor     AiActor
+  locale    Locale
+  keyHash   String
+  text      String?
+  json      Json?
+  expiresAt DateTime?
+  createdAt DateTime   @default(now())
+
+  @@unique([endpoint, actor, locale, keyHash])
+  @@index([expiresAt])
+}
+
+model AiRequestLog {
+  id             String     @id @default(uuid()) @db.Uuid
+  endpoint       AiEndpoint
+  actor          AiActor
+  userId         String?    @db.Uuid
+  ipHash         String?
+  locale         Locale
+  model          String?
+  promptTokens   Int?
+  responseTokens Int?
+  latencyMs      Int?
+  success        Boolean    @default(true)
+  refused        Boolean    @default(false)
+  errorCode      String?
+  request        Json?
+  response       Json?
+  createdAt      DateTime   @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([actor, createdAt])
+  @@index([endpoint, createdAt])
+  @@index([userId, createdAt])
+  @@index([ipHash, createdAt])
+}
+
+/**
+ * ============================================================================
+ * WEBHOOK / EMAIL LOGS
+ * ============================================================================
+ */
+model WebhookLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  source      String // e.g., "CHARGILY", "YALIDINE"
+  eventType   String?
+  externalId  String?
+  status      String?
+  error       String?
+  payload     Json?
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([source, receivedAt])
+  @@index([externalId])
+}
+
+model EmailLog {
+  id       String   @id @default(uuid()) @db.Uuid
+  toEmail  String
+  template String
+  subject  String?
+  status   String?
+  error    String?
+  payload  Json?
+  sentAt   DateTime @default(now())
+
+  @@index([toEmail, sentAt])
 }
