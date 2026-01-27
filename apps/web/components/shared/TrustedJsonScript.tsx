@@ -13,23 +13,17 @@ type Props = {
 /**
  * Safely renders a JSON script tag (e.g., for JSON-LD structured data).
  * Prevents XSS by escaping dangerous characters in the JSON output.
- * 
+ *
  * @example
- * <TrustedJsonScript 
+ * <TrustedJsonScript
  *   id="product-schema"
  *   data={{
  *     "@context": "https://schema.org",
  *     "@type": "Product",
  *     "name": "Kids Dress",
- *   }} 
+ *   }}
  * />
  */
 export default function TrustedJsonScript({ data, type = 'application/ld+json', id }: Props) {
-  return (
-    <script
-      id={id}
-      type={type}
-      dangerouslySetInnerHTML={{ __html: safeJson(data) }}
-    />
-  );
+  return <script id={id} type={type} dangerouslySetInnerHTML={{ __html: safeJson(data) }} />;
 }

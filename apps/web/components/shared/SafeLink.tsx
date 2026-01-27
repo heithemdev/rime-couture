@@ -2,11 +2,7 @@
 'use client';
 
 import { forwardRef, type AnchorHTMLAttributes } from 'react';
-import {
-  safeHref,
-  safeRedirectTarget,
-  externalRel,
-} from '@/lib/secured/secure-ui';
+import { safeHref, safeRedirectTarget, externalRel } from '@/lib/secured/secure-ui';
 
 type Props = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
   /** The link destination */
@@ -26,7 +22,7 @@ type Props = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
  * - Internal links (/path, #anchor, ?query) pass through unchanged
  * - External links get noopener/noreferrer automatically
  * - Dangerous protocols (javascript:, data:) are blocked
- * 
+ *
  * @example
  * <SafeLink href="/products">Products</SafeLink>
  * <SafeLink href="https://example.com" newTab>External</SafeLink>
@@ -34,11 +30,11 @@ type Props = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
  */
 const SafeLink = forwardRef<HTMLAnchorElement, Props>(function SafeLink(
   { href, allowedHosts, base, newTab = true, relExtra, children, ...rest },
-  ref
+  ref,
 ) {
   // Internal/relative links: pass through as-is (fast path)
   const isInternal = href.startsWith('/') || href.startsWith('#') || href.startsWith('?');
-  
+
   if (isInternal) {
     return (
       <a ref={ref} href={href} {...rest}>

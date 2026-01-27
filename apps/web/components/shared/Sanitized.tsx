@@ -4,8 +4,17 @@ import { sanitizeHTML } from '@/lib/secured/secure-ui';
 
 // Safe tag union (expandable as needed)
 type TagName =
-  | 'div' | 'section' | 'article' | 'main' | 'aside'
-  | 'header' | 'footer' | 'nav' | 'span' | 'p' | 'li';
+  | 'div'
+  | 'section'
+  | 'article'
+  | 'main'
+  | 'aside'
+  | 'header'
+  | 'footer'
+  | 'nav'
+  | 'span'
+  | 'p'
+  | 'li';
 
 type Props = Omit<HTMLAttributes<HTMLElement>, 'dangerouslySetInnerHTML'> & {
   /** Raw HTML string to sanitize */
@@ -21,7 +30,7 @@ type Props = Omit<HTMLAttributes<HTMLElement>, 'dangerouslySetInnerHTML'> & {
 /**
  * Server Component that safely renders sanitized HTML.
  * Uses DOMPurify on server, escapes HTML as fallback.
- * 
+ *
  * @example
  * <Sanitized html={product.description} className="prose" />
  * <Sanitized html={richText} as="article" allowIframes />

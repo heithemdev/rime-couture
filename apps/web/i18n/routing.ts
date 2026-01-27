@@ -2,32 +2,30 @@
 // Purpose: Single source of truth for locales + RTL handling.
 // Perf: O(1) checks, tiny helpers.
 
-import { defineRouting } from "next-intl/routing";
+import { defineRouting } from 'next-intl/routing';
 
-export const locales = ["en", "fr", "ar"] as const;
+export const locales = ['en', 'fr', 'ar'] as const;
 export type Locale = (typeof locales)[number];
 
-export const defaultLocale: Locale = "en";
+export const defaultLocale: Locale = 'en';
 
 // Cookie used for "no-locale-in-URL" strategy (keeps your routes unchanged).
-export const LOCALE_COOKIE = "locale";
+export const LOCALE_COOKIE = 'locale';
 
 export const routing = defineRouting({
   locales,
   defaultLocale,
-  localePrefix: "never", // No locale prefix in URLs - cookie-based only
+  localePrefix: 'never', // No locale prefix in URLs - cookie-based only
 });
 
 export const LOCALE_LABEL: Record<Locale, string> = {
-  en: "EN",
-  fr: "FR",
-  ar: "AR",
+  en: 'EN',
+  fr: 'FR',
+  ar: 'AR',
 };
 
 export function isLocale(value: unknown): value is Locale {
-  return (
-    typeof value === "string" && (locales as readonly string[]).includes(value)
-  );
+  return typeof value === 'string' && (locales as readonly string[]).includes(value);
 }
 
 export function asLocale(value: unknown): Locale {
@@ -35,5 +33,5 @@ export function asLocale(value: unknown): Locale {
 }
 
 export function isRtlLocale(locale: Locale): boolean {
-  return locale === "ar";
+  return locale === 'ar';
 }

@@ -1,0 +1,154 @@
+{
+  "common": {
+    "brand": "Rime Couture",
+    "currency": "DZD",
+    "viewCollection": "View Collection",
+    "addToCart": "Add to Cart",
+    "language": "Language",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "shoppingCart": "Shopping cart",
+    "previous": "Previous",
+    "next": "Next",
+    "sale": "Sale",
+    "new": "New",
+    "bestSeller": "Best Seller"
+  },
+  "nav": {
+    "shop": "Shop",
+    "kidsDresses": "Kids Dresses",
+    "homeTextiles": "Home Textiles",
+    "ourStory": "Our Story",
+    "contact": "Contact"
+  },
+  "hero": {
+    "title": "Hand-Sewn Love for Your Little Ones",
+    "subtitle": "Rime Couture is a family-owned Algerian brand dedicated to crafting cozy kids' dresses and home textiles with a mother's touch. Every stitch tells a story of comfort, quality, and care.",
+    "shopNow": "Shop Now",
+    "ourStory": "Our Story",
+    "imageAlt": "Mother and daughter sharing a cozy moment"
+  },
+  "collections": {
+    "title": "Explore Our Collections",
+    "kidsDresses": {
+      "title": "Kids Dresses",
+      "description": "Pure natural fabrics and timeless hand-sewn designs for your little girl's comfort.",
+      "imageAlt": "Hand-sewn kids dresses"
+    },
+    "homeTextiles": {
+      "title": "Home Textiles",
+      "description": "Bring warmth to your kitchen with our artisanal aprons and cozy household linens.",
+      "imageAlt": "Kitchen and home textiles"
+    }
+  },
+  "bestSellers": {
+    "title": "Our Best Sellers",
+    "products": {
+      "floralDress": {
+        "name": "Floral Cotton Dress"
+      },
+      "silkPillowcase": {
+        "name": "Silk Pillowcase Set"
+      },
+      "partyDress": {
+        "name": "Pastel Party Dress"
+      },
+      "cottonTablecloth": {
+        "name": "Cotton Tablecloth"
+      },
+      "summerDress": {
+        "name": "Summer Breeze Dress"
+      }
+    }
+  },
+  "orderingSteps": {
+    "title": "Ordering Made Simple",
+    "steps": {
+      "measure": {
+        "title": "Measure",
+        "description": "Share your child's measurements for the perfect custom fit."
+      },
+      "customize": {
+        "title": "Customize",
+        "description": "Choose from our fabrics and patterns or request something special."
+      },
+      "craft": {
+        "title": "We Craft",
+        "description": "Our family sews your item with love and meticulous attention."
+      },
+      "deliver": {
+        "title": "Delivered",
+        "description": "Receive your unique piece, beautifully packaged at your door."
+      }
+    }
+  },
+  "trustFeatures": {
+    "title": "Why Mothers Trust Us",
+    "features": {
+      "quality": {
+        "title": "Premium Quality",
+        "description": "Hypoallergenic natural fabrics that are gentle on delicate skin."
+      },
+      "customFit": {
+        "title": "Custom Fit",
+        "description": "Made-to-measure pieces that grow with your little ones."
+      },
+      "madeWithLove": {
+        "title": "Made with Love",
+        "description": "Every stitch carries our family's dedication and care."
+      },
+      "freeShipping": {
+        "title": "Free Shipping",
+        "description": "Complimentary delivery across Algeria on orders over 5,000 DZD."
+      }
+    }
+  },
+  "testimonials": {
+    "title": "Happy Families",
+    "reviews": {
+      "sarah": {
+        "name": "Sarah M.",
+        "location": "Algiers, Algeria",
+        "text": "The quality is exceptional! My daughter loves her new dress and the fabric is so soft. Highly recommend!"
+      },
+      "amira": {
+        "name": "Amira B.",
+        "location": "Oran, Algeria",
+        "text": "Finally found a brand that understands what mothers need. The custom sizing is perfect!"
+      },
+      "fatima": {
+        "name": "Fatima K.",
+        "location": "Constantine, Algeria",
+        "text": "Beautiful craftsmanship and fast delivery. The kitchen set matches my home perfectly!"
+      }
+    }
+  },
+  "finalCta": {
+    "title": "Ready to Cozy Up Your Home?",
+    "subtitle": "Join thousands of Algerian mothers who choose quality and care for their families.",
+    "startShopping": "Start Shopping",
+    "guarantee": "100% Satisfaction Guaranteed",
+    "imageAlt": "Happy child in handmade dress"
+  },
+  "footer": {
+    "brandStory": "A family-owned Algerian brand crafting memories through hand-sewn kids' dresses and cozy home textiles. Every stitch tells a story of love, tradition, and handmade quality.",
+    "collectionsTitle": "Collections",
+    "collections": {
+      "kidsDresses": "Kids Dresses",
+      "kitchenTextiles": "Kitchen Textiles",
+      "homeDecor": "Home Decor",
+      "newArrivals": "New Arrivals"
+    },
+    "careTrustTitle": "Care & Trust",
+    "careTrust": {
+      "handmadeProcess": "Handmade Process",
+      "deliveryInfo": "Delivery Info",
+      "careGuide": "Care Guide",
+      "contactUs": "Contact Us"
+    },
+    "allRightsReserved": "All rights reserved.",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "madeWithLove": "Made with ❤️ in Algeria"
+  }
+}

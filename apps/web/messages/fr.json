@@ -1,0 +1,154 @@
+{
+  "common": {
+    "brand": "Rime Couture",
+    "currency": "DZD",
+    "viewCollection": "Voir la Collection",
+    "addToCart": "Ajouter au Panier",
+    "language": "Langue",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "shoppingCart": "Panier",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "sale": "Promo",
+    "new": "Nouveau",
+    "bestSeller": "Best-seller"
+  },
+  "nav": {
+    "shop": "Boutique",
+    "kidsDresses": "Robes Enfants",
+    "homeTextiles": "Textiles Maison",
+    "ourStory": "Notre Histoire",
+    "contact": "Contact"
+  },
+  "hero": {
+    "title": "De l'Amour Cousu Main pour Vos Petits",
+    "subtitle": "Rime Couture est une marque familiale algérienne dédiée à la création de robes confortables pour enfants et de textiles d'intérieur avec la tendresse d'une mère. Chaque point raconte une histoire de confort, de qualité et d'attention.",
+    "shopNow": "Acheter Maintenant",
+    "ourStory": "Notre Histoire",
+    "imageAlt": "Mère et fille partageant un moment de tendresse"
+  },
+  "collections": {
+    "title": "Découvrez Nos Collections",
+    "kidsDresses": {
+      "title": "Robes Enfants",
+      "description": "Tissus naturels purs et designs intemporels cousus main pour le confort de votre petite fille.",
+      "imageAlt": "Robes enfants cousues main"
+    },
+    "homeTextiles": {
+      "title": "Textiles Maison",
+      "description": "Apportez de la chaleur à votre cuisine avec nos tabliers artisanaux et linges de maison douillets.",
+      "imageAlt": "Textiles cuisine et maison"
+    }
+  },
+  "bestSellers": {
+    "title": "Nos Meilleures Ventes",
+    "products": {
+      "floralDress": {
+        "name": "Robe Coton Fleurie"
+      },
+      "silkPillowcase": {
+        "name": "Taie d'Oreiller Soie"
+      },
+      "partyDress": {
+        "name": "Robe de Fête Pastel"
+      },
+      "cottonTablecloth": {
+        "name": "Nappe en Coton"
+      },
+      "summerDress": {
+        "name": "Robe Brise d'Été"
+      }
+    }
+  },
+  "orderingSteps": {
+    "title": "Commander en Toute Simplicité",
+    "steps": {
+      "measure": {
+        "title": "Mesurez",
+        "description": "Partagez les mensurations de votre enfant pour un ajustement parfait."
+      },
+      "customize": {
+        "title": "Personnalisez",
+        "description": "Choisissez parmi nos tissus et motifs ou demandez quelque chose de spécial."
+      },
+      "craft": {
+        "title": "Nous Créons",
+        "description": "Notre famille coud votre article avec amour et attention méticuleuse."
+      },
+      "deliver": {
+        "title": "Livré",
+        "description": "Recevez votre pièce unique, joliment emballée à votre porte."
+      }
+    }
+  },
+  "trustFeatures": {
+    "title": "Pourquoi les Mamans Nous Font Confiance",
+    "features": {
+      "quality": {
+        "title": "Qualité Premium",
+        "description": "Tissus naturels hypoallergéniques, doux pour les peaux délicates."
+      },
+      "customFit": {
+        "title": "Sur Mesure",
+        "description": "Des pièces faites sur mesure qui grandissent avec vos petits."
+      },
+      "madeWithLove": {
+        "title": "Fait avec Amour",
+        "description": "Chaque point porte le dévouement et l'attention de notre famille."
+      },
+      "freeShipping": {
+        "title": "Livraison Gratuite",
+        "description": "Livraison offerte en Algérie pour les commandes de plus de 5 000 DZD."
+      }
+    }
+  },
+  "testimonials": {
+    "title": "Familles Heureuses",
+    "reviews": {
+      "sarah": {
+        "name": "Sarah M.",
+        "location": "Alger, Algérie",
+        "text": "La qualité est exceptionnelle ! Ma fille adore sa nouvelle robe et le tissu est si doux. Je recommande vivement !"
+      },
+      "amira": {
+        "name": "Amira B.",
+        "location": "Oran, Algérie",
+        "text": "J'ai enfin trouvé une marque qui comprend les besoins des mamans. Les tailles sur mesure sont parfaites !"
+      },
+      "fatima": {
+        "name": "Fatima K.",
+        "location": "Constantine, Algérie",
+        "text": "Magnifique savoir-faire et livraison rapide. L'ensemble cuisine s'accorde parfaitement avec ma maison !"
+      }
+    }
+  },
+  "finalCta": {
+    "title": "Prêt à Réchauffer Votre Intérieur ?",
+    "subtitle": "Rejoignez des milliers de mamans algériennes qui choisissent la qualité et l'attention pour leurs familles.",
+    "startShopping": "Commencer Vos Achats",
+    "guarantee": "Satisfaction 100% Garantie",
+    "imageAlt": "Enfant heureux en robe artisanale"
+  },
+  "footer": {
+    "brandStory": "Une marque familiale algérienne créant des souvenirs à travers des robes d'enfants cousues main et des textiles de maison douillets. Chaque point raconte une histoire d'amour, de tradition et de qualité artisanale.",
+    "collectionsTitle": "Collections",
+    "collections": {
+      "kidsDresses": "Robes Enfants",
+      "kitchenTextiles": "Textiles Cuisine",
+      "homeDecor": "Décoration Maison",
+      "newArrivals": "Nouveautés"
+    },
+    "careTrustTitle": "Soin & Confiance",
+    "careTrust": {
+      "handmadeProcess": "Processus Artisanal",
+      "deliveryInfo": "Infos Livraison",
+      "careGuide": "Guide d'Entretien",
+      "contactUs": "Nous Contacter"
+    },
+    "allRightsReserved": "Tous droits réservés.",
+    "privacyPolicy": "Politique de Confidentialité",
+    "termsOfService": "Conditions d'Utilisation",
+    "madeWithLove": "Fait avec ❤️ en Algérie"
+  }
+}

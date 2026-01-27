@@ -19,4 +19,12 @@ export default [
       "turbo/no-undeclared-env-vars": "off",
     },
   },
+
+  // Allow <img> tags for external images (pexels, etc.)
+  {
+    files: ["**/*.tsx", "**/*.jsx"],
+    rules: {
+      "@next/next/no-img-element": "off",
+    },
+  },
 ];

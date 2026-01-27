@@ -1,0 +1,319 @@
+.root {
+  overflow: hidden;
+  position: relative;
+  border-top: var(--divider-value);
+  padding-top: var(--spacing-4xl);
+  padding-bottom: var(--spacing-xl);
+  background-color: var(--color-surface-elevated);
+}
+
+.root::before {
+  top: -10%;
+  right: -5%;
+  width: 300px;
+  height: 300px;
+  content: '';
+  z-index: 0;
+  position: absolute;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-primary) 10%, transparent) 0%,
+    transparent 70%
+  );
+  border-radius: var(--border-radius-full);
+}
+
+.container {
+  margin: 0 auto;
+  padding: 0 var(--spacing-xl);
+  z-index: 1;
+  position: relative;
+  max-width: var(--content-max-width);
+}
+
+.mainGrid {
+  gap: var(--spacing-4xl);
+  display: flex;
+  margin-bottom: var(--spacing-4xl);
+}
+
+.brandColumn {
+  gap: var(--spacing-xl);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.linksColumn {
+  gap: var(--spacing-3xl);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.logoLink {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.brandName {
+  color: var(--color-primary);
+  font-size: var(--font-size-2xl);
+  font-family: var(--font-family-heading);
+  font-weight: var(--font-weight-heading);
+  letter-spacing: -0.5px;
+}
+
+.brandStory {
+  color: var(--color-on-surface-secondary);
+  max-width: 400px;
+  line-height: 1.8;
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-body);
+}
+
+.socialWrapper {
+  gap: var(--spacing-md);
+  display: flex;
+}
+
+.socialIcon {
+  color: var(--color-primary);
+  width: 44px;
+  border: 1px solid var(--color-outline);
+  height: 44px;
+  display: flex;
+  background: var(--color-surface);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  align-items: center;
+  border-radius: var(--border-radius-full);
+  justify-content: center;
+}
+
+.socialIcon:hover {
+  color: var(--color-on-primary);
+  transform: translateY(-5px) rotate(8deg);
+  background: var(--color-primary);
+  box-shadow: 0 10px 20px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+
+.socialIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.navGroups {
+  gap: var(--spacing-4xl);
+  display: flex;
+}
+
+.navGroup {
+  flex: 1;
+}
+
+.groupTitle {
+  color: var(--color-on-surface);
+  display: inline-block;
+  position: relative;
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-xl);
+  font-family: var(--font-family-heading);
+  font-weight: var(--font-weight-heading);
+}
+
+.groupTitle::after {
+  left: 0;
+  width: 30px;
+  bottom: -4px;
+  height: 2px;
+  content: '';
+  position: absolute;
+  background: var(--color-accent);
+  border-radius: var(--border-radius-full);
+}
+
+.linkList {
+  gap: var(--spacing-md);
+  margin: 0;
+  display: flex;
+  padding: 0;
+  list-style: none;
+  flex-direction: column;
+}
+
+.navLink {
+  color: var(--color-on-surface-secondary);
+  display: inline-block;
+  font-size: var(--font-size-base);
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.navLink:hover {
+  color: var(--color-primary);
+  transform: translateX(5px);
+}
+
+.utilityArea {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
+  padding-top: var(--spacing-xl);
+}
+
+.langSwitcher {
+  gap: var(--spacing-xl);
+  display: flex;
+  align-items: center;
+}
+
+.langLabel {
+  gap: var(--spacing-sm);
+  color: var(--color-on-surface);
+  display: flex;
+  align-items: center;
+  font-weight: var(--font-weight-medium);
+}
+
+.langLabel svg {
+  color: var(--color-secondary);
+}
+
+.langOptions {
+  gap: var(--spacing-xs);
+  border: 1px solid var(--color-border);
+  display: flex;
+  padding: 4px;
+  background: var(--color-surface);
+  border-radius: var(--border-radius-full);
+}
+
+.langBtn {
+  color: var(--color-on-surface-secondary);
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-xs);
+  background: transparent;
+  transition: all 0.3s ease;
+  font-family: var(--font-family-body);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--border-radius-full);
+}
+
+.langBtn:hover {
+  color: var(--color-primary);
+}
+
+.langBtn.active {
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+}
+
+.bottomBar {
+  gap: var(--spacing-xl);
+  display: flex;
+  border-top: 1px solid var(--color-border);
+  align-items: center;
+  padding-top: var(--spacing-xl);
+  justify-content: space-between;
+}
+
+.copyright {
+  color: var(--color-on-surface-secondary);
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.legal {
+  gap: var(--spacing-2xl);
+  display: flex;
+  align-items: center;
+}
+
+.legalLinks {
+  gap: var(--spacing-lg);
+  display: flex;
+}
+
+.legalLink {
+  color: var(--color-on-surface-secondary);
+  font-size: var(--font-size-xs);
+  transition: color 0.3s ease;
+  text-decoration: none;
+}
+
+.legalLink:hover {
+  color: var(--color-primary);
+}
+
+.madeWith {
+  gap: var(--spacing-xs);
+  color: var(--color-on-surface-secondary);
+  display: flex;
+  align-items: center;
+  font-size: var(--font-size-xs);
+}
+
+/* Responsive */
+@media (max-width: 991px) {
+  .mainGrid {
+    gap: var(--spacing-3xl);
+    flex-direction: column;
+  }
+  .brandColumn {
+    text-align: center;
+    align-items: center;
+  }
+  .linksColumn {
+    align-items: center;
+  }
+  .brandStory {
+    max-width: 100%;
+  }
+  .navGroups {
+    width: 100%;
+    justify-content: space-around;
+  }
+  .navGroup {
+    text-align: center;
+  }
+}
+
+@media (max-width: 767px) {
+  .bottomBar {
+    text-align: center;
+    flex-direction: column;
+  }
+  .legal {
+    gap: var(--spacing-md);
+    flex-direction: column;
+  }
+  .navGroups {
+    gap: var(--spacing-2xl);
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 479px) {
+  .root {
+    padding-top: var(--spacing-3xl);
+  }
+  .langOptions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+/* RTL Support */
+:global([dir='rtl']) .root {
+  text-align: right;
+}
+
+:global([dir='rtl']) .navLink:hover {
+  transform: translateX(-5px);
+}
+
+:global([dir='rtl']) .groupTitle::after {
+  left: auto;
+  right: 0;
+}

@@ -1,15 +1,90 @@
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Work+Sans:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
 
+/* ============================================
+   CSS VARIABLES (Design Tokens)
+   Edit these to change the entire site's look
+   ============================================ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1rem;
+  --spacing-xl: 1.5rem;
+  --spacing-2xl: 2rem;
+  --spacing-3xl: 3rem;
+  --spacing-4xl: 4rem;
+
+  /* Colors */
+  --color-primary: #ff4d81;
+  --color-secondary: #2dafaa;
+  --color-accent: #ffd24a;
+  --color-surface: #ffffff;
+  --color-surface-elevated: color-mix(in oklab, var(--color-surface) 92%, var(--color-secondary));
+  --color-on-primary: #ffffff;
+  --color-on-secondary: #ffffff;
+  --color-on-accent: #111111;
+  --color-on-surface: #111111;
+  --color-on-surface-secondary: #6b6b67;
+  --color-border: #cfc5bf;
+  --color-outline: #ffb7c9;
+  --color-overlay: color-mix(in oklab, #000000 40%, transparent);
+
+  /* Typography */
+  --font-family-body:
+    'Work Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-family-heading:
+    'M PLUS Rounded 1c', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-weight-body: 400;
+  --font-weight-medium: 600;
+  --font-weight-heading: 700;
+  --line-height-body: 1.6;
+  --line-height-heading: 1.25;
+  --letter-spacing-body: 0.25px;
+  --letter-spacing-heading: 0.2px;
+  --font-style-heading: normal;
+  --text-transform-heading: none;
+
+  /* Font Sizes (Responsive) */
+  --font-size-xs: clamp(0.65rem, 0.9vw, 0.75rem);
+  --font-size-sm: clamp(0.8rem, 1.1vw, 0.9rem);
+  --font-size-base: 1rem;
+  --font-size-lg: clamp(1rem, 1.6vw, 1.125rem);
+  --font-size-xl: clamp(1.25rem, 2.2vw, 1.375rem);
+  --font-size-2xl: clamp(1.5rem, 3vw, 1.75rem);
+  --font-size-3xl: clamp(2.2rem, 5.5vw, 2.6rem);
+  --font-size-4xl: clamp(3rem, 7.5vw, 4rem);
+
+  /* Border Radius */
+  --border-radius-sm: 8px;
+  --border-radius-md: 16px;
+  --border-radius-lg: 24px;
+  --border-radius-xl: 32px;
+  --border-radius-card: 24px;
+  --border-radius-control: 16px;
+  --border-radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-level-1: 0 2px 8px rgba(255, 107, 107, 0.15);
+  --shadow-level-2: 0 8px 24px rgba(255, 107, 107, 0.2);
+  --shadow-level-3: 0 16px 40px rgba(255, 107, 107, 0.25);
+
+  /* Layout */
+  --content-max-width: 72rem;
+  --divider-value: 2px solid var(--color-border);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ============================================
+   RESET & BASE STYLES
+   ============================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 html,
@@ -19,14 +94,11 @@ body {
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+  font-family: var(--font-family-body);
+  font-weight: var(--font-weight-body);
+  line-height: var(--line-height-body);
+  color: var(--color-on-surface);
+  background: var(--color-surface);
 }
 
 a {
@@ -34,19 +106,102 @@ a {
   text-decoration: none;
 }
 
-.imgDark {
-  display: none;
+img {
+  max-width: 100%;
+  height: auto;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+button {
+  font-family: inherit;
+}
 
-  .imgLight {
-    display: none;
-  }
-  .imgDark {
-    display: unset;
-  }
+/* ============================================
+   BUTTON SYSTEM (Shared across components)
+   ============================================ */
+.btn {
+  gap: var(--spacing-xs);
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-base);
+  box-shadow: var(--shadow-level-1);
+  text-align: center;
+  transition: all 0.2s ease-in-out;
+  align-items: center;
+  font-family: var(--font-family-body);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-body);
+  user-select: none;
+  white-space: nowrap;
+  border-radius: var(--border-radius-control);
+  justify-content: center;
+  text-decoration: none;
+}
+
+.btn-primary {
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+}
+
+.btn-secondary {
+  color: var(--color-on-secondary);
+  border-color: var(--color-secondary);
+  background-color: var(--color-secondary);
+}
+
+.btn-accent {
+  color: var(--color-on-accent);
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+}
+
+.btn-outline {
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  background-color: var(--color-surface);
+}
+
+.btn-sm {
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.btn-lg {
+  padding: var(--spacing-lg) var(--spacing-xl);
+}
+
+.btn-xl {
+  padding: var(--spacing-xl) var(--spacing-2xl);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-outline);
+  outline-offset: 2px;
+}
+
+.btn-primary:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--color-primary) 85%, black);
+  background-color: color-mix(in oklab, var(--color-primary) 85%, black);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--color-secondary) 85%, black);
+  background-color: color-mix(in oklab, var(--color-secondary) 85%, black);
+}
+
+.btn-accent:hover:not(:disabled) {
+  border-color: color-mix(in oklab, var(--color-accent) 85%, black);
+  background-color: color-mix(in oklab, var(--color-accent) 85%, black);
+}
+
+.btn-outline:hover:not(:disabled) {
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

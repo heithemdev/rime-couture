@@ -7,7 +7,7 @@
  * - Tiny in-memory rate limiter with auto-cleanup
  */
 
-const IS_DEV = process.env.NODE_ENV !== "production";
+const IS_DEV = process.env.NODE_ENV !== 'production';
 
 /* ------------------------- Origins / protocol utils ------------------------- */
 
@@ -28,18 +28,18 @@ function safeOrigin(input: string | null): string | null {
 }
 
 function guessProto(req: Request) {
-  const xfProto = req.headers?.get("x-forwarded-proto");
+  const xfProto = req.headers?.get('x-forwarded-proto');
   if (xfProto) return xfProto.toLowerCase();
   try {
-    return new URL(req.url).protocol.replace(":", "");
+    return new URL(req.url).protocol.replace(':', '');
   } catch {
-    return "https";
+    return 'https';
   }
 }
 
 function selfOriginFrom(req: Request) {
   const h = req.headers;
-  const rawHost = (h?.get("x-forwarded-host") || h?.get("host") || "").split(",")[0]?.trim() || "";
+  const rawHost = (h?.get('x-forwarded-host') || h?.get('host') || '').split(',')[0]?.trim() || '';
   const proto = guessProto(req);
   return rawHost ? `${proto}://${rawHost}` : null;
 }
@@ -53,7 +53,7 @@ function buildAllowlist(req: Request, extra: readonly string[] = []) {
     const s = v.trim();
     if (!s) continue;
     try {
-      const u = s.startsWith("http") ? new URL(s) : new URL(`https://${s}`);
+      const u = s.startsWith('http') ? new URL(s) : new URL(`https://${s}`);
       normalized.add(u.origin);
     } catch {
       /* ignore bad entries */
@@ -75,12 +75,12 @@ export function noCacheJson(
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "private, no-store, no-cache, must-revalidate",
-      Pragma: "no-cache",
-      Vary: "Cookie, Authorization, Origin",
-      "X-Content-Type-Options": "nosniff",
-      "Cross-Origin-Resource-Policy": "same-origin",
+      'Content-Type': 'application/json',
+      'Cache-Control': 'private, no-store, no-cache, must-revalidate',
+      Pragma: 'no-cache',
+      Vary: 'Cookie, Authorization, Origin',
+      'X-Content-Type-Options': 'nosniff',
+      'Cross-Origin-Resource-Policy': 'same-origin',
       ...extraHeaders,
     },
   });
@@ -89,34 +89,34 @@ export function noCacheJson(
 /**
  * CSRF guard: accepts same-origin/site; lenient in dev.
  * Pass extra allowed origins if you need cross-origin POSTs.
- * 
+ *
  * @example
  * if (!csrfOk(req)) return noCacheJson({ error: "Forbidden" }, 403);
  */
 export function csrfOk(req: Request, opts?: { allowlist?: readonly string[] }): boolean {
   const h = req.headers;
-  const host = (h?.get("x-forwarded-host") || h?.get("host") || "").split(",")[0]?.trim() || "";
+  const host = (h?.get('x-forwarded-host') || h?.get('host') || '').split(',')[0]?.trim() || '';
 
   // Always allow localhost in any environment
   if (isLocalhostHost(host)) return true;
 
   // Require HTTPS in production
   const proto = guessProto(req);
-  if (!IS_DEV && proto !== "https") return false;
+  if (!IS_DEV && proto !== 'https') return false;
 
   // Modern browsers send Sec-Fetch-Site header
-  const sfs = (h?.get("sec-fetch-site") || "").toLowerCase();
-  if (sfs === "same-origin" || sfs === "same-site") return true;
+  const sfs = (h?.get('sec-fetch-site') || '').toLowerCase();
+  if (sfs === 'same-origin' || sfs === 'same-site') return true;
 
   // Check allowlist for cross-origin requests
   const allow = buildAllowlist(req, opts?.allowlist ?? []);
-  const origin = safeOrigin(h?.get("origin"));
-  const referer = safeOrigin(h?.get("referer"));
+  const origin = safeOrigin(h?.get('origin'));
+  const referer = safeOrigin(h?.get('referer'));
   if (origin && allow.has(origin)) return true;
   if (referer && allow.has(referer)) return true;
 
   // DX convenience in dev only (for tools like Postman)
-  if (IS_DEV && h?.get("x-requested-with") === "XMLHttpRequest") {
+  if (IS_DEV && h?.get('x-requested-with') === 'XMLHttpRequest') {
     return true;
   }
 
@@ -133,13 +133,16 @@ declare global {
 const RL: Map<string, { c: number; r: number }> = (globalThis.__RIME_RL__ ??= new Map());
 
 // Auto-cleanup expired entries every 5 minutes (prevents memory leak)
-if (!globalThis.__RIME_RL_CLEANUP__ && typeof setInterval !== "undefined") {
-  globalThis.__RIME_RL_CLEANUP__ = setInterval(() => {
-    const now = Date.now();
-    for (const [key, rec] of RL) {
-      if (rec.r <= now) RL.delete(key);
-    }
-  }, 5 * 60 * 1000);
+if (!globalThis.__RIME_RL_CLEANUP__ && typeof setInterval !== 'undefined') {
+  globalThis.__RIME_RL_CLEANUP__ = setInterval(
+    () => {
+      const now = Date.now();
+      for (const [key, rec] of RL) {
+        if (rec.r <= now) RL.delete(key);
+      }
+    },
+    5 * 60 * 1000,
+  );
 }
 
 type MaybeNextRequest = Request & { nextUrl?: { pathname?: string } };
@@ -153,10 +156,8 @@ type MaybeNextRequest = Request & { nextUrl?: { pathname?: string } };
 export function rateKey(req: MaybeNextRequest, name: string, userOrIp?: string): string {
   const h = req.headers;
   const ip =
-    (h?.get("x-forwarded-for") || "").split(",")[0]?.trim() ||
-    h?.get("x-real-ip") ||
-    "unknown";
-  const path = req.nextUrl?.pathname || "api";
+    (h?.get('x-forwarded-for') || '').split(',')[0]?.trim() || h?.get('x-real-ip') || 'unknown';
+  const path = req.nextUrl?.pathname || 'api';
   return `${name}:${userOrIp ?? ip}:${path}:${req.method}`;
 }
 
@@ -194,13 +195,13 @@ export async function readJson<T = unknown>(
   req: Request,
   maxBytes = 8 * 1024,
 ): Promise<{ ok: true; data: T } | { ok: false; status: number; body: unknown }> {
-  const ct = req.headers?.get("content-type") || "";
-  if (!ct.includes("application/json"))
-    return { ok: false, status: 415, body: { error: "Unsupported media type" } };
+  const ct = req.headers?.get('content-type') || '';
+  if (!ct.includes('application/json'))
+    return { ok: false, status: 415, body: { error: 'Unsupported media type' } };
 
   const body = req.body as ReadableStream<Uint8Array> | null;
   const reader = body?.getReader?.();
-  if (!reader) return { ok: false, status: 400, body: { error: "Invalid body" } };
+  if (!reader) return { ok: false, status: 400, body: { error: 'Invalid body' } };
 
   const chunks: Uint8Array[] = [];
   let total = 0;
@@ -211,8 +212,7 @@ export async function readJson<T = unknown>(
     if (value) {
       chunks.push(value);
       total += value.byteLength;
-      if (total > maxBytes)
-        return { ok: false, status: 413, body: { error: "Payload too large" } };
+      if (total > maxBytes) return { ok: false, status: 413, body: { error: 'Payload too large' } };
     }
   }
 
@@ -226,6 +226,6 @@ export async function readJson<T = unknown>(
     const text = new TextDecoder().decode(joined);
     return { ok: true, data: JSON.parse(text) as T };
   } catch {
-    return { ok: false, status: 400, body: { error: "Invalid JSON" } };
+    return { ok: false, status: 400, body: { error: 'Invalid JSON' } };
   }
 }
