@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=18.18.0" },
+  "engines": {
+    "node": ">=18.18.0"
+  },
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
@@ -12,9 +14,12 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@repo/db": "workspace:*",
     "@prisma/client": "^6.18.0",
+    "@repo/db": "workspace:*",
+    "dompurify": "^3.3.1",
+    "jsdom": "^27.4.0",
     "next": "^16.0.0",
+    "next-intl": "^4.7.0",
     "react": "^19.2.0",
     "react-dom": "^19.1.0",
     "zod": "^4.1.12"
@@ -23,6 +28,8 @@
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@tailwindcss/postcss": "^4.1.16",
+    "@types/dompurify": "^3.2.0",
+    "@types/jsdom": "^27.0.0",
     "@types/node": "^22.15.3",
     "@types/react": "19.1.0",
     "@types/react-dom": "19.1.1",
