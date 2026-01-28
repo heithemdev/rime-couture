@@ -1,6 +1,6 @@
 {
   "common": {
-    "brand": "Rime Couture",
+    "brand": "Rimoucha",
     "currency": "DZD",
     "viewCollection": "Voir la Collection",
     "addToCart": "Ajouter au Panier",
@@ -12,13 +12,23 @@
     "next": "Suivant",
     "sale": "Promo",
     "new": "Nouveau",
-    "bestSeller": "Best-seller"
+    "bestSeller": "Best-seller",
+    "searchPlaceholder": "Rechercher des produits...",
+    "smartSearch": "Recherche Intelligente",
+    "smartSearchTitle": "Recherche Intelligente par IA",
+    "smartSearchPlaceholder": "Décrivez ce que vous recherchez... ex: 'Une robe en coton rose pour ma fille de 3 ans pour une fête d'anniversaire'",
+    "smartSearchHint": "Notre IA trouvera les produits parfaits selon votre description.",
+    "search": "Rechercher",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "myAccount": "Mon Compte",
+    "myOrders": "Mes Commandes"
   },
   "nav": {
     "shop": "Boutique",
     "kidsDresses": "Robes Enfants",
     "homeTextiles": "Textiles Maison",
-    "ourStory": "Notre Histoire",
+    "ourStory": "Histoire Artisanale",
     "contact": "Contact"
   },
   "hero": {
@@ -43,6 +53,8 @@
   },
   "bestSellers": {
     "title": "Nos Meilleures Ventes",
+    "showAll": "Voir Tout",
+    "noProducts": "Aucun produit disponible pour le moment",
     "products": {
       "floralDress": {
         "name": "Robe Coton Fleurie"
@@ -63,43 +75,48 @@
   },
   "orderingSteps": {
     "title": "Commander en Toute Simplicité",
+    "subtitle": "Nous traitons chaque commande avec le même soin que nous donnons à notre propre famille.",
     "steps": {
-      "measure": {
-        "title": "Mesurez",
-        "description": "Partagez les mensurations de votre enfant pour un ajustement parfait."
+      "choose": {
+        "title": "Choisissez",
+        "description": "Parcourez nos collections cosy et sélectionnez vos pièces artisanales préférées."
       },
-      "customize": {
-        "title": "Personnalisez",
-        "description": "Choisissez parmi nos tissus et motifs ou demandez quelque chose de spécial."
+      "sewPack": {
+        "title": "Couture & Emballage",
+        "description": "Notre famille coud votre article avec amour et l'emballe soigneusement pour son voyage."
       },
-      "craft": {
-        "title": "Nous Créons",
-        "description": "Notre famille coud votre article avec amour et attention méticuleuse."
-      },
-      "deliver": {
-        "title": "Livré",
-        "description": "Recevez votre pièce unique, joliment emballée à votre porte."
+      "ship": {
+        "title": "Livraison",
+        "description": "Livraison rapide et sécurisée dans toute l'Algérie jusqu'à votre porte."
       }
     }
   },
   "trustFeatures": {
     "title": "Pourquoi les Mamans Nous Font Confiance",
     "features": {
-      "quality": {
-        "title": "Qualité Premium",
-        "description": "Tissus naturels hypoallergéniques, doux pour les peaux délicates."
+      "safeForKids": {
+        "title": "Sûr pour les Enfants",
+        "description": "Tissus naturels hypoallergéniques uniquement."
       },
-      "customFit": {
-        "title": "Sur Mesure",
-        "description": "Des pièces faites sur mesure qui grandissent avec vos petits."
+      "familyMade": {
+        "title": "Fait en Famille",
+        "description": "Artisanat algérien authentique."
+      },
+      "carefullyPacked": {
+        "title": "Emballé avec Soin",
+        "description": "Emballage écologique et sécurisé."
+      },
+      "fastShipping": {
+        "title": "Livraison Rapide",
+        "description": "Livraison nationale en 3-5 jours."
       },
       "madeWithLove": {
         "title": "Fait avec Amour",
-        "description": "Chaque point porte le dévouement et l'attention de notre famille."
+        "description": "Chaque pièce est cousue main de manière unique."
       },
-      "freeShipping": {
-        "title": "Livraison Gratuite",
-        "description": "Livraison offerte en Algérie pour les commandes de plus de 5 000 DZD."
+      "qualityCheck": {
+        "title": "Contrôle Qualité",
+        "description": "Tests rigoureux pour l'usage familial quotidien."
       }
     }
   },
@@ -132,18 +149,18 @@
   },
   "footer": {
     "brandStory": "Une marque familiale algérienne créant des souvenirs à travers des robes d'enfants cousues main et des textiles de maison douillets. Chaque point raconte une histoire d'amour, de tradition et de qualité artisanale.",
-    "collectionsTitle": "Collections",
-    "collections": {
+    "shopTitle": "Boutique",
+    "shop": {
+      "newArrivals": "Nouveautés",
+      "bestSellers": "Meilleures Ventes",
       "kidsDresses": "Robes Enfants",
-      "kitchenTextiles": "Textiles Cuisine",
-      "homeDecor": "Décoration Maison",
-      "newArrivals": "Nouveautés"
+      "homeTextiles": "Textiles Maison"
     },
-    "careTrustTitle": "Soin & Confiance",
-    "careTrust": {
-      "handmadeProcess": "Processus Artisanal",
-      "deliveryInfo": "Infos Livraison",
-      "careGuide": "Guide d'Entretien",
+    "aboutTitle": "À Propos",
+    "about": {
+      "ourStory": "Notre Histoire",
+      "howItsMade": "Comment C'est Fait",
+      "faq": "FAQ",
       "contactUs": "Nous Contacter"
     },
     "allRightsReserved": "Tous droits réservés.",

@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Work+Sans:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
 /* ============================================
@@ -31,11 +30,11 @@
   --color-outline: #ffb7c9;
   --color-overlay: color-mix(in oklab, #000000 40%, transparent);
 
-  /* Typography */
+  /* Typography - Using next/font CSS variables */
   --font-family-body:
-    'Work Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    var(--font-work-sans), 'Work Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-family-heading:
-    'M PLUS Rounded 1c', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    var(--font-mplus-rounded), 'M PLUS Rounded 1c', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     sans-serif;
   --font-weight-body: 400;
   --font-weight-medium: 600;

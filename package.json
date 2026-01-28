@@ -1,5 +1,5 @@
 {
-  "name": "bz-market",
+  "name": "rimoucha",
   "private": true,
   "scripts": {
     "build": "turbo run build --no-daemon",

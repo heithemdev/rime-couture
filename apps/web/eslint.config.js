@@ -21,10 +21,12 @@ export default [
   },
 
   // Allow <img> tags for external images (pexels, etc.)
+  // Allow 'jsx' and 'global' props on <style> for styled-jsx
   {
     files: ["**/*.tsx", "**/*.jsx"],
     rules: {
       "@next/next/no-img-element": "off",
+      "react/no-unknown-property": ["error", { ignore: ["jsx", "global"] }],
     },
   },
 ];

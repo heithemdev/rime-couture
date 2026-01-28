@@ -1,6 +1,6 @@
 {
   "common": {
-    "brand": "Rime Couture",
+    "brand": "Rimoucha",
     "currency": "DZD",
     "viewCollection": "View Collection",
     "addToCart": "Add to Cart",
@@ -12,18 +12,28 @@
     "next": "Next",
     "sale": "Sale",
     "new": "New",
-    "bestSeller": "Best Seller"
+    "bestSeller": "Best Seller",
+    "searchPlaceholder": "Search products...",
+    "smartSearch": "Smart Search",
+    "smartSearchTitle": "AI-Powered Smart Search",
+    "smartSearchPlaceholder": "Describe what you're looking for... e.g., 'A pink cotton dress for my 3-year-old daughter for a birthday party'",
+    "smartSearchHint": "Our AI will find the perfect products based on your description.",
+    "search": "Search",
+    "cancel": "Cancel",
+    "close": "Close",
+    "myAccount": "My Account",
+    "myOrders": "My Orders"
   },
   "nav": {
     "shop": "Shop",
     "kidsDresses": "Kids Dresses",
     "homeTextiles": "Home Textiles",
-    "ourStory": "Our Story",
+    "ourStory": "Handmade Story",
     "contact": "Contact"
   },
   "hero": {
     "title": "Hand-Sewn Love for Your Little Ones",
-    "subtitle": "Rime Couture is a family-owned Algerian brand dedicated to crafting cozy kids' dresses and home textiles with a mother's touch. Every stitch tells a story of comfort, quality, and care.",
+    "subtitle": "Rimoucha is a family-owned Algerian brand dedicated to crafting cozy kids' dresses and home textiles with a mother's touch. Every stitch tells a story of comfort, quality, and care.",
     "shopNow": "Shop Now",
     "ourStory": "Our Story",
     "imageAlt": "Mother and daughter sharing a cozy moment"
@@ -43,6 +53,8 @@
   },
   "bestSellers": {
     "title": "Our Best Sellers",
+    "showAll": "Show All",
+    "noProducts": "No products available yet",
     "products": {
       "floralDress": {
         "name": "Floral Cotton Dress"
@@ -63,43 +75,48 @@
   },
   "orderingSteps": {
     "title": "Ordering Made Simple",
+    "subtitle": "We handle every order with the same care we give our own family.",
     "steps": {
-      "measure": {
-        "title": "Measure",
-        "description": "Share your child's measurements for the perfect custom fit."
+      "choose": {
+        "title": "Choose",
+        "description": "Browse our cozy collections and select your favorite handmade pieces."
       },
-      "customize": {
-        "title": "Customize",
-        "description": "Choose from our fabrics and patterns or request something special."
+      "sewPack": {
+        "title": "Sew & Pack",
+        "description": "Our family sews your item with love and packs it securely for its journey."
       },
-      "craft": {
-        "title": "We Craft",
-        "description": "Our family sews your item with love and meticulous attention."
-      },
-      "deliver": {
-        "title": "Delivered",
-        "description": "Receive your unique piece, beautifully packaged at your door."
+      "ship": {
+        "title": "Ship",
+        "description": "Fast and safe delivery across Algeria right to your family's doorstep."
       }
     }
   },
   "trustFeatures": {
     "title": "Why Mothers Trust Us",
     "features": {
-      "quality": {
-        "title": "Premium Quality",
-        "description": "Hypoallergenic natural fabrics that are gentle on delicate skin."
+      "safeForKids": {
+        "title": "Safe for Kids",
+        "description": "Hypoallergenic natural fabrics only."
       },
-      "customFit": {
-        "title": "Custom Fit",
-        "description": "Made-to-measure pieces that grow with your little ones."
+      "familyMade": {
+        "title": "Family Made",
+        "description": "Authentic Algerian craftsmanship."
+      },
+      "carefullyPacked": {
+        "title": "Carefully Packed",
+        "description": "Eco-friendly and secure packaging."
+      },
+      "fastShipping": {
+        "title": "Fast Shipping",
+        "description": "Nationwide delivery in 3-5 days."
       },
       "madeWithLove": {
         "title": "Made with Love",
-        "description": "Every stitch carries our family's dedication and care."
+        "description": "Every piece is uniquely hand-sewn."
       },
-      "freeShipping": {
-        "title": "Free Shipping",
-        "description": "Complimentary delivery across Algeria on orders over 5,000 DZD."
+      "qualityCheck": {
+        "title": "Quality Check",
+        "description": "Rigorous testing for daily family use."
       }
     }
   },
@@ -132,18 +149,18 @@
   },
   "footer": {
     "brandStory": "A family-owned Algerian brand crafting memories through hand-sewn kids' dresses and cozy home textiles. Every stitch tells a story of love, tradition, and handmade quality.",
-    "collectionsTitle": "Collections",
-    "collections": {
+    "shopTitle": "Shop",
+    "shop": {
+      "newArrivals": "New Arrivals",
+      "bestSellers": "Best Sellers",
       "kidsDresses": "Kids Dresses",
-      "kitchenTextiles": "Kitchen Textiles",
-      "homeDecor": "Home Decor",
-      "newArrivals": "New Arrivals"
+      "homeTextiles": "Home Textiles"
     },
-    "careTrustTitle": "Care & Trust",
-    "careTrust": {
-      "handmadeProcess": "Handmade Process",
-      "deliveryInfo": "Delivery Info",
-      "careGuide": "Care Guide",
+    "aboutTitle": "About",
+    "about": {
+      "ourStory": "Our Story",
+      "howItsMade": "How It's Made",
+      "faq": "FAQ",
       "contactUs": "Contact Us"
     },
     "allRightsReserved": "All rights reserved.",

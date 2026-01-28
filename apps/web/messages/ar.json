@@ -1,6 +1,6 @@
 {
   "common": {
-    "brand": "ريم كوتور",
+    "brand": "ريموشا",
     "currency": "دج",
     "viewCollection": "عرض المجموعة",
     "addToCart": "أضف إلى السلة",
@@ -12,13 +12,23 @@
     "next": "التالي",
     "sale": "تخفيض",
     "new": "جديد",
-    "bestSeller": "الأكثر مبيعاً"
+    "bestSeller": "الأكثر مبيعاً",
+    "searchPlaceholder": "ابحث عن المنتجات...",
+    "smartSearch": "البحث الذكي",
+    "smartSearchTitle": "البحث الذكي بالذكاء الاصطناعي",
+    "smartSearchPlaceholder": "صف ما تبحث عنه... مثلاً 'فستان قطني وردي لابنتي ذات 3 سنوات لحفلة عيد ميلاد'",
+    "smartSearchHint": "سيجد الذكاء الاصطناعي المنتجات المثالية بناءً على وصفك.",
+    "search": "بحث",
+    "cancel": "إلغاء",
+    "close": "إغلاق",
+    "myAccount": "حسابي",
+    "myOrders": "طلباتي"
   },
   "nav": {
     "shop": "المتجر",
     "kidsDresses": "فساتين أطفال",
     "homeTextiles": "مفروشات منزلية",
-    "ourStory": "قصتنا",
+    "ourStory": "قصة الصناعة اليدوية",
     "contact": "اتصل بنا"
   },
   "hero": {
@@ -43,6 +53,8 @@
   },
   "bestSellers": {
     "title": "الأكثر مبيعاً",
+    "showAll": "عرض الكل",
+    "noProducts": "لا توجد منتجات متاحة حالياً",
     "products": {
       "floralDress": {
         "name": "فستان قطني مزهر"
@@ -63,43 +75,48 @@
   },
   "orderingSteps": {
     "title": "الطلب سهل وبسيط",
+    "subtitle": "نتعامل مع كل طلب بنفس العناية التي نقدمها لعائلتنا.",
     "steps": {
-      "measure": {
-        "title": "قيسي",
-        "description": "شاركينا مقاسات طفلك للحصول على مقاس مثالي مخصص."
+      "choose": {
+        "title": "اختاري",
+        "description": "تصفحي مجموعاتنا المريحة واختاري قطعك اليدوية المفضلة."
       },
-      "customize": {
-        "title": "خصصي",
-        "description": "اختاري من أقمشتنا وأنماطنا أو اطلبي شيئاً خاصاً."
+      "sewPack": {
+        "title": "نخيط ونغلف",
+        "description": "عائلتنا تخيط قطعتك بحب وتغلفها بعناية لرحلتها."
       },
-      "craft": {
-        "title": "نصنع",
-        "description": "تخيط عائلتنا قطعتك بحب واهتمام دقيق بالتفاصيل."
-      },
-      "deliver": {
-        "title": "التوصيل",
-        "description": "استلمي قطعتك الفريدة مغلفة بشكل جميل على باب منزلك."
+      "ship": {
+        "title": "نشحن",
+        "description": "توصيل سريع وآمن في جميع أنحاء الجزائر إلى باب منزلك."
       }
     }
   },
   "trustFeatures": {
     "title": "لماذا تثق بنا الأمهات",
     "features": {
-      "quality": {
-        "title": "جودة فاخرة",
-        "description": "أقمشة طبيعية مضادة للحساسية لطيفة على البشرة الرقيقة."
+      "safeForKids": {
+        "title": "آمن للأطفال",
+        "description": "أقمشة طبيعية مضادة للحساسية فقط."
       },
-      "customFit": {
-        "title": "مقاس مخصص",
-        "description": "قطع مصنوعة حسب المقاس تنمو مع صغارك."
+      "familyMade": {
+        "title": "صنع عائلي",
+        "description": "حرفية جزائرية أصيلة."
+      },
+      "carefullyPacked": {
+        "title": "تغليف بعناية",
+        "description": "تغليف صديق للبيئة وآمن."
+      },
+      "fastShipping": {
+        "title": "شحن سريع",
+        "description": "توصيل على مستوى الوطن في 3-5 أيام."
       },
       "madeWithLove": {
         "title": "مصنوع بحب",
-        "description": "كل غرزة تحمل تفاني وعناية عائلتنا."
+        "description": "كل قطعة مخيطة يدوياً بشكل فريد."
       },
-      "freeShipping": {
-        "title": "توصيل مجاني",
-        "description": "توصيل مجاني في جميع أنحاء الجزائر للطلبات فوق 5000 دج."
+      "qualityCheck": {
+        "title": "فحص الجودة",
+        "description": "اختبار صارم للاستخدام العائلي اليومي."
       }
     }
   },
@@ -132,18 +149,18 @@
   },
   "footer": {
     "brandStory": "علامة تجارية عائلية جزائرية تصنع الذكريات من خلال فساتين الأطفال المخيطة يدوياً والمفروشات المنزلية المريحة. كل غرزة تحكي قصة حب وتقاليد وجودة حرفية.",
-    "collectionsTitle": "المجموعات",
-    "collections": {
+    "shopTitle": "المتجر",
+    "shop": {
+      "newArrivals": "وصل حديثاً",
+      "bestSellers": "الأكثر مبيعاً",
       "kidsDresses": "فساتين الأطفال",
-      "kitchenTextiles": "مفروشات المطبخ",
-      "homeDecor": "ديكور المنزل",
-      "newArrivals": "وصل حديثاً"
+      "homeTextiles": "المفروشات المنزلية"
     },
-    "careTrustTitle": "العناية والثقة",
-    "careTrust": {
-      "handmadeProcess": "عملية الصنع اليدوي",
-      "deliveryInfo": "معلومات التوصيل",
-      "careGuide": "دليل العناية",
+    "aboutTitle": "عنا",
+    "about": {
+      "ourStory": "قصتنا",
+      "howItsMade": "كيف يُصنع",
+      "faq": "الأسئلة الشائعة",
       "contactUs": "اتصل بنا"
     },
     "allRightsReserved": "جميع الحقوق محفوظة.",

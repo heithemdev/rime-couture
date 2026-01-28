@@ -7,6 +7,11 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
 
+  // Enable styled-jsx optimization
+  compiler: {
+    styledJsx: true,
+  },
+
   images: {
     remotePatterns: [
       // Cloudinary for product images

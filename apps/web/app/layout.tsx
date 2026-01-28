@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
+import { Pacifico, Work_Sans, M_PLUS_Rounded_1c } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { isRtlLocale, type Locale } from '@/i18n/routing';
@@ -18,6 +19,31 @@ const geistMono = localFont({
   src: './fonts/GeistMonoVF.woff',
   variable: '--font-geist-mono',
   weight: '100 900',
+  display: 'swap',
+  preload: true,
+});
+
+const pacifico = Pacifico({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-pacifico',
+  display: 'swap',
+});
+
+// Body font (Work Sans)
+const workSans = Work_Sans({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['latin'],
+  variable: '--font-work-sans',
+  display: 'swap',
+  preload: true,
+});
+
+// Heading font (M PLUS Rounded 1c)
+const mPlusRounded = M_PLUS_Rounded_1c({
+  weight: ['400', '500', '700'],
+  subsets: ['latin'],
+  variable: '--font-mplus-rounded',
   display: 'swap',
   preload: true,
 });
@@ -65,8 +91,28 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
+      <head>
+        {/* Prevent FOUC - hide until styles are ready */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          html { visibility: hidden; }
+          html.styles-ready { visibility: visible; }
+        `}} />
+        <script dangerouslySetInnerHTML={{ __html: `
+          // Show content immediately when DOM is ready (styles are inlined by Next.js)
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+              document.documentElement.classList.add('styles-ready');
+            });
+          } else {
+            document.documentElement.classList.add('styles-ready');
+          }
+        `}} />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased min-h-screen flex flex-col`}
+        className={`${geistSans.variable} ${geistMono.variable} ${pacifico.variable} ${workSans.variable} ${mPlusRounded.variable} font-sans antialiased min-h-screen flex flex-col`}
+        style={{
+          fontFamily: 'var(--font-work-sans), var(--font-family-body)',
+        }}
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
           {children}
