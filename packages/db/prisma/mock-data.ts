@@ -60,7 +60,7 @@ export const mockUsers = [
 export const mockCategories = [
   {
     id: 'cat-11111111-1111-1111-1111-111111111111',
-    slug: 'kids-dresses',
+    slug: 'kids',
     sortOrder: 1,
     isActive: true,
     translations: [
@@ -82,7 +82,7 @@ export const mockCategories = [
   },
   {
     id: 'cat-33333333-3333-3333-3333-333333333333',
-    slug: 'kitchen-accessories',
+    slug: 'kitchen',
     sortOrder: 3,
     isActive: true,
     translations: [
@@ -191,62 +191,112 @@ export const mockColors = [
 // SIZES
 // ============================================================================
 export const mockSizes = [
-  // Kids sizes
+  // Kids sizes (Industry Standard: Toddler T sizes + Kids numeric)
   {
     id: 'size-11111111-1111-1111-1111-111111111111',
-    code: '2Y',
+    code: '2t',
     sortOrder: 1,
     translations: [
-      { locale: 'EN' as const, label: '2 Years' },
-      { locale: 'FR' as const, label: '2 Ans' },
-      { locale: 'AR' as const, label: 'سنتان' },
+      { locale: 'EN' as const, label: '2T (2 years)' },
+      { locale: 'FR' as const, label: '2T (2 ans)' },
+      { locale: 'AR' as const, label: '2T (سنتان)' },
     ],
   },
   {
     id: 'size-22222222-2222-2222-2222-222222222222',
-    code: '3Y',
+    code: '3t',
     sortOrder: 2,
     translations: [
-      { locale: 'EN' as const, label: '3 Years' },
-      { locale: 'FR' as const, label: '3 Ans' },
-      { locale: 'AR' as const, label: '3 سنوات' },
+      { locale: 'EN' as const, label: '3T (3 years)' },
+      { locale: 'FR' as const, label: '3T (3 ans)' },
+      { locale: 'AR' as const, label: '3T (3 سنوات)' },
     ],
   },
   {
     id: 'size-33333333-3333-3333-3333-333333333333',
-    code: '4Y',
+    code: '4t',
     sortOrder: 3,
     translations: [
-      { locale: 'EN' as const, label: '4 Years' },
-      { locale: 'FR' as const, label: '4 Ans' },
-      { locale: 'AR' as const, label: '4 سنوات' },
+      { locale: 'EN' as const, label: '4T (4 years)' },
+      { locale: 'FR' as const, label: '4T (4 ans)' },
+      { locale: 'AR' as const, label: '4T (4 سنوات)' },
     ],
   },
   {
     id: 'size-44444444-4444-4444-4444-444444444444',
-    code: '5Y',
+    code: '5t',
     sortOrder: 4,
     translations: [
-      { locale: 'EN' as const, label: '5 Years' },
-      { locale: 'FR' as const, label: '5 Ans' },
-      { locale: 'AR' as const, label: '5 سنوات' },
+      { locale: 'EN' as const, label: '5T (5 years)' },
+      { locale: 'FR' as const, label: '5T (5 ans)' },
+      { locale: 'AR' as const, label: '5T (5 سنوات)' },
     ],
   },
   {
     id: 'size-55555555-5555-5555-5555-555555555555',
-    code: '6Y',
+    code: '6',
     sortOrder: 5,
     translations: [
-      { locale: 'EN' as const, label: '6 Years' },
-      { locale: 'FR' as const, label: '6 Ans' },
-      { locale: 'AR' as const, label: '6 سنوات' },
+      { locale: 'EN' as const, label: '6 (6 years)' },
+      { locale: 'FR' as const, label: '6 (6 ans)' },
+      { locale: 'AR' as const, label: '6 (6 سنوات)' },
+    ],
+  },
+  {
+    id: 'size-55555555-5555-5555-5555-555555555557',
+    code: '7',
+    sortOrder: 6,
+    translations: [
+      { locale: 'EN' as const, label: '7 (7 years)' },
+      { locale: 'FR' as const, label: '7 (7 ans)' },
+      { locale: 'AR' as const, label: '7 (7 سنوات)' },
+    ],
+  },
+  {
+    id: 'size-55555555-5555-5555-5555-555555555558',
+    code: '8',
+    sortOrder: 7,
+    translations: [
+      { locale: 'EN' as const, label: '8 (8 years)' },
+      { locale: 'FR' as const, label: '8 (8 ans)' },
+      { locale: 'AR' as const, label: '8 (8 سنوات)' },
+    ],
+  },
+  {
+    id: 'size-55555555-5555-5555-5555-555555555510',
+    code: '10',
+    sortOrder: 8,
+    translations: [
+      { locale: 'EN' as const, label: '10 (10 years)' },
+      { locale: 'FR' as const, label: '10 (10 ans)' },
+      { locale: 'AR' as const, label: '10 (10 سنوات)' },
+    ],
+  },
+  {
+    id: 'size-55555555-5555-5555-5555-555555555512',
+    code: '12',
+    sortOrder: 9,
+    translations: [
+      { locale: 'EN' as const, label: '12 (12 years)' },
+      { locale: 'FR' as const, label: '12 (12 ans)' },
+      { locale: 'AR' as const, label: '12 (12 سنوات)' },
+    ],
+  },
+  {
+    id: 'size-55555555-5555-5555-5555-555555555514',
+    code: '14',
+    sortOrder: 10,
+    translations: [
+      { locale: 'EN' as const, label: '14 (14 years)' },
+      { locale: 'FR' as const, label: '14 (14 ans)' },
+      { locale: 'AR' as const, label: '14 (14 سنوات)' },
     ],
   },
   // Home textile sizes
   {
     id: 'size-66666666-6666-6666-6666-666666666666',
     code: 'SINGLE',
-    sortOrder: 10,
+    sortOrder: 20,
     translations: [
       { locale: 'EN' as const, label: 'Single' },
       { locale: 'FR' as const, label: 'Simple' },
@@ -256,7 +306,7 @@ export const mockSizes = [
   {
     id: 'size-77777777-7777-7777-7777-777777777777',
     code: 'DOUBLE',
-    sortOrder: 11,
+    sortOrder: 21,
     translations: [
       { locale: 'EN' as const, label: 'Double' },
       { locale: 'FR' as const, label: 'Double' },
@@ -266,7 +316,7 @@ export const mockSizes = [
   {
     id: 'size-88888888-8888-8888-8888-888888888888',
     code: 'ONESIZE',
-    sortOrder: 20,
+    sortOrder: 30,
     translations: [
       { locale: 'EN' as const, label: 'One Size' },
       { locale: 'FR' as const, label: 'Taille Unique' },
@@ -380,6 +430,52 @@ export const mockTags = [
       { locale: 'EN' as const, label: 'Casual' },
       { locale: 'FR' as const, label: 'Décontracté' },
       { locale: 'AR' as const, label: 'عادي' },
+    ],
+  },
+  // Gender tags for Kids
+  {
+    id: 'tag-aaaa1111-aaaa-1111-aaaa-111111111111',
+    type: 'OCCASION' as const, // Using OCCASION type for gender
+    slug: 'boy',
+    sortOrder: 10,
+    translations: [
+      { locale: 'EN' as const, label: 'Boy' },
+      { locale: 'FR' as const, label: 'Garçon' },
+      { locale: 'AR' as const, label: 'ولد' },
+    ],
+  },
+  {
+    id: 'tag-aaaa2222-aaaa-2222-aaaa-222222222222',
+    type: 'OCCASION' as const, // Using OCCASION type for gender
+    slug: 'girl',
+    sortOrder: 11,
+    translations: [
+      { locale: 'EN' as const, label: 'Girl' },
+      { locale: 'FR' as const, label: 'Fille' },
+      { locale: 'AR' as const, label: 'بنت' },
+    ],
+  },
+  // Kitchen type tags
+  {
+    id: 'tag-bbbb1111-bbbb-1111-bbbb-111111111111',
+    type: 'OCCASION' as const, // Using OCCASION type for kitchen type
+    slug: 'items',
+    sortOrder: 20,
+    translations: [
+      { locale: 'EN' as const, label: 'For Items' },
+      { locale: 'FR' as const, label: 'Pour Articles' },
+      { locale: 'AR' as const, label: 'للأدوات' },
+    ],
+  },
+  {
+    id: 'tag-bbbb2222-bbbb-2222-bbbb-222222222222',
+    type: 'OCCASION' as const, // Using OCCASION type for kitchen type
+    slug: 'mama',
+    sortOrder: 21,
+    translations: [
+      { locale: 'EN' as const, label: 'For Mama' },
+      { locale: 'FR' as const, label: 'Pour Maman' },
+      { locale: 'AR' as const, label: 'للماما' },
     ],
   },
 ];
