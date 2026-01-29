@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { setUserLocale } from '@/i18n/actions';
 import { locales, LOCALE_LABEL } from '@/i18n/routing';
 import type { Locale } from '@/i18n/routing';
@@ -11,6 +12,7 @@ import { Search, ShoppingCart, User, Truck, Sparkles, X, Menu, ChevronDown } fro
 export default function Header() {
   const tc = useTranslations('common');
   const locale = useLocale() as Locale;
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
@@ -64,9 +66,92 @@ export default function Header() {
     setIsLangOpen(false);
   };
 
+  // Smart search that detects categories and filters
+  const buildSmartSearchUrl = (query: string): string => {
+    const normalized = query.trim().toLowerCase();
+    const params = new URLSearchParams();
+    
+    // Category detection patterns (multilingual)
+    const categoryPatterns: Record<string, string[]> = {
+      kids: ['kids', 'kid', 'children', 'child', 'enfant', 'enfants', 'أطفال', 'طفل', 'dress', 'dresses', 'robe', 'robes', 'فستان', 'فساتين', 'girl', 'girls', 'fille', 'filles', 'بنت', 'بنات', 'boy', 'boys', 'garçon', 'garcons', 'ولد', 'أولاد'],
+      kitchen: ['kitchen', 'cuisine', 'مطبخ', 'table', 'tablecloth', 'nappe', 'مفرش', 'apron', 'tablier', 'مريول', 'home', 'maison', 'منزل', 'textile', 'textiles'],
+    };
+    
+    // Gender detection
+    const genderPatterns: Record<string, string[]> = {
+      girl: ['girl', 'girls', 'fille', 'filles', 'بنت', 'بنات', 'feminine', 'feminin'],
+      boy: ['boy', 'boys', 'garçon', 'garcons', 'ولد', 'أولاد', 'masculine', 'masculin'],
+    };
+    
+    // Kitchen type detection
+    const kitchenTypePatterns: Record<string, string[]> = {
+      items: ['table', 'tablecloth', 'nappe', 'مفرش', 'cloth', 'cover'],
+      mama: ['apron', 'tablier', 'مريول', 'mom', 'mama', 'mother'],
+    };
+    
+    let detectedCategory: string | null = null;
+    let detectedGender: string | null = null;
+    let detectedKitchenType: string | null = null;
+    let remainingSearch = normalized;
+    
+    // Detect category
+    for (const [category, patterns] of Object.entries(categoryPatterns)) {
+      for (const pattern of patterns) {
+        if (normalized.includes(pattern)) {
+          detectedCategory = category;
+          // Remove the category keyword from search to avoid redundancy
+          remainingSearch = remainingSearch.replace(new RegExp(`\\b${pattern}\\b`, 'gi'), '').trim();
+          break;
+        }
+      }
+      if (detectedCategory) break;
+    }
+    
+    // Detect gender (only for kids category)
+    if (detectedCategory === 'kids' || !detectedCategory) {
+      for (const [gender, patterns] of Object.entries(genderPatterns)) {
+        for (const pattern of patterns) {
+          if (normalized.includes(pattern)) {
+            detectedGender = gender;
+            remainingSearch = remainingSearch.replace(new RegExp(`\\b${pattern}\\b`, 'gi'), '').trim();
+            break;
+          }
+        }
+        if (detectedGender) break;
+      }
+    }
+    
+    // Detect kitchen type (only for kitchen category)
+    if (detectedCategory === 'kitchen' || !detectedCategory) {
+      for (const [type, patterns] of Object.entries(kitchenTypePatterns)) {
+        for (const pattern of patterns) {
+          if (normalized.includes(pattern)) {
+            detectedKitchenType = type;
+            if (!detectedCategory) detectedCategory = 'kitchen';
+            remainingSearch = remainingSearch.replace(new RegExp(`\\b${pattern}\\b`, 'gi'), '').trim();
+            break;
+          }
+        }
+        if (detectedKitchenType) break;
+      }
+    }
+    
+    // Build URL params
+    if (detectedCategory) params.set('category', detectedCategory);
+    if (detectedGender) params.set('gender', detectedGender);
+    if (detectedKitchenType) params.set('kitchenType', detectedKitchenType);
+    
+    // Clean up remaining search (remove extra spaces)
+    remainingSearch = remainingSearch.replace(/\s+/g, ' ').trim();
+    if (remainingSearch) params.set('search', remainingSearch);
+    
+    const queryString = params.toString();
+    return queryString ? `/shopping?${queryString}` : '/shopping';
+  };
+
   const handleSmartSearchSubmit = () => {
     if (smartSearchPrompt.trim()) {
-      console.log('Smart search:', smartSearchPrompt);
+      router.push(buildSmartSearchUrl(smartSearchPrompt));
       setIsSmartSearchOpen(false);
       setSmartSearchPrompt('');
     }
@@ -75,7 +160,8 @@ export default function Header() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      console.log('Search:', searchQuery);
+      router.push(buildSmartSearchUrl(searchQuery));
+      setSearchQuery('');
     }
   };
 
@@ -89,6 +175,7 @@ export default function Header() {
           position: sticky;
           transition: all 0.3s ease;
           background-color: var(--color-surface);
+          font-family: var(--font-work-sans), 'Work Sans', sans-serif;
         }
         .header-wrapper.scrolled {
           box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);

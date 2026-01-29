@@ -34,7 +34,7 @@
   --font-family-body:
     var(--font-work-sans), 'Work Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-family-heading:
-    var(--font-mplus-rounded), 'M PLUS Rounded 1c', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    var(--font-work-sans), 'Work Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     sans-serif;
   --font-weight-body: 400;
   --font-weight-medium: 600;
@@ -93,7 +93,7 @@ body {
 }
 
 body {
-  font-family: var(--font-family-body);
+  font-family: var(--font-work-sans), var(--font-family-body), 'Work Sans', system-ui, -apple-system, sans-serif;
   font-weight: var(--font-weight-body);
   line-height: var(--line-height-body);
   color: var(--color-on-surface);

@@ -4,31 +4,12 @@ import { useState, useRef } from 'react';
 import { ShoppingCart, Heart, Eye, Star } from 'lucide-react';
 import SafeLink from '@/components/shared/SafeLink';
 
-/**
- * ProductCard component compatible with Prisma Product schema
- * 
- * Expected product shape (from DB with translations):
- * {
- *   id: string
- *   slug: string
- *   basePriceMinor: number (price in minor units, e.g., centimes)
- *   currency: 'DZD'
- *   isFeatured: boolean
- *   avgRating: number
- *   reviewCount: number
- *   translations: { name: string, description: string }
- *   media: { url: string, isThumb: boolean }[]
- *   variants: { priceMinor?: number, stock: number }[]
- *   category: { translations: { name: string } }
- * }
- */
-
 export interface ProductCardProps {
   id: string;
   slug: string;
   name: string;
   description?: string;
-  price: number; // Already converted to major units (e.g., DZD)
+  price: number;
   originalPrice?: number;
   currency?: string;
   imageUrl: string;
@@ -155,15 +136,10 @@ export default function ProductCard({
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
-        .product-badge.sale {
-          background: linear-gradient(135deg, #EF4444, #DC2626);
-        }
-        .product-badge.new {
-          background: linear-gradient(135deg, var(--color-secondary), #0D9488);
-        }
-        .product-badge.bestseller {
-          background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-        }
+        .product-badge.sale { background: linear-gradient(135deg, #EF4444, #DC2626); }
+        .product-badge.new { background: linear-gradient(135deg, var(--color-secondary), #0D9488); }
+        .product-badge.bestseller { background: linear-gradient(135deg, var(--color-primary), var(--color-accent)); }
+        
         .product-actions {
           top: var(--spacing-md);
           right: var(--spacing-md);
@@ -180,18 +156,13 @@ export default function ProductCard({
           opacity: 1;
           transform: translateX(0);
         }
-        @media (max-width: 767px) {
-          .product-actions {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
+        
         .product-action-btn {
           width: 36px;
+          height: 36px;
           color: var(--color-on-surface);
           border: none;
           cursor: pointer;
-          height: 36px;
           display: flex;
           background: var(--color-surface);
           transition: all 0.2s ease;
@@ -211,6 +182,8 @@ export default function ProductCard({
         .product-action-btn.wishlisted:hover {
           color: var(--color-surface);
         }
+
+        /* Add to Cart - Desktop Default (Hidden) */
         .product-add-cart {
           left: 0;
           right: 0;
@@ -225,14 +198,22 @@ export default function ProductCard({
         .product-card:hover .product-add-cart {
           transform: translateY(0);
         }
+
+        /* MOBILE OVERRIDES */
         @media (max-width: 767px) {
+          /* Force actions visible */
+          .product-actions {
+            opacity: 1;
+            transform: translateX(0);
+          }
+          /* Force Add to Cart visible */
           .product-add-cart {
-            position: relative;
             transform: translateY(0);
-            padding: var(--spacing-sm) var(--spacing-lg);
-            background: var(--color-surface);
+            /* Add a subtle gradient so it looks good over the image bottom */
+            background: linear-gradient(to top, rgba(0,0,0,0.1) 0%, transparent 100%);
           }
         }
+
         .product-add-cart-btn {
           flex: 1;
           gap: var(--spacing-xs);
@@ -249,6 +230,7 @@ export default function ProductCard({
           font-weight: var(--font-weight-medium);
           border-radius: var(--border-radius-md);
           justify-content: center;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
         }
         .product-add-cart-btn:hover:not(:disabled) {
           background: var(--color-accent);

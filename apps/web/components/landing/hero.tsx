@@ -140,7 +140,7 @@ export default function Hero() {
               <h1 className="hero-title">{t('title')}</h1>
               <p className="hero-subtitle">{t('subtitle')}</p>
               <div className="hero-actions">
-                <SafeLink href="#shop" newTab={false}>
+                <SafeLink href="/shopping" newTab={false}>
                   <button className="btn btn-primary btn-xl">{t('shopNow')}</button>
                 </SafeLink>
               </div>

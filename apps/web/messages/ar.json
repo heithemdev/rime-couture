@@ -22,7 +22,10 @@
     "cancel": "إلغاء",
     "close": "إغلاق",
     "myAccount": "حسابي",
-    "myOrders": "طلباتي"
+    "myOrders": "طلباتي",
+    "item": "منتج",
+    "items": "منتجات",
+    "noItems": "لا توجد منتجات"
   },
   "nav": {
     "shop": "المتجر",
@@ -166,6 +169,61 @@
     "allRightsReserved": "جميع الحقوق محفوظة.",
     "privacyPolicy": "سياسة الخصوصية",
     "termsOfService": "شروط الخدمة",
-    "madeWithLove": "صنع بـ ❤️ في الجزائر"
+    "madeWithLove": "صنع بـ ❤️ في الجزائر"  },
+  "shopping": {
+    "title": "تسوق جميع المنتجات",
+    "breadcrumb": {
+      "home": "الرئيسية",
+      "shop": "المتجر"
+    },
+    "filters": {
+      "title": "التصفية",
+      "categories": "الفئات",
+      "kidsClothes": "ملابس الأطفال",
+      "homeTextiles": "المفروشات المنزلية",
+      "kitchen": "المطبخ",
+      "allProducts": "جميع المنتجات",
+      "size": "المقاس",
+      "age": "العمر",
+      "color": "اللون",
+      "price": "السعر",
+      "material": "الخامة",
+      "pattern": "النقشة",
+      "season": "المزاج والموسم",
+      "occasion": "المناسبة",
+      "gender": "الجنس",
+      "girl": "بنت",
+      "boy": "ولد",
+      "type": "النوع",
+      "forItems": "للأغراض",
+      "forMama": "لماما",
+      "priceRange": {
+        "all": "جميع الأسعار",
+        "under2000": "أقل من 2,000 دج",
+        "2000to5000": "2,000 - 5,000 دج",
+        "5000to10000": "5,000 - 10,000 دج",
+        "over10000": "أكثر من 10,000 دج"
+      },
+      "clearAll": "مسح الكل",
+      "apply": "تطبيق",
+      "close": "إغلاق"
+    },
+    "sort": {
+      "title": "ترتيب حسب",
+      "featured": "المميزة",
+      "newest": "الأحدث",
+      "price-asc": "السعر: من الأقل للأعلى",
+      "price-desc": "السعر: من الأعلى للأقل",
+      "bestselling": "الأكثر مبيعاً"
+    },
+    "results": "{count} منتج",
+    "noResults": "لم يتم العثور على منتجات",
+    "noResultsDesc": "حاول تعديل الفلاتر أو تصفح مجموعاتنا",
+    "loading": "جاري تحميل المنتجات...",
+    "showFilters": "عرض الفلاتر",
+    "hideFilters": "إخفاء الفلاتر",
+    "noProducts": "لم يتم العثور على منتجات",
+    "noProductsDescription": "حاول تعديل الفلاتر أو تصفح مجموعاتنا للعثور على ما تبحث عنه.",
+    "loadMore": "تحميل المزيد"
   }
 }

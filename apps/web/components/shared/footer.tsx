@@ -45,6 +45,7 @@ export default function Footer() {
           padding-top: var(--spacing-4xl);
           padding-bottom: var(--spacing-xl);
           background-color: var(--color-surface-elevated);
+          font-family: var(--font-work-sans), 'Work Sans', sans-serif;
         }
         .footer-root::before {
           top: -10%;

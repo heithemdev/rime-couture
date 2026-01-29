@@ -1,13 +1,64 @@
 ﻿'use client';
 
-import { useTranslations } from 'next-intl';
-import { useEffect, useRef } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import SafeLink from '@/components/shared/SafeLink';
+import { getCache, setCache } from '@/lib/cache';
+
+interface CategoryCount {
+  slug: string;
+  count: number;
+}
+
+const COLLECTIONS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export default function Collections() {
   const t = useTranslations('collections');
   const tc = useTranslations('common');
+  const locale = useLocale();
   const sectionRef = useRef<HTMLElement>(null);
+  const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({});
+  const hasFetched = useRef(false);
+
+  // Fetch category product counts - with caching
+  const fetchCategoryCounts = useCallback(async () => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
+    const cacheKey = `category-counts-${locale}`;
+    
+    // Check cache first
+    const cached = getCache<Record<string, number>>(cacheKey);
+    if (cached) {
+      setCategoryCounts(cached);
+      return;
+    }
+
+    try {
+      // Fetch counts for kids and kitchen categories
+      const [kidsRes, kitchenRes] = await Promise.all([
+        fetch(`/api/products?category=kids&locale=${locale.toUpperCase()}&limit=1`),
+        fetch(`/api/products?category=kitchen&locale=${locale.toUpperCase()}&limit=1`)
+      ]);
+
+      const [kidsData, kitchenData] = await Promise.all([
+        kidsRes.json(),
+        kitchenRes.json()
+      ]);
+
+      const counts = {
+        kids: kidsData.total || 0,
+        kitchen: kitchenData.total || 0
+      };
+      
+      setCategoryCounts(counts);
+      // Cache the counts
+      setCache(cacheKey, counts, COLLECTIONS_CACHE_TTL);
+    } catch (error) {
+      console.error('Failed to fetch category counts:', error);
+      // Keep default counts on error
+    }
+  }, [locale]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -15,6 +66,8 @@ export default function Collections() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add('animate-in');
+            // Fetch counts when section becomes visible
+            fetchCategoryCounts();
           }
         });
       },
@@ -25,7 +78,15 @@ export default function Collections() {
     cards?.forEach((card) => observer.observe(card));
 
     return () => observer.disconnect();
-  }, []);
+  }, [fetchCategoryCounts]);
+
+  // Format count display
+  const formatCount = (slug: string) => {
+    const count = categoryCounts[slug];
+    if (count === undefined) return '...';
+    if (count === 0) return tc('noItems') || 'No items';
+    return `${count} ${count === 1 ? tc('item') || 'item' : tc('items') || 'items'}`;
+  };
 
   return (
     <>
@@ -287,7 +348,7 @@ export default function Collections() {
           </div>
           
           <div className="collections-grid">
-            <SafeLink href="#kids" newTab={false} className="collection-card">
+            <SafeLink href="/shopping?category=kids" newTab={false} className="collection-card">
               <div className="collection-image-wrapper">
                 <span className="collection-tag">For Kids</span>
                 <img
@@ -309,15 +370,15 @@ export default function Collections() {
                   </span>
                   <span className="collection-count">
                     <span className="collection-count-dot" />
-                    24+ items
+                    {formatCount('kids')}
                   </span>
                 </div>
               </div>
             </SafeLink>
 
-            <SafeLink href="#home" newTab={false} className="collection-card">
+            <SafeLink href="/shopping?category=kitchen" newTab={false} className="collection-card">
               <div className="collection-image-wrapper">
-                <span className="collection-tag">For Home</span>
+                <span className="collection-tag">For Kitchen</span>
                 <img
                   alt={t('homeTextiles.imageAlt')}
                   src="https://images.pexels.com/photos/5593101/pexels-photo-5593101.jpeg?auto=compress&cs=tinysrgb&w=1500"
@@ -337,7 +398,7 @@ export default function Collections() {
                   </span>
                   <span className="collection-count">
                     <span className="collection-count-dot" />
-                    18+ items
+                    {formatCount('kitchen')}
                   </span>
                 </div>
               </div>

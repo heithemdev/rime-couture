@@ -1,9 +1,11 @@
 ﻿'use client';
 
 import { useTranslations, useLocale } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import ProductCard from '@/components/shared/ProductCard';
 import ProductCarousel from '@/components/shared/ProductCarousel';
+import ProductSkeleton from '@/components/shared/ProductSkeleton';
+import { getCache, setCache } from '@/lib/cache';
 
 // Product type matching the API response
 interface ProductData {
@@ -25,6 +27,8 @@ interface ProductData {
   category: string;
 }
 
+const BESTSELLERS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export default function BestSellers() {
   const t = useTranslations('bestSellers');
   const tc = useTranslations('common');
@@ -33,100 +37,81 @@ export default function BestSellers() {
   const [products, setProducts] = useState<ProductData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasLoaded, setHasLoaded] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const hasFetched = useRef(false);
 
-  // Simple in-memory cache key for products
-  const cacheKey = `bestsellers-${locale}`;
+  // Fetch products with optimized caching
+  const fetchProducts = useCallback(async () => {
+    // Prevent duplicate fetches
+    if (hasFetched.current) return;
+    hasFetched.current = true;
 
-  // Fetch products from the database - with proper caching
-  useEffect(() => {
-    if (!isVisible || hasLoaded) return;
-
-    const fetchProducts = async () => {
-      try {
-        // Check sessionStorage cache first
-        const cached = sessionStorage.getItem(cacheKey);
-        if (cached) {
-          const { data, timestamp } = JSON.parse(cached);
-          // Use cache if less than 5 minutes old
-          if (Date.now() - timestamp < 5 * 60 * 1000) {
-            setProducts(data);
-            setHasLoaded(true);
-            return;
-          }
-        }
-
-        setLoading(true);
-        setError(null);
-        
-        const response = await fetch(
-          `/api/products?locale=${locale.toUpperCase()}&featured=true&limit=8&sortBy=bestselling`
-        );
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || 'Failed to fetch products');
-        }
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-          throw new Error(data.message || 'API returned error');
-        }
-        
-        if (!data.products || data.products.length === 0) {
-          setProducts([]);
-          setLoading(false);
-          return;
-        }
-        
-        // Map API response to component format with badges
-        const mappedProducts = data.products.map((product: ProductData) => {
-          let badge: string | undefined;
-          let badgeType: 'sale' | 'new' | 'bestseller' | undefined;
-          
-          // Determine badge based on product properties
-          if (product.originalPrice && product.originalPrice > product.price) {
-            badge = tc('sale');
-            badgeType = 'sale';
-          } else if (product.isFeatured) {
-            badge = tc('bestSeller');
-            badgeType = 'bestseller';
-          } else if ((product.salesCount ?? 0) >= 50) {
-            badge = tc('bestSeller');
-            badgeType = 'bestseller';
-          }
-          
-          return {
-            ...product,
-            badge,
-            badgeType,
-          };
-        });
-        
-        // Save to sessionStorage cache
-        try {
-          sessionStorage.setItem(cacheKey, JSON.stringify({
-            data: mappedProducts,
-            timestamp: Date.now()
-          }));
-        } catch {
-          // Ignore storage errors (quota exceeded, etc.)
-        }
-
-        setProducts(mappedProducts);
-        setHasLoaded(true);
-      } catch (err) {
-        console.error('Error fetching products:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load products');
-      } finally {
-        setLoading(false);
+    const cacheKey = `bestsellers-${locale}`;
+    
+    try {
+      // Check cache first (instant)
+      const cached = getCache<ProductData[]>(cacheKey);
+      if (cached) {
+        setProducts(cached);
+        return;
       }
-    };
 
-    fetchProducts();
-  }, [locale, tc, isVisible, hasLoaded, cacheKey]);
+      setLoading(true);
+      setError(null);
+      
+      // Use AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      
+      const response = await fetch(
+        `/api/products?locale=${locale.toUpperCase()}&featured=true&limit=8&sortBy=bestselling`,
+        { signal: controller.signal }
+      );
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success || !data.products?.length) {
+        setProducts([]);
+        return;
+      }
+      
+      // Map API response with badges
+      const mappedProducts = data.products.map((product: ProductData) => {
+        let badge: string | undefined;
+        let badgeType: 'sale' | 'new' | 'bestseller' | undefined;
+        
+        if (product.originalPrice && product.originalPrice > product.price) {
+          badge = tc('sale');
+          badgeType = 'sale';
+        } else if (product.isFeatured || (product.salesCount ?? 0) >= 50) {
+          badge = tc('bestSeller');
+          badgeType = 'bestseller';
+        }
+        
+        return { ...product, badge, badgeType };
+      });
+      
+      // Cache the result
+      setCache(cacheKey, mappedProducts, BESTSELLERS_CACHE_TTL);
+
+      setProducts(mappedProducts);
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to load products');
+      }
+      hasFetched.current = false; // Allow retry on error
+    } finally {
+      setLoading(false);
+    }
+  }, [locale, tc]);
 
   // Convert minor units to major units for display
   const formatPrice = (priceMinor: number) => priceMinor / 100;
@@ -138,14 +123,14 @@ export default function BestSellers() {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             entry.target.classList.add('animate-in');
-            // Trigger fetch when section is visible
             if (!isVisible) {
               setIsVisible(true);
+              fetchProducts(); // Trigger fetch immediately
             }
           }
         });
       },
-      { threshold: 0.1, rootMargin: '100px' } // Start loading before visible
+      { threshold: 0.1, rootMargin: '200px' } // Start loading 200px before visible
     );
 
     if (sectionRef.current) {
@@ -153,7 +138,7 @@ export default function BestSellers() {
     }
 
     return () => observer.disconnect();
-  }, [isVisible]);
+  }, [isVisible, fetchProducts]);
 
   const handleAddToCart = (id: string) => {
     console.log('Add to cart:', id);
@@ -170,9 +155,11 @@ export default function BestSellers() {
     // TODO: Implement quick view modal
   };
 
-  const handleShowAll = () => {
-    // Navigate to products page or open modal with all products
-    window.location.href = `/${locale}/products?featured=true`;
+  // Retry handler
+  const handleRetry = () => {
+    hasFetched.current = false;
+    setError(null);
+    fetchProducts();
   };
 
   return (
@@ -215,6 +202,14 @@ export default function BestSellers() {
         .bestsellers-product-wrapper {
           flex: 0 0 300px;
           scroll-snap-align: start;
+        }
+        .bestsellers-skeleton-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: var(--spacing-xl);
+          max-width: var(--content-max-width);
+          margin: 0 auto;
+          padding: 0 var(--spacing-xl);
         }
         .bestsellers-loading {
           display: flex;
@@ -283,12 +278,31 @@ export default function BestSellers() {
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
+        @media (max-width: 1199px) {
+          .bestsellers-skeleton-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+        @media (max-width: 991px) {
+          .bestsellers-skeleton-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
         @media (max-width: 767px) {
           .bestsellers-product-wrapper {
             flex: 0 0 280px;
           }
           .bestsellers-header {
             padding: 0;
+          }
+          .bestsellers-skeleton-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+          }
+        }
+        @media (max-width: 480px) {
+          .bestsellers-skeleton-grid {
+            grid-template-columns: 1fr 1fr;
           }
         }
       `}</style>
@@ -300,8 +314,8 @@ export default function BestSellers() {
           </div>
           
           {loading ? (
-            <div className="bestsellers-loading">
-              <div className="bestsellers-loading-spinner" />
+            <div className="bestsellers-skeleton-grid">
+              <ProductSkeleton count={4} />
             </div>
           ) : error ? (
             <div className="bestsellers-error">
@@ -313,7 +327,7 @@ export default function BestSellers() {
               <p className="bestsellers-error-message">{error}</p>
               <button 
                 className="bestsellers-retry-btn"
-                onClick={() => window.location.reload()}
+                onClick={handleRetry}
               >
                 Try Again
               </button>
@@ -331,10 +345,8 @@ export default function BestSellers() {
               gap={24}
               showArrows={true}
               showDots={true}
-              showAllButton={true}
-              showAllText={t('showAll') || 'Show All'}
-              onShowAll={handleShowAll}
-              maxVisibleItems={4}
+              seeAllUrl="/shopping"
+              seeAllText={t('showAll')}
             >
               {products.map((product) => (
                 <div key={product.id} className="bestsellers-product-wrapper">

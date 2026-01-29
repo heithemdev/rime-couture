@@ -98,7 +98,7 @@ export default function FinalCta() {
               <h2 className="cta-title">{t('title')}</h2>
               <p className="cta-subtitle">{t('subtitle')}</p>
               <div className="cta-actions">
-                <SafeLink href="#shop" newTab={false}>
+                <SafeLink href="/shopping" newTab={false}>
                   <button className="btn btn-accent btn-lg">{t('startShopping')}</button>
                 </SafeLink>
                 <span className="cta-guarantee">{t('guarantee')}</span>

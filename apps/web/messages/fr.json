@@ -22,7 +22,10 @@
     "cancel": "Annuler",
     "close": "Fermer",
     "myAccount": "Mon Compte",
-    "myOrders": "Mes Commandes"
+    "myOrders": "Mes Commandes",
+    "item": "article",
+    "items": "articles",
+    "noItems": "Aucun article"
   },
   "nav": {
     "shop": "Boutique",
@@ -33,7 +36,7 @@
   },
   "hero": {
     "title": "De l'Amour Cousu Main pour Vos Petits",
-    "subtitle": "Rime Couture est une marque familiale algérienne dédiée à la création de robes confortables pour enfants et de textiles d'intérieur avec la tendresse d'une mère. Chaque point raconte une histoire de confort, de qualité et d'attention.",
+    "subtitle": "Rimoucha est une marque familiale algérienne dédiée à la création de robes confortables pour enfants et de textiles d'intérieur avec la tendresse d'une mère. Chaque point raconte une histoire de confort, de qualité et d'attention.",
     "shopNow": "Acheter Maintenant",
     "ourStory": "Notre Histoire",
     "imageAlt": "Mère et fille partageant un moment de tendresse"
@@ -167,5 +170,61 @@
     "privacyPolicy": "Politique de Confidentialité",
     "termsOfService": "Conditions d'Utilisation",
     "madeWithLove": "Fait avec ❤️ en Algérie"
+  },
+  "shopping": {
+    "title": "Tous les Produits",
+    "breadcrumb": {
+      "home": "Accueil",
+      "shop": "Boutique"
+    },
+    "filters": {
+      "title": "Filtres",
+      "categories": "Catégories",
+      "kidsClothes": "Vêtements Enfants",
+      "homeTextiles": "Textiles Maison",
+      "kitchen": "Cuisine",
+      "allProducts": "Tous les Produits",
+      "size": "Taille",
+      "age": "Âge",
+      "color": "Couleur",
+      "price": "Prix",
+      "material": "Matériau",
+      "pattern": "Motif",
+      "season": "Ambiance & Saison",
+      "occasion": "Occasion",
+      "gender": "Genre",
+      "girl": "Fille",
+      "boy": "Garçon",
+      "type": "Type",
+      "forItems": "Pour Articles",
+      "forMama": "Pour Maman",
+      "priceRange": {
+        "all": "Tous les Prix",
+        "under2000": "Moins de 2 000 DZD",
+        "2000to5000": "2 000 - 5 000 DZD",
+        "5000to10000": "5 000 - 10 000 DZD",
+        "over10000": "Plus de 10 000 DZD"
+      },
+      "clearAll": "Tout Effacer",
+      "apply": "Appliquer",
+      "close": "Fermer"
+    },
+    "sort": {
+      "title": "Trier Par",
+      "featured": "En Vedette",
+      "newest": "Nouveautés",
+      "price-asc": "Prix Croissant",
+      "price-desc": "Prix Décroissant",
+      "bestselling": "Meilleures Ventes"
+    },
+    "results": "{count} produits trouvés",
+    "noResults": "Aucun produit trouvé",
+    "noResultsDesc": "Essayez d'ajuster vos filtres ou parcourez nos collections",
+    "loading": "Chargement des produits...",
+    "showFilters": "Afficher Filtres",
+    "hideFilters": "Masquer Filtres",
+    "noProducts": "Aucun Produit Trouvé",
+    "noProductsDescription": "Essayez d'ajuster vos filtres ou parcourez nos collections pour trouver ce que vous cherchez.",
+    "loadMore": "Charger Plus"
   }
 }
