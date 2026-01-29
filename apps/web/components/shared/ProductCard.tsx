@@ -26,6 +26,7 @@ export interface ProductCardProps {
 
 export default function ProductCard({
   id,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   slug,
   name,
   price,
@@ -311,7 +312,7 @@ export default function ProductCard({
         className="product-card"
         ref={cardRef}
       >
-        <SafeLink href={`/products/${slug}`} newTab={false} className="product-card-link">
+        <SafeLink href={`/product/${id}`} newTab={false} className="product-card-link">
           <div className="product-image-container">
             {badge && (
               <span className={`product-badge ${badgeType}`}>{badge}</span>

@@ -1,0 +1,945 @@
+/**
+ * Product Page Client Component
+ * Interactive product page with smart variant filtering and accurate stock logic
+ */
+
+'use client';
+
+import { useState, useMemo } from 'react';
+import Link from 'next/link';
+import {
+  Star,
+  Heart,
+  Share2,
+  ShoppingBag,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Check,
+  Truck,
+  Shield,
+  RotateCcw,
+  Sparkles,
+  Tag,
+  Ruler,
+  Palette,
+  Package,
+  Clock,
+  MessageCircle,
+  User,
+  ThumbsUp,
+} from 'lucide-react';
+import ProductCheckoutModal, { type SelectedVariant } from '@/components/product/ProductCheckoutModal';
+import { WILAYAS_SORTED, formatPriceDA } from '@/lib/algeria/wilayas';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface Media {
+  id: string;
+  kind: 'IMAGE' | 'VIDEO';
+  url: string;
+  mimeType?: string;
+  width?: number;
+  height?: number;
+  durationS?: number;
+  isThumb: boolean;
+  position: number;
+}
+
+interface Size {
+  id: string;
+  code: string;
+  label: string;
+}
+
+interface Color {
+  id: string;
+  code: string;
+  hex?: string;
+  label: string;
+}
+
+interface Variant {
+  id: string;
+  variantKey: string;
+  sku: string;
+  price: number | null;
+  stock: number;
+  size: Size | null;
+  color: Color | null;
+}
+
+interface Review {
+  id: string;
+  rating: number;
+  title?: string;
+  comment?: string;
+  reviewerName: string;
+  createdAt: string;
+}
+
+interface Product {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  category: {
+    id: string;
+    slug: string;
+    name: string;
+  };
+  price: {
+    base: number;
+    min: number;
+    max: number;
+    currency: string;
+  };
+  flags: {
+    isCustomizable: boolean;
+    isMadeToOrder: boolean;
+    isFeatured: boolean;
+  };
+  leadTimeDays?: number;
+  stats: {
+    salesCount: number;
+    reviewCount: number;
+    avgRating: number;
+  };
+  media: Media[];
+  variants: Variant[];
+  sizes: Size[];
+  colors: Color[];
+  tags: Record<string, Array<{ slug: string; label: string }>>;
+  reviews: Review[];
+}
+
+interface ProductPageClientProps {
+  product: Product;
+  locale: string;
+}
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+function formatPrice(price: number): string {
+  return `${price.toLocaleString('fr-DZ', { maximumFractionDigits: 0 })} DA`;
+}
+
+function formatDate(dateStr: string, locale: string): string {
+  return new Date(dateStr).toLocaleDateString(locale === 'ar' ? 'ar-DZ' : locale === 'fr' ? 'fr-FR' : 'en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+export default function ProductPageClient({ product, locale }: ProductPageClientProps) {
+  // --------------------------------------------------------------------------
+  // STATE
+  // --------------------------------------------------------------------------
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null);
+  const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+  // --------------------------------------------------------------------------
+  // DERIVED STATE & LOGIC
+  // --------------------------------------------------------------------------
+
+  const images = product.media.filter((m) => m.kind === 'IMAGE');
+  const videos = product.media.filter((m) => m.kind === 'VIDEO');
+  const allMedia = [...images, ...videos];
+  const currentMedia = allMedia[selectedImageIndex];
+
+  // 1. Get all variants that actually have stock
+  const inStockVariants = useMemo(() => {
+    return product.variants.filter((v) => v.stock > 0);
+  }, [product.variants]);
+
+  // 2. Determine Available SIZES based on selected COLOR
+  // If a color is picked, only show sizes available in that color.
+  const availableSizeIds = useMemo(() => {
+    if (!selectedColorId) {
+      // If no color selected, show all sizes that exist in any in-stock variant
+      return new Set(inStockVariants.map((v) => v.size?.id).filter(Boolean));
+    }
+    // Filter variants by the selected color
+    return new Set(
+      inStockVariants
+        .filter((v) => v.color?.id === selectedColorId)
+        .map((v) => v.size?.id)
+        .filter(Boolean)
+    );
+  }, [selectedColorId, inStockVariants]);
+
+  // 3. Determine Available COLORS based on selected SIZE
+  // If a size is picked, only show colors available in that size.
+  const availableColorIds = useMemo(() => {
+    if (!selectedSizeId) {
+      // If no size selected, show all colors that exist in any in-stock variant
+      return new Set(inStockVariants.map((v) => v.color?.id).filter(Boolean));
+    }
+    // Filter variants by the selected size
+    return new Set(
+      inStockVariants
+        .filter((v) => v.size?.id === selectedSizeId)
+        .map((v) => v.color?.id)
+        .filter(Boolean)
+    );
+  }, [selectedSizeId, inStockVariants]);
+
+  // 4. Find the Exact Variant matching current selections
+  const selectedVariant = useMemo(() => {
+    if ((product.sizes.length > 0 && !selectedSizeId) || (product.colors.length > 0 && !selectedColorId)) {
+      return null;
+    }
+
+    // Handle products that might have only size or only color
+    return product.variants.find((v) => {
+      const sizeMatch = product.sizes.length === 0 || v.size?.id === selectedSizeId;
+      const colorMatch = product.colors.length === 0 || v.color?.id === selectedColorId;
+      return sizeMatch && colorMatch;
+    });
+  }, [product.variants, product.sizes.length, product.colors.length, selectedSizeId, selectedColorId]);
+
+  // 5. Current Price & Stock Logic
+  const currentPrice = selectedVariant?.price ?? product.price.base;
+  
+  // If variant is fully selected, we check its specific stock.
+  // If not fully selected, we generally consider it "in stock" if there are options,
+  // but button is disabled until selection is complete.
+  const isSelectionComplete = 
+    (product.sizes.length === 0 || !!selectedSizeId) && 
+    (product.colors.length === 0 || !!selectedColorId);
+  
+  const canOrder = isSelectionComplete && selectedVariant && selectedVariant.stock > 0;
+
+  // --------------------------------------------------------------------------
+  // HANDLERS (Strict Reset Logic)
+  // --------------------------------------------------------------------------
+
+  const handleSizeClick = (sizeId: string) => {
+    if (selectedSizeId === sizeId) {
+      setSelectedSizeId(null); // Deselect
+      return;
+    }
+
+    // 1. Set Size
+    setSelectedSizeId(sizeId);
+    
+    // 2. RESET QUANTITY TO 1 (Requested Requirement)
+    setQuantity(1);
+
+    // 3. Smart Filter: If current color is not available in new size, deselect color
+    if (selectedColorId) {
+      const isCombinationValid = inStockVariants.some(
+        (v) => v.size?.id === sizeId && v.color?.id === selectedColorId
+      );
+      if (!isCombinationValid) {
+        setSelectedColorId(null);
+      }
+    }
+  };
+
+  const handleColorClick = (colorId: string) => {
+    if (selectedColorId === colorId) {
+      setSelectedColorId(null); // Deselect
+      return;
+    }
+
+    // 1. Set Color
+    setSelectedColorId(colorId);
+
+    // 2. RESET QUANTITY TO 1 (Requested Requirement)
+    setQuantity(1);
+
+    // 3. Smart Filter: If current size is not available in new color, deselect size
+    if (selectedSizeId) {
+      const isCombinationValid = inStockVariants.some(
+        (v) => v.color?.id === colorId && v.size?.id === selectedSizeId
+      );
+      if (!isCombinationValid) {
+        setSelectedSizeId(null);
+      }
+    }
+  };
+
+  const nextImage = () => {
+    setSelectedImageIndex((prev) => (prev + 1) % allMedia.length);
+    setIsVideoPlaying(false);
+  };
+
+  const prevImage = () => {
+    setSelectedImageIndex((prev) => (prev - 1 + allMedia.length) % allMedia.length);
+    setIsVideoPlaying(false);
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      await navigator.share({
+        title: product.name,
+        text: product.description,
+        url: window.location.href,
+      });
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+    }
+  };
+
+  const checkoutVariant: SelectedVariant | null = selectedVariant
+    ? {
+        id: selectedVariant.id,
+        size: selectedVariant.size ? { code: selectedVariant.size.code, label: selectedVariant.size.label } : null,
+        color: selectedVariant.color
+          ? { code: selectedVariant.color.code, label: selectedVariant.color.label, hex: selectedVariant.color.hex }
+          : null,
+        price: currentPrice,
+      }
+    : null;
+
+  // Render Stars Helper
+  const renderStars = (rating: number, size = 16) => (
+    <div className="stars">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          size={size}
+          fill={star <= Math.round(rating) ? 'var(--color-accent)' : 'transparent'}
+          stroke={star <= Math.round(rating) ? 'var(--color-accent)' : 'var(--color-border)'}
+        />
+      ))}
+    </div>
+  );
+
+  return (
+    <>
+      <style jsx>{`
+        .product-page {
+          max-width: var(--content-max-width);
+          margin: 0 auto;
+          padding: var(--spacing-xl);
+        }
+        
+        /* Breadcrumb */
+        .breadcrumb {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-sm);
+          font-size: var(--font-size-sm);
+          color: var(--color-on-surface-secondary);
+          margin-bottom: var(--spacing-xl);
+        }
+        .breadcrumb a {
+          color: var(--color-secondary);
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .breadcrumb a:hover {
+          color: var(--color-primary);
+        }
+        .breadcrumb-separator {
+          color: var(--color-border);
+        }
+        
+        /* Main Layout */
+        .product-layout {
+          display: grid;
+          grid-template-columns: 1fr 420px;
+          gap: var(--spacing-3xl);
+          align-items: start;
+        }
+        @media (max-width: 1024px) {
+          .product-layout {
+            grid-template-columns: 1fr;
+          }
+        }
+        
+        /* Gallery */
+        .gallery { position: relative; }
+        .gallery-main {
+          position: relative;
+          aspect-ratio: 3 / 4;
+          border-radius: var(--border-radius-xl);
+          overflow: hidden;
+          background: var(--color-surface-elevated);
+          margin-bottom: var(--spacing-md);
+        }
+        .gallery-main img, .gallery-main video {
+          width: 100%; height: 100%; object-fit: cover;
+        }
+        .gallery-placeholder {
+          position: absolute; inset: 0; display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          background: linear-gradient(135deg, var(--color-surface-elevated) 0%, var(--color-border) 100%);
+          color: var(--color-on-surface-secondary); gap: var(--spacing-md);
+        }
+        .gallery-nav {
+          position: absolute; top: 50%; transform: translateY(-50%);
+          width: 48px; height: 48px; background: var(--color-surface);
+          border: none; border-radius: var(--border-radius-full);
+          cursor: pointer; display: flex; align-items: center; justify-content: center;
+          box-shadow: var(--shadow-level-2); transition: all 0.2s ease; z-index: 10;
+        }
+        .gallery-nav:hover { background: var(--color-primary); color: white; transform: translateY(-50%) scale(1.05); }
+        .gallery-nav.prev { left: var(--spacing-md); }
+        .gallery-nav.next { right: var(--spacing-md); }
+        
+        .gallery-play {
+          position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+          width: 80px; height: 80px; background: var(--color-primary);
+          border: none; border-radius: var(--border-radius-full); cursor: pointer;
+          display: flex; align-items: center; justify-content: center; color: white;
+          box-shadow: var(--shadow-level-3); transition: all 0.3s ease;
+        }
+        .gallery-play:hover { transform: translate(-50%, -50%) scale(1.1); }
+        
+        .gallery-thumbnails {
+          display: flex; gap: var(--spacing-sm); overflow-x: auto; padding-bottom: var(--spacing-sm);
+        }
+        .gallery-thumb {
+          flex-shrink: 0; width: 80px; height: 80px; border-radius: var(--border-radius-md);
+          overflow: hidden; cursor: pointer; border: 3px solid transparent; transition: all 0.2s ease; position: relative;
+        }
+        .gallery-thumb.active { border-color: var(--color-primary); }
+        .gallery-thumb:hover { transform: scale(1.05); }
+        .gallery-thumb img, .gallery-thumb video { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* Featured Badge */
+        .featured-badge {
+          position: absolute; top: var(--spacing-md); left: var(--spacing-md);
+          background: linear-gradient(135deg, var(--color-accent) 0%, #FFB800 100%);
+          color: var(--color-on-accent); padding: var(--spacing-xs) var(--spacing-md);
+          border-radius: var(--border-radius-full); font-size: var(--font-size-xs);
+          font-weight: var(--font-weight-bold); display: flex; align-items: center;
+          gap: var(--spacing-xs); z-index: 5;
+        }
+        
+        /* Product Info Panel */
+        .product-panel {
+          position: sticky; top: calc(var(--spacing-xl) + 80px);
+          background: var(--color-surface); border-radius: var(--border-radius-xl);
+          padding: var(--spacing-xl); box-shadow: var(--shadow-level-2);
+          border: 1px solid var(--color-border);
+        }
+        @media (max-width: 1024px) { .product-panel { position: static; } }
+        
+        .panel-header { margin-bottom: var(--spacing-lg); }
+        .panel-category {
+          display: inline-flex; align-items: center; gap: var(--spacing-xs);
+          background: var(--color-surface-elevated); color: var(--color-secondary);
+          padding: var(--spacing-xs) var(--spacing-md); border-radius: var(--border-radius-full);
+          font-size: var(--font-size-xs); font-weight: var(--font-weight-medium);
+          text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--spacing-md);
+        }
+        .panel-name {
+          font-size: var(--font-size-2xl); font-weight: var(--font-weight-heading);
+          color: var(--color-on-surface); line-height: var(--line-height-heading);
+          margin-bottom: var(--spacing-md);
+        }
+        
+        .panel-rating {
+          display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-lg);
+        }
+        .panel-rating :global(.stars) { display: flex; gap: 2px; }
+        .panel-rating-text { font-size: var(--font-size-sm); color: var(--color-on-surface-secondary); }
+        .panel-rating-count { color: var(--color-secondary); font-weight: var(--font-weight-medium); }
+        
+        .panel-price {
+          font-size: var(--font-size-3xl); font-weight: var(--font-weight-bold);
+          color: var(--color-primary); margin-bottom: var(--spacing-sm);
+        }
+        .panel-price-range {
+          font-size: var(--font-size-sm); color: var(--color-on-surface-secondary); margin-bottom: var(--spacing-lg);
+        }
+        
+        /* Variant Selection */
+        .variant-section {
+          margin-bottom: var(--spacing-lg); padding-bottom: var(--spacing-lg); border-bottom: 1px solid var(--color-border);
+        }
+        .variant-label {
+          display: flex; align-items: center; gap: var(--spacing-xs);
+          font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+          color: var(--color-on-surface); margin-bottom: var(--spacing-sm);
+        }
+        .variant-label svg { color: var(--color-secondary); }
+        
+        .size-options { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
+        .size-btn {
+          min-width: 48px; height: 48px; padding: 0 var(--spacing-md);
+          border: 2px solid var(--color-border); background: var(--color-surface);
+          border-radius: var(--border-radius-md); font-size: var(--font-size-sm);
+          font-weight: var(--font-weight-medium); cursor: pointer; transition: all 0.2s ease;
+        }
+        .size-btn:hover:not(:disabled) { border-color: var(--color-primary); }
+        .size-btn.selected {
+          background: var(--color-primary); border-color: var(--color-primary); color: white;
+        }
+        .size-btn:disabled {
+          opacity: 0.3; cursor: not-allowed; text-decoration: line-through; background: var(--color-surface-elevated);
+        }
+        
+        .color-options { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
+        .color-btn {
+          width: 44px; height: 44px; border: 3px solid var(--color-border);
+          border-radius: var(--border-radius-full); cursor: pointer; transition: all 0.2s ease;
+          position: relative; display: flex; align-items: center; justify-content: center;
+        }
+        .color-btn:hover:not(:disabled) { transform: scale(1.1); }
+        .color-btn.selected {
+          border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-primary);
+        }
+        .color-btn:disabled {
+          opacity: 0.3; cursor: not-allowed; filter: grayscale(0.8);
+        }
+        .color-btn .check-icon {
+          color: white; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+        }
+        
+        /* Quantity */
+        .quantity-section {
+          display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-xl);
+        }
+        .quantity-label {
+          font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-on-surface);
+        }
+        .quantity-controls {
+          display: flex; align-items: center; border: 2px solid var(--color-border);
+          border-radius: var(--border-radius-md); overflow: hidden;
+        }
+        .quantity-btn {
+          width: 44px; height: 44px; border: none; background: var(--color-surface);
+          cursor: pointer; font-size: var(--font-size-lg); font-weight: var(--font-weight-bold);
+          color: var(--color-on-surface); transition: all 0.2s ease;
+        }
+        .quantity-btn:hover:not(:disabled) { background: var(--color-surface-elevated); }
+        .quantity-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .quantity-value {
+          width: 50px; text-align: center; font-size: var(--font-size-base);
+          font-weight: var(--font-weight-medium); border-left: 1px solid var(--color-border);
+          border-right: 1px solid var(--color-border); padding: var(--spacing-sm) 0;
+        }
+        
+        /* Action Buttons */
+        .action-buttons { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); }
+        .order-btn {
+          flex: 1; height: 56px; background: linear-gradient(135deg, var(--color-primary) 0%, #ff6b9d 100%);
+          color: white; border: none; border-radius: var(--border-radius-control);
+          font-size: var(--font-size-base); font-weight: var(--font-weight-bold);
+          cursor: pointer; display: flex; align-items: center; justify-content: center;
+          gap: var(--spacing-sm); box-shadow: 0 4px 15px rgba(255, 77, 129, 0.3); transition: all 0.3s ease;
+        }
+        .order-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 77, 129, 0.4); }
+        .order-btn:disabled { opacity: 0.6; cursor: not-allowed; background: var(--color-border); box-shadow: none; }
+        
+        .icon-btn {
+          width: 56px; height: 56px; border: 2px solid var(--color-border); background: var(--color-surface);
+          border-radius: var(--border-radius-control); cursor: pointer; display: flex;
+          align-items: center; justify-content: center; transition: all 0.2s ease;
+        }
+        .icon-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .icon-btn.wishlisted { background: var(--color-primary); border-color: var(--color-primary); color: white; }
+        
+        /* Trust Features */
+        .trust-features {
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md);
+          padding-top: var(--spacing-lg); border-top: 1px solid var(--color-border);
+        }
+        .trust-item { text-align: center; }
+        .trust-icon {
+          width: 40px; height: 40px; background: var(--color-surface-elevated);
+          border-radius: var(--border-radius-full); display: flex; align-items: center;
+          justify-content: center; margin: 0 auto var(--spacing-xs); color: var(--color-secondary);
+        }
+        .trust-text { font-size: var(--font-size-xs); color: var(--color-on-surface-secondary); line-height: 1.3; }
+
+        /* Shipping Estimate */
+        .shipping-estimate {
+          margin-top: var(--spacing-lg); padding: var(--spacing-md); background: var(--color-surface-elevated);
+          border-radius: var(--border-radius-lg); border: 1px dashed var(--color-border);
+        }
+        .shipping-estimate-header { display: flex; align-items: center; gap: var(--spacing-sm); margin-bottom: var(--spacing-sm); }
+        .shipping-estimate-icon {
+          width: 32px; height: 32px; background: var(--color-secondary); border-radius: var(--border-radius-sm);
+          display: flex; align-items: center; justify-content: center; color: white;
+        }
+        .shipping-estimate-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-on-surface); }
+        .shipping-estimate-range { font-size: var(--font-size-xs); color: var(--color-on-surface-secondary); padding-left: 40px; display: flex; align-items: center; gap: var(--spacing-xs); }
+        .shipping-estimate-price { color: var(--color-secondary); font-weight: var(--font-weight-medium); }
+        
+        /* Details & Reviews CSS ... (Same as original but omitted for brevity) */
+        .details-section { margin-top: var(--spacing-3xl); }
+        .section-title { font-size: var(--font-size-xl); font-weight: var(--font-weight-heading); color: var(--color-on-surface); margin-bottom: var(--spacing-lg); display: flex; align-items: center; gap: var(--spacing-sm); }
+        .section-title svg { color: var(--color-primary); }
+        .description-box { background: var(--color-surface-elevated); border-radius: var(--border-radius-lg); padding: var(--spacing-xl); line-height: 1.8; color: var(--color-on-surface); white-space: pre-wrap; }
+        .tags-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--spacing-lg); margin-top: var(--spacing-xl); }
+        .tag-group { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--border-radius-lg); padding: var(--spacing-lg); }
+        .tag-group-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--color-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: var(--spacing-md); display: flex; align-items: center; gap: var(--spacing-xs); }
+        .tag-list { display: flex; flex-wrap: wrap; gap: var(--spacing-xs); }
+        .tag-chip { background: var(--color-surface-elevated); padding: var(--spacing-xs) var(--spacing-md); border-radius: var(--border-radius-full); font-size: var(--font-size-sm); color: var(--color-on-surface); }
+        
+        .reviews-section { margin-top: var(--spacing-3xl); padding-top: var(--spacing-3xl); border-top: 2px solid var(--color-border); }
+        .reviews-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-xl); flex-wrap: wrap; gap: var(--spacing-md); }
+        .reviews-summary { display: flex; align-items: center; gap: var(--spacing-lg); }
+        .reviews-avg { font-size: var(--font-size-4xl); font-weight: var(--font-weight-bold); color: var(--color-on-surface); }
+        .reviews-avg-stars { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+        .reviews-avg-stars :global(.stars) { display: flex; gap: 2px; }
+        .reviews-count-text { font-size: var(--font-size-sm); color: var(--color-on-surface-secondary); }
+        .reviews-list { display: flex; flex-direction: column; gap: var(--spacing-lg); }
+        .review-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--border-radius-lg); padding: var(--spacing-xl); }
+        .review-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--spacing-md); }
+        .review-author { display: flex; align-items: center; gap: var(--spacing-md); }
+        .review-avatar { width: 48px; height: 48px; background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%); border-radius: var(--border-radius-full); display: flex; align-items: center; justify-content: center; color: white; }
+        .review-author-info h4 { font-weight: var(--font-weight-medium); color: var(--color-on-surface); margin-bottom: var(--spacing-xs); }
+        .review-date { font-size: var(--font-size-xs); color: var(--color-on-surface-secondary); }
+        .review-title { font-weight: var(--font-weight-medium); color: var(--color-on-surface); margin-bottom: var(--spacing-sm); }
+        .review-comment { color: var(--color-on-surface-secondary); line-height: 1.7; }
+        .no-reviews { text-align: center; padding: var(--spacing-3xl); background: var(--color-surface-elevated); border-radius: var(--border-radius-lg); }
+        .no-reviews-icon { width: 64px; height: 64px; background: var(--color-border); border-radius: var(--border-radius-full); display: flex; align-items: center; justify-content: center; margin: 0 auto var(--spacing-lg); color: var(--color-on-surface-secondary); }
+      `}</style>
+
+      <div className="product-page">
+        {/* Breadcrumb */}
+        <nav className="breadcrumb">
+          <Link href="/">Home</Link>
+          <span className="breadcrumb-separator">/</span>
+          <Link href="/shopping">Shop</Link>
+          <span className="breadcrumb-separator">/</span>
+          <Link href={`/shopping?category=${product.category.slug}`}>{product.category.name}</Link>
+          <span className="breadcrumb-separator">/</span>
+          <span>{product.name}</span>
+        </nav>
+
+        {/* Main Layout */}
+        <div className="product-layout">
+          {/* Gallery */}
+          <div className="gallery">
+            <div className="gallery-main">
+              {product.flags.isFeatured && (
+                <div className="featured-badge">
+                  <Sparkles size={14} />
+                  Featured
+                </div>
+              )}
+              
+              {currentMedia?.kind === 'VIDEO' ? (
+                isVideoPlaying ? (
+                  <video
+                    src={currentMedia.url}
+                    controls
+                    autoPlay
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <>
+                    <video
+                      src={currentMedia.url}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <button className="gallery-play" onClick={() => setIsVideoPlaying(true)}>
+                      <Play size={32} fill="white" />
+                    </button>
+                  </>
+                )
+              ) : currentMedia?.url ? (
+                <img src={currentMedia.url} alt={product.name} />
+              ) : (
+                <div className="gallery-placeholder">
+                  <Package size={40} />
+                  <span>No image available</span>
+                </div>
+              )}
+
+              {allMedia.length > 1 && (
+                <>
+                  <button className="gallery-nav prev" onClick={prevImage}>
+                    <ChevronLeft size={24} />
+                  </button>
+                  <button className="gallery-nav next" onClick={nextImage}>
+                    <ChevronRight size={24} />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Thumbnails */}
+            {allMedia.length > 1 && (
+              <div className="gallery-thumbnails">
+                {allMedia.map((media, index) => (
+                  <div
+                    key={media.id}
+                    className={`gallery-thumb ${index === selectedImageIndex ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedImageIndex(index);
+                      setIsVideoPlaying(false);
+                    }}
+                  >
+                    {media.kind === 'VIDEO' ? (
+                      <>
+                        <video src={media.url} />
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}>
+                          <Play size={20} fill="white" color="white" />
+                        </div>
+                      </>
+                    ) : (
+                      <img src={media.url} alt={`${product.name} ${index + 1}`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Product Description */}
+            <div className="details-section">
+              <h2 className="section-title"><Package size={24} /> Product Description</h2>
+              <div className="description-box">{product.description}</div>
+              {Object.keys(product.tags).length > 0 && (
+                <div className="tags-grid">
+                  {Object.entries(product.tags).map(([type, tags]) => (
+                    <div key={type} className="tag-group">
+                      <div className="tag-group-title"><Tag size={14} />{type.replace(/_/g, ' ')}</div>
+                      <div className="tag-list">
+                        {tags.map((tag) => (
+                          <span key={tag.slug} className="tag-chip">{tag.label}</span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Product Panel (Sticky) */}
+          <div className="product-panel">
+            <div className="panel-header">
+              <div className="panel-category"><Tag size={12} />{product.category.name}</div>
+              <h1 className="panel-name">{product.name}</h1>
+              
+              <div className="panel-rating">
+                {renderStars(product.stats.avgRating)}
+                <span className="panel-rating-text">
+                  <span className="panel-rating-count">{product.stats.avgRating.toFixed(1)}</span>
+                  {' '}({product.stats.reviewCount} reviews)
+                </span>
+              </div>
+              
+              <div className="panel-price">{formatPrice(currentPrice)}</div>
+              {product.price.min !== product.price.max && (
+                <div className="panel-price-range">
+                  Price range: {formatPrice(product.price.min)} - {formatPrice(product.price.max)}
+                </div>
+              )}
+            </div>
+
+            {/* Size Selection */}
+            {product.sizes.length > 0 && (
+              <div className="variant-section">
+                <div className="variant-label">
+                  <Ruler size={16} /> Select Size
+                </div>
+                <div className="size-options">
+                  {product.sizes.map((size) => {
+                    // Check if this size is available given the current color selection
+                    const isAvailable = availableSizeIds.has(size.id);
+                    return (
+                      <button
+                        key={size.id}
+                        className={`size-btn ${selectedSizeId === size.id ? 'selected' : ''}`}
+                        onClick={() => handleSizeClick(size.id)}
+                        disabled={!isAvailable}
+                      >
+                        {size.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Color Selection */}
+            {product.colors.length > 0 && (
+              <div className="variant-section">
+                <div className="variant-label">
+                  <Palette size={16} /> Select Color
+                  {selectedColorId && (
+                    <span style={{ fontWeight: 'normal', marginLeft: 'auto' }}>
+                      {product.colors.find((c) => c.id === selectedColorId)?.label}
+                    </span>
+                  )}
+                </div>
+                <div className="color-options">
+                  {product.colors.map((color) => {
+                    // Check if this color is available given the current size selection
+                    const isAvailable = availableColorIds.has(color.id);
+                    return (
+                      <button
+                        key={color.id}
+                        className={`color-btn ${selectedColorId === color.id ? 'selected' : ''}`}
+                        style={{ backgroundColor: color.hex || '#ccc' }}
+                        onClick={() => handleColorClick(color.id)}
+                        disabled={!isAvailable}
+                        title={color.label}
+                      >
+                        {selectedColorId === color.id && <Check size={18} className="check-icon" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Quantity */}
+            <div className="quantity-section">
+              <span className="quantity-label">Quantity</span>
+              <div className="quantity-controls">
+                <button
+                  className="quantity-btn"
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  disabled={quantity <= 1}
+                >
+                  −
+                </button>
+                <span className="quantity-value">{quantity}</span>
+                <button
+                  className="quantity-btn"
+                  onClick={() => setQuantity(quantity + 1)}
+                  // Disable if quantity reaches stock limit, or if no variant is fully selected yet
+                  disabled={!selectedVariant || quantity >= selectedVariant.stock}
+                >
+                  +
+                </button>
+              </div>
+              
+              {/* Detailed Stock Status Display */}
+              {isSelectionComplete && selectedVariant ? (
+                <span style={{ fontSize: 'var(--font-size-xs)', color: selectedVariant.stock < 10 ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
+                  {selectedVariant.stock} units available in this style
+                </span>
+              ) : (
+                <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-on-surface-secondary)' }}>
+                  Select options to see stock
+                </span>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="action-buttons">
+              <button
+                className="order-btn"
+                onClick={() => setShowCheckout(true)}
+                disabled={!canOrder}
+              >
+                <ShoppingBag size={20} />
+                {canOrder 
+                  ? 'Order Now' 
+                  : !isSelectionComplete 
+                    ? 'Select Options' 
+                    : 'Out of Stock'}
+              </button>
+              <button
+                className={`icon-btn ${isWishlisted ? 'wishlisted' : ''}`}
+                onClick={() => setIsWishlisted(!isWishlisted)}
+              >
+                <Heart size={22} fill={isWishlisted ? 'currentColor' : 'none'} />
+              </button>
+              <button className="icon-btn" onClick={handleShare}>
+                <Share2 size={22} />
+              </button>
+            </div>
+
+            {/* Trust Features */}
+            <div className="trust-features">
+              <div className="trust-item"><div className="trust-icon"><Truck size={20} /></div><div className="trust-text">Fast Delivery</div></div>
+              <div className="trust-item"><div className="trust-icon"><Shield size={20} /></div><div className="trust-text">Secure Payment</div></div>
+              <div className="trust-item"><div className="trust-icon"><RotateCcw size={20} /></div><div className="trust-text">Easy Returns</div></div>
+            </div>
+
+            {/* Shipping Estimate */}
+            <div className="shipping-estimate">
+              <div className="shipping-estimate-header">
+                <div className="shipping-estimate-icon"><Truck size={16} /></div>
+                <span className="shipping-estimate-title">Nationwide Delivery via Yalidine</span>
+              </div>
+              <div className="shipping-estimate-range">
+                Home delivery from <span className="shipping-estimate-price">{formatPriceDA(WILAYAS_SORTED[0]?.homeDeliveryPrice || 500)}</span>
+                <span style={{ margin: '0 4px' }}>•</span>
+                Pickup from <span className="shipping-estimate-price">{formatPriceDA(WILAYAS_SORTED[0]?.centerDeliveryPrice || 400)}</span>
+              </div>
+            </div>
+
+            {product.flags.isMadeToOrder && product.leadTimeDays && (
+              <div style={{ marginTop: 'var(--spacing-lg)', padding: 'var(--spacing-md)', background: 'var(--color-surface-elevated)', borderRadius: 'var(--border-radius-md)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)', color: 'var(--color-on-surface-secondary)' }}>
+                <Clock size={16} style={{ color: 'var(--color-secondary)' }} />
+                Made to order • Ships in {product.leadTimeDays} days
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reviews Section */}
+        <section className="reviews-section">
+          <div className="reviews-header">
+            <h2 className="section-title"><MessageCircle size={24} /> Customer Reviews</h2>
+            <div className="reviews-summary">
+              <span className="reviews-avg">{product.stats.avgRating.toFixed(1)}</span>
+              <div className="reviews-avg-stars">
+                {renderStars(product.stats.avgRating, 20)}
+                <span className="reviews-count-text">Based on {product.stats.reviewCount} reviews</span>
+              </div>
+            </div>
+          </div>
+
+          {product.reviews.length > 0 ? (
+            <div className="reviews-list">
+              {product.reviews.map((review) => (
+                <div key={review.id} className="review-card">
+                  <div className="review-header">
+                    <div className="review-author">
+                      <div className="review-avatar"><User size={24} /></div>
+                      <div className="review-author-info">
+                        <h4>{review.reviewerName}</h4>
+                        <span className="review-date">{formatDate(review.createdAt, locale)}</span>
+                      </div>
+                    </div>
+                    <div className="review-rating">{renderStars(review.rating)}</div>
+                  </div>
+                  {review.title && <div className="review-title">{review.title}</div>}
+                  {review.comment && <p className="review-comment">{review.comment}</p>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="no-reviews">
+              <div className="no-reviews-icon"><ThumbsUp size={28} /></div>
+              <h3>No Reviews Yet</h3>
+              <p>Be the first to review this product!</p>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <ProductCheckoutModal
+        isOpen={showCheckout}
+        onClose={() => setShowCheckout(false)}
+        product={{
+          id: product.id,
+          name: product.name,
+          price: currentPrice,
+          imageUrl: images[0]?.url,
+        }}
+        quantity={quantity}
+        selectedVariant={checkoutVariant}
+      />
+    </>
+  );
+}
