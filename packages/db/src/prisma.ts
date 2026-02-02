@@ -31,16 +31,20 @@ function makePgPool() {
 
   return new Pool({
     connectionString,
-    // Free-tier protection: keep pool tiny (you have low traffic)
-    max: intEnv("PG_POOL_MAX", 2),
-    idleTimeoutMillis: intEnv("PG_POOL_IDLE_TIMEOUT_MS", 10_000),
-    connectionTimeoutMillis: intEnv("PG_POOL_CONN_TIMEOUT_MS", 5_000),
+    // Supabase free-tier: keep pool small but allow some concurrency
+    max: intEnv("PG_POOL_MAX", 5),
+    min: 1,
+    idleTimeoutMillis: intEnv("PG_POOL_IDLE_TIMEOUT_MS", 30_000),
+    connectionTimeoutMillis: intEnv("PG_POOL_CONN_TIMEOUT_MS", 30_000),
+    
+    // Allow idle connections to be released
+    allowExitOnIdle: true,
 
     // Supabase is hosted: SSL required; local usually not
     ssl: isLocal(connectionString) ? undefined : { rejectUnauthorized: false },
 
     // Prevent runaway queries from eating free-tier resources
-    options: `-c statement_timeout=${intEnv("PG_STATEMENT_TIMEOUT_MS", 8_000)}`,
+    options: `-c statement_timeout=${intEnv("PG_STATEMENT_TIMEOUT_MS", 30_000)}`,
   });
 }
 
@@ -66,9 +70,9 @@ function makePrismaClient() {
     log,
     errorFormat: isProd ? "minimal" : "pretty",
     transactionOptions: {
-      // Avoid long waits behind the pooler
-      maxWait: 2000,
-      timeout: 8000,
+      // Allow more time for Supabase free-tier latency
+      maxWait: 10000,
+      timeout: 30000,
     },
   });
 }

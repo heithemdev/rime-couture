@@ -1,128 +1,31 @@
 /**
  * Filters API Route
- * Returns available filter options (colors, sizes, materials, etc.) from database
- * With rate limiting and bot protection
+ * Returns available filter options (colors, sizes, materials, etc.) using Prisma
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool, PoolClient } from 'pg';
+import { prisma, Locale } from '@repo/db';
 import {
   checkRateLimit,
   rateLimitResponse,
   checkForBot,
   validateLocale,
 } from '@/lib/api-security';
-
-// ============================================================================
-// DATABASE CONNECTION (singleton with retry logic)
-// ============================================================================
-
-let pool: Pool | null = null;
-let poolCreatedAt = 0;
-const POOL_MAX_AGE = 5 * 60 * 1000;
-
-function getPool(): Pool {
-  const now = Date.now();
-  
-  if (pool && now - poolCreatedAt > POOL_MAX_AGE) {
-    pool.end().catch(() => {});
-    pool = null;
-  }
-  
-  if (pool) return pool;
-  
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
-    throw new Error('DATABASE_URL not set');
-  }
-  
-  pool = new Pool({
-    connectionString,
-    max: 5,
-    min: 1,
-    idleTimeoutMillis: 60000,
-    connectionTimeoutMillis: 15000,
-    ssl: {
-      rejectUnauthorized: false,
-    },
-    query_timeout: 15000,
-    statement_timeout: 15000,
-  });
-  
-  pool.on('error', (err) => {
-    console.error('[filters] Pool error:', err.message);
-    pool = null;
-  });
-  
-  poolCreatedAt = now;
-  return pool;
-}
-
-async function getClient(maxRetries = 3): Promise<PoolClient> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const db = getPool();
-      return await db.connect();
-    } catch (error) {
-      lastError = error as Error;
-      console.error(`[filters] Connection attempt ${attempt}/${maxRetries} failed:`, lastError.message);
-      
-      if (pool) {
-        pool.end().catch(() => {});
-        pool = null;
-      }
-      
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-      }
-    }
-  }
-  
-  throw lastError || new Error('Failed to connect to database');
-}
-
-// ============================================================================
-// TYPES
-// ============================================================================
-
-interface FilterOption {
-  code: string;
-  label: string;
-  hex?: string | null;
-}
-
-interface FilterData {
-  sizes: FilterOption[];
-  colors: FilterOption[];
-  materials: FilterOption[];
-  patterns: FilterOption[];
-  seasons: FilterOption[];
-  occasions: FilterOption[];
-}
-
-// ============================================================================
-// API HANDLER
-// ============================================================================
+import { getCache, setCache } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
-  let client: PoolClient | null = null;
-  
   try {
-    // ========== SECURITY CHECKS ==========
-    
-    // Rate limiting (100 requests per minute - filters are cached)
+    // Rate limiting
     const rateLimit = checkRateLimit(request, {
       windowMs: 60000,
-      maxRequests: 100,
+      maxRequests: 60,
       keyPrefix: 'filters',
     });
-    
+
     if (!rateLimit.allowed) {
       return rateLimitResponse(rateLimit.resetAt);
     }
-    
+
     // Bot detection
     const botCheck = checkForBot(request);
     if (botCheck.isSuspicious) {
@@ -131,122 +34,166 @@ export async function GET(request: NextRequest) {
         { status: 403 }
       );
     }
-    
-    // ========== VALIDATE INPUT ==========
-    
+
     const searchParams = request.nextUrl.searchParams;
-    const locale = validateLocale(searchParams.get('locale'));
-    
-    // ========== DATABASE QUERY ==========
-    
-    client = await getClient();
-    
-    // Fetch all filter options in parallel
-    const [sizesResult, colorsResult, tagsResult] = await Promise.all([
-      // Fetch sizes
-      client.query(`
-        SELECT 
-          s.code,
-          COALESCE(st.label, s.code) as label
-        FROM "Size" s
-        LEFT JOIN "SizeTranslation" st ON s.id = st."sizeId" AND st.locale = $1
-        ORDER BY s."sortOrder", s.code
-      `, [locale]),
-      
-      // Fetch colors
-      client.query(`
-        SELECT 
-          c.code,
-          c.hex,
-          COALESCE(ct.label, c.code) as label
-        FROM "Color" c
-        LEFT JOIN "ColorTranslation" ct ON c.id = ct."colorId" AND ct.locale = $1
-        ORDER BY c."sortOrder", c.code
-      `, [locale]),
-      
-      // Fetch tags grouped by type
-      client.query(`
-        SELECT 
-          t.slug as code,
-          t.type,
-          COALESCE(tt.label, t.slug) as label
-        FROM "Tag" t
-        LEFT JOIN "TagTranslation" tt ON t.id = tt."tagId" AND tt.locale = $1
-        WHERE t."isActive" = true
-        ORDER BY t.type, t."sortOrder", t.slug
-      `, [locale]),
+    const locale = validateLocale(searchParams.get('locale')) as Locale;
+
+    // Check cache
+    const cacheKey = `filters:${locale}`;
+    const cached = getCache<object>(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+          'X-Cache': 'HIT',
+        },
+      });
+    }
+
+    // Fetch all filter data in parallel using Prisma
+    const [colors, sizes, tags, categories] = await Promise.all([
+      // Colors with translations
+      prisma.color.findMany({
+        where: { isActive: true },
+        include: {
+          translations: {
+            where: { locale },
+          },
+        },
+        orderBy: { sortOrder: 'asc' },
+      }),
+
+      // Sizes with translations
+      prisma.size.findMany({
+        where: { isActive: true },
+        include: {
+          translations: {
+            where: { locale },
+          },
+        },
+        orderBy: { sortOrder: 'asc' },
+      }),
+
+      // Tags (materials, patterns, seasons, occasions) with translations
+      prisma.tag.findMany({
+        where: { isActive: true },
+        include: {
+          translations: {
+            where: { locale },
+          },
+        },
+        orderBy: { sortOrder: 'asc' },
+      }),
+
+      // Categories with translations
+      prisma.category.findMany({
+        where: { isActive: true },
+        include: {
+          translations: {
+            where: { locale },
+          },
+        },
+        orderBy: { sortOrder: 'asc' },
+      }),
     ]);
-    
-    // Process tags by type
-    const materials: FilterOption[] = [];
-    const patterns: FilterOption[] = [];
-    const seasons: FilterOption[] = [];
-    const occasions: FilterOption[] = [];
-    
-    for (const tag of tagsResult.rows) {
-      const option: FilterOption = {
-        code: tag.code,
-        label: tag.label,
+
+    // Format colors
+    const formattedColors = colors.map((c: typeof colors[number]) => ({
+      code: c.code,
+      hex: c.hex,
+      label: c.translations[0]?.label || c.code,
+    }));
+
+    // Format sizes
+    const formattedSizes = sizes.map((s: typeof sizes[number]) => ({
+      code: s.code,
+      label: s.translations[0]?.label || s.code,
+    }));
+
+    // Group tags by type
+    const tagsByType = {
+      materials: [] as Array<{ slug: string; label: string }>,
+      patterns: [] as Array<{ slug: string; label: string }>,
+      seasons: [] as Array<{ slug: string; label: string }>,
+      occasions: [] as Array<{ slug: string; label: string }>,
+      gender: [] as Array<{ slug: string; label: string }>,
+      kitchenType: [] as Array<{ slug: string; label: string }>,
+    };
+
+    for (const tag of tags) {
+      const tagType = tag.type.toLowerCase();
+      const formattedTag = {
+        slug: tag.slug,
+        label: tag.translations[0]?.label || tag.slug,
       };
-      
-      switch (tag.type) {
-        case 'MATERIAL':
-          materials.push(option);
-          break;
-        case 'PATTERN':
-          patterns.push(option);
-          break;
-        case 'MOOD_SEASON':
-          seasons.push(option);
-          break;
-        case 'OCCASION':
-          occasions.push(option);
-          break;
+
+      if (tagType === 'material') {
+        tagsByType.materials.push(formattedTag);
+      } else if (tagType === 'pattern') {
+        tagsByType.patterns.push(formattedTag);
+      } else if (tagType === 'season' || tagType === 'mood_season') {
+        tagsByType.seasons.push(formattedTag);
+      } else if (tagType === 'occasion') {
+        tagsByType.occasions.push(formattedTag);
+      } else if (tagType === 'gender') {
+        tagsByType.gender.push(formattedTag);
+      } else if (tagType === 'kitchen' || tagType === 'kitchentype') {
+        tagsByType.kitchenType.push(formattedTag);
       }
     }
-    
-    const filterData: FilterData = {
-      sizes: sizesResult.rows.map(row => ({
-        code: row.code,
-        label: row.label,
-      })),
-      colors: colorsResult.rows.map(row => ({
-        code: row.code,
-        label: row.label,
-        hex: row.hex,
-      })),
-      materials,
-      patterns,
-      seasons,
-      occasions,
+
+    // Format categories
+    const formattedCategories = categories.map((c: typeof categories[number]) => ({
+      slug: c.slug,
+      name: c.translations[0]?.name || c.slug,
+    }));
+
+    const responseData = {
+      success: true,
+      filters: {
+        colors: formattedColors,
+        sizes: formattedSizes,
+        materials: tagsByType.materials,
+        patterns: tagsByType.patterns,
+        seasons: tagsByType.seasons,
+        occasions: tagsByType.occasions,
+        gender: tagsByType.gender,
+        kitchenType: tagsByType.kitchenType,
+        categories: formattedCategories,
+        priceRanges: [
+          { value: 'under2000', label: locale === 'AR' ? 'أقل من 2000 دج' : 'Under 2000 DZD' },
+          { value: '2000to5000', label: locale === 'AR' ? '2000 - 5000 دج' : '2000 - 5000 DZD' },
+          { value: '5000to10000', label: locale === 'AR' ? '5000 - 10000 دج' : '5000 - 10000 DZD' },
+          { value: 'over10000', label: locale === 'AR' ? 'أكثر من 10000 دج' : 'Over 10000 DZD' },
+        ],
+      },
+      locale,
     };
-    
-    // Set cache headers and security headers
-    const response = NextResponse.json(filterData);
-    response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=600, stale-while-revalidate=1200');
-    response.headers.set('X-Content-Type-Options', 'nosniff');
-    response.headers.set('X-Frame-Options', 'DENY');
-    
-    return response;
-    
+
+    // Cache the response
+    setCache(cacheKey, responseData);
+
+    return NextResponse.json(responseData, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+        'X-Cache': 'MISS',
+      },
+    });
   } catch (error) {
-    console.error('[filters] Error:', error);
-    
-    // Return empty filter data on error
-    const emptyFilters: FilterData = {
-      sizes: [],
-      colors: [],
-      materials: [],
-      patterns: [],
-      seasons: [],
-      occasions: [],
-    };
-    
-    return NextResponse.json(emptyFilters, { status: 500 });
-    
-  } finally {
-    if (client) {
-      client.release();
-    }
+    console.error('Filters API error:', error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to fetch filters',
+        message:
+          process.env.NODE_ENV === 'development'
+            ? error instanceof Error
+              ? error.message
+              : 'Unknown error'
+            : 'An error occurred',
+      },
+      { status: 500 }
+    );
   }
 }
