@@ -2,17 +2,49 @@
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
   "daemon": false,
-  "globalEnv": ["NODE_ENV", "DATABASE_URL"],
+  "globalEnv": [
+    "NODE_ENV",
+    "DATABASE_URL",
+    "RESEND_API_KEY",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_SECURE",
+    "SMTP_USER",
+    "SMTP_PASS",
+    "MAIL_FROM",
+    "NEXT_PUBLIC_APP_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "env": ["NODE_ENV", "DATABASE_URL"],
+      "env": [
+        "NODE_ENV",
+        "DATABASE_URL",
+        "RESEND_API_KEY",
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "SMTP_SECURE",
+        "SMTP_USER",
+        "SMTP_PASS",
+        "MAIL_FROM",
+        "NEXT_PUBLIC_APP_URL"
+      ],
       "inputs": ["$TURBO_DEFAULT$", ".env*", "apps/*/.env*", "packages/*/.env*"],
       "outputs": [".next/**", "dist/**", "!.next/cache/**"]
     },
     "lint": {
       "dependsOn": ["^lint"],
-      "env": ["NODE_ENV"]
+      "env": [
+        "NODE_ENV",
+        "RESEND_API_KEY",
+        "SMTP_HOST",
+        "SMTP_PORT",
+        "SMTP_SECURE",
+        "SMTP_USER",
+        "SMTP_PASS",
+        "MAIL_FROM",
+        "NEXT_PUBLIC_APP_URL"
+      ]
     },
     "check-types": {
       "dependsOn": ["^check-types"]
