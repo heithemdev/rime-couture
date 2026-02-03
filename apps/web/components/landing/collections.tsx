@@ -5,11 +5,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import SafeLink from '@/components/shared/SafeLink';
 import { getCache, setCache } from '@/lib/cache';
 
-interface CategoryCount {
-  slug: string;
-  count: number;
-}
-
 const COLLECTIONS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export default function Collections() {

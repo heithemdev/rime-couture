@@ -29,4 +29,13 @@ export default [
       "react/no-unknown-property": ["error", { ignore: ["jsx", "global"] }],
     },
   },
+
+  // Server-side email helper reads env vars at runtime.
+  // Turbo env declaration linting isn't helpful here during local/dev.
+  {
+    files: ["lib/email/**/*.ts"],
+    rules: {
+      "turbo/no-undeclared-env-vars": "off",
+    },
+  },
 ];

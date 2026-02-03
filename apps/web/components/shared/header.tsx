@@ -7,6 +7,7 @@ import { setUserLocale } from '@/i18n/actions';
 import { locales, LOCALE_LABEL } from '@/i18n/routing';
 import type { Locale } from '@/i18n/routing';
 import SafeLink from '@/components/shared/SafeLink';
+import AuthModal from '@/components/auth/AuthModal';
 import { Search, ShoppingCart, User, Truck, Sparkles, X, Menu, ChevronDown } from 'lucide-react';
 
 export default function Header() {
@@ -16,6 +17,7 @@ export default function Header() {
   const [isPending, startTransition] = useTransition();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [smartSearchPrompt, setSmartSearchPrompt] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
@@ -49,15 +51,19 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    const shouldLockScroll = isMobileMenuOpen || isSmartSearchOpen || isAuthModalOpen;
+    document.body.style.overflow = shouldLockScroll ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isMobileMenuOpen]);
+  }, [isMobileMenuOpen, isSmartSearchOpen, isAuthModalOpen]);
+
+  const openAuthModal = () => {
+    setIsLangOpen(false);
+    setIsSmartSearchOpen(false);
+    setIsMobileMenuOpen(false);
+    setIsAuthModalOpen(true);
+  };
 
   const handleLocaleChange = (newLocale: Locale) => {
     startTransition(() => {
@@ -830,7 +836,12 @@ export default function Header() {
 
             {/* Actions */}
             <div className="header-actions">
-              <button className="header-action-btn desktop-only" aria-label={tc('myAccount')}>
+              <button
+                type="button"
+                className="header-action-btn desktop-only"
+                aria-label={tc('myAccount')}
+                onClick={openAuthModal}
+              >
                 <User size={22} />
               </button>
               
@@ -878,6 +889,8 @@ export default function Header() {
           </div>
         </div>
       </nav>
+
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
 
       {/* Smart Search Modal */}
       <div 
@@ -978,7 +991,10 @@ export default function Header() {
               href="#account" 
               newTab={false} 
               className="mobile-nav-item" 
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={(e) => {
+                e.preventDefault();
+                openAuthModal();
+              }}
             >
               <span className="mobile-nav-icon">
                 <User size={20} />
