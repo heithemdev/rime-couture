@@ -13,6 +13,39 @@ import {
 } from '@/lib/api-security';
 import { getCache, setCache } from '@/lib/cache';
 
+// Retry helper for database operations
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 500
+): Promise<T> {
+  let lastError: Error | unknown;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const isTimeoutError = error instanceof Error && (
+        error.message.includes('Connection terminated') ||
+        error.message.includes('timeout') ||
+        error.message.includes('ETIMEDOUT') ||
+        error.message.includes('connection pool')
+      );
+      
+      if (!isTimeoutError || attempt === maxRetries) {
+        throw error;
+      }
+      
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      console.log(`[Filters API] Retry attempt ${attempt}/${maxRetries} after ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Rate limiting
@@ -50,8 +83,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch all filter data in parallel using Prisma
-    const [colors, sizes, tags, categories] = await Promise.all([
+    // Fetch all filter data in parallel using Prisma with retry
+    const [colors, sizes, tags, categories] = await withRetry(() => Promise.all([
       // Colors with translations
       prisma.color.findMany({
         where: { isActive: true },
@@ -95,7 +128,7 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { sortOrder: 'asc' },
       }),
-    ]);
+    ]));
 
     // Format colors
     const formattedColors = colors.map((c: typeof colors[number]) => ({

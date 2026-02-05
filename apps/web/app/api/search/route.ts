@@ -8,6 +8,42 @@ import { prisma } from '@repo/db';
 import { getCache, setCache } from '@/lib/cache';
 
 // ============================================================================
+// RETRY HELPER
+// ============================================================================
+
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 500
+): Promise<T> {
+  let lastError: Error | unknown;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const isTimeoutError = error instanceof Error && (
+        error.message.includes('Connection terminated') ||
+        error.message.includes('timeout') ||
+        error.message.includes('ETIMEDOUT') ||
+        error.message.includes('connection pool')
+      );
+      
+      if (!isTimeoutError || attempt === maxRetries) {
+        throw error;
+      }
+      
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      console.log(`[Search API] Retry attempt ${attempt}/${maxRetries} after ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
+// ============================================================================
 // FUZZY MATCHING UTILITIES
 // ============================================================================
 
@@ -129,7 +165,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch products with translations using Prisma
-    const products = await prisma.product.findMany({
+    const products = await withRetry(() => prisma.product.findMany({
       where: {
         status: 'PUBLISHED',
         isActive: true,
@@ -151,7 +187,7 @@ export async function GET(request: NextRequest) {
           take: 1,
         },
       },
-    });
+    }));
 
     // Score and filter products
     const scoredResults: SearchResult[] = [];

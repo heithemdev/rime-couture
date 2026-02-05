@@ -7,12 +7,16 @@ import { setUserLocale } from '@/i18n/actions';
 import { locales, LOCALE_LABEL } from '@/i18n/routing';
 import type { Locale } from '@/i18n/routing';
 import SafeLink from '@/components/shared/SafeLink';
-import { Search, ShoppingCart, User, Truck, Sparkles, X, Menu, ChevronDown } from 'lucide-react';
+import { useCart } from '@/lib/cart-context';
+import { Search, ShoppingCart, User, Truck, X, Menu, ChevronDown, Sparkles } from 'lucide-react';
 
 export default function Header() {
   const tc = useTranslations('common');
   const locale = useLocale() as Locale;
   const router = useRouter();
+  const { items } = useCart();
+  // Show number of unique products in cart, not total quantity
+  const cartItemCount = items.length;
   const [isPending, startTransition] = useTransition();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
@@ -837,7 +841,7 @@ export default function Header() {
               
               {/* Cart Button Fixed */}
               <SafeLink
-                href="#cart"
+                href="/cart"
                 newTab={false}
                 className="header-action-btn header-cart-btn"
                 aria-label={tc('shoppingCart')}
@@ -845,13 +849,20 @@ export default function Header() {
                 {/* Wrapped icon in a relative div so badge positions relative to ICON, not button */}
                 <div className="icon-relative-wrapper">
                   <ShoppingCart size={22} />
-                  <span className="header-cart-badge">0</span>
+                  {cartItemCount > 0 && (
+                    <span className="header-cart-badge">{cartItemCount > 99 ? '99+' : cartItemCount}</span>
+                  )}
                 </div>
               </SafeLink>
 
-              <button className="header-action-btn desktop-only" aria-label={tc('myOrders')}>
+              <SafeLink
+                href="/orders"
+                newTab={false}
+                className="header-action-btn desktop-only"
+                aria-label={tc('myOrders')}
+              >
                 <Truck size={22} />
-              </button>
+              </SafeLink>
               
               <div className="header-lang-switcher" ref={langRef}>
                 <button
@@ -987,7 +998,7 @@ export default function Header() {
               {tc('myAccount')}
             </SafeLink>
             <SafeLink 
-              href="#cart" 
+              href="/cart" 
               newTab={false} 
               className="mobile-nav-item" 
               onClick={() => setIsMobileMenuOpen(false)}
@@ -998,7 +1009,7 @@ export default function Header() {
               {tc('shoppingCart')}
             </SafeLink>
             <SafeLink 
-              href="#orders" 
+              href="/orders" 
               newTab={false} 
               className="mobile-nav-item" 
               onClick={() => setIsMobileMenuOpen(false)}

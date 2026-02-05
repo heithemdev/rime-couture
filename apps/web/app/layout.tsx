@@ -4,6 +4,8 @@ import { Pacifico, Work_Sans, M_PLUS_Rounded_1c } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { isRtlLocale, type Locale } from '@/i18n/routing';
+import { CartProvider } from '@/lib/cart-context';
+import { LikesProvider } from '@/lib/likes-context';
 import './globals.css';
 
 // 1. Optimized Font Loading (Variable Fonts with preload)
@@ -115,7 +117,11 @@ export default async function RootLayout({
         }}
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
-          {children}
+          <CartProvider locale={locale}>
+            <LikesProvider>
+              {children}
+            </LikesProvider>
+          </CartProvider>
         </NextIntlClientProvider>
       </body>
     </html>

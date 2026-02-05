@@ -61,13 +61,23 @@ interface APIProduct {
   imageUrl: string;
   rating: number;
   reviewCount: number;
+  likeCount: number;
   salesCount: number;
   inStock: boolean;
   isFeatured: boolean;
   category: string;
   categorySlug: string;
-  colors: Array<{ code: string; hex: string | null; label: string }>;
-  sizes: Array<{ code: string; label: string }>;
+  colors: Array<{ id: string; code: string; hex: string | null; label: string }>;
+  sizes: Array<{ id: string; code: string; label: string }>;
+  variants: Array<{
+    id: string;
+    variantKey: string;
+    sku: string;
+    price: number | null;
+    stock: number;
+    sizeId: string | null;
+    colorId: string | null;
+  }>;
 }
 
 function transformProduct(apiProduct: APIProduct): Product {
@@ -94,6 +104,13 @@ function transformProduct(apiProduct: APIProduct): Product {
       ...(apiProduct.isFeatured ? ['Best Seller'] : []),
       ...(!apiProduct.inStock ? ['Out of Stock'] : []),
     ],
+    rating: apiProduct.rating,
+    reviewCount: apiProduct.reviewCount,
+    likeCount: apiProduct.likeCount,
+    inStock: apiProduct.inStock,
+    sizes: apiProduct.sizes,
+    colors: apiProduct.colors,
+    variants: apiProduct.variants,
   };
 }
 
@@ -347,13 +364,20 @@ export default function ShoppingPage() {
   // Initial fetch
   useEffect(() => {
     fetchFilterData();
-    // Don't fetch here - let the filters effect handle it
+    // Fetch products immediately on mount
+    fetchProducts(1, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch when filters change (including initial load)
+  // Fetch when filters change (after initial mount)
+  const isInitialMount = useRef(true);
   useEffect(() => {
-    // Always fetch when filters change - the filters are already initialized from URL
+    // Skip initial mount - we already fetched above
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    // Fetch when filters change
     fetchProducts(1, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);

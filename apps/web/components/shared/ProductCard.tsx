@@ -1,8 +1,35 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { ShoppingCart, Heart, Eye, Star } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { ShoppingCart, Heart, Eye, Star, Loader2 } from 'lucide-react';
 import SafeLink from '@/components/shared/SafeLink';
+import AddToCartModal from '@/components/product/AddToCartModal';
+import ImageQuickViewModal from '@/components/shared/ImageQuickViewModal';
+import { useCart, useFingerprint } from '@/lib/cart-context';
+import { useLikes } from '@/lib/likes-context';
+
+interface Size {
+  id: string;
+  code: string;
+  label: string;
+}
+
+interface Color {
+  id: string;
+  code: string;
+  hex?: string | null;
+  label: string;
+}
+
+interface Variant {
+  id: string;
+  variantKey: string;
+  sku: string;
+  price: number | null;
+  stock: number;
+  size: Size | null;
+  color: Color | null;
+}
 
 export interface ProductCardProps {
   id: string;
@@ -18,7 +45,12 @@ export interface ProductCardProps {
   badgeType?: 'sale' | 'new' | 'bestseller';
   rating?: number;
   reviewCount?: number;
+  likeCount?: number;
   inStock?: boolean;
+  // Variant data for cart modal
+  sizes?: Size[];
+  colors?: Color[];
+  variants?: Variant[];
   onAddToCart?: (id: string) => void;
   onAddToWishlist?: (id: string) => void;
   onQuickView?: (id: string) => void;
@@ -38,14 +70,35 @@ export default function ProductCard({
   badgeType = 'new',
   rating,
   reviewCount,
+  likeCount: initialLikeCount = 0,
   inStock = true,
+  sizes = [],
+  colors = [],
+  variants = [],
   onAddToCart,
   onAddToWishlist,
   onQuickView,
 }: ProductCardProps) {
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const fingerprint = useFingerprint();
+  const { addToCart } = useCart();
+  const { getLikeData, registerProduct, toggleLike, isLiking: checkIsLiking } = useLikes();
+  
+  const [showCartModal, setShowCartModal] = useState(false);
+  const [showQuickView, setShowQuickView] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Register product for batch like fetching
+  useEffect(() => {
+    if (fingerprint && id) {
+      registerProduct(id);
+    }
+  }, [id, fingerprint, registerProduct]);
+
+  // Get like data from context (or use initial values)
+  const likeData = getLikeData(id);
+  const isLiked = likeData?.isLiked ?? false;
+  const likeCount = likeData?.likeCount ?? initialLikeCount;
+  const isLiking = checkIsLiking(id);
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('en-DZ', {
@@ -55,27 +108,41 @@ export default function ProductCard({
     }).format(amount);
   };
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  // Handle add to cart - show modal if variants exist
+  const handleAddToCart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!inStock) return;
-    
-    setIsAddingToCart(true);
-    onAddToCart?.(id);
-    
-    setTimeout(() => setIsAddingToCart(false), 600);
-  };
 
-  const handleWishlist = (e: React.MouseEvent) => {
+    // If product has variants, show modal
+    if (variants.length > 0 && (sizes.length > 0 || colors.length > 0)) {
+      setShowCartModal(true);
+    } else {
+      // No variants, direct add (shouldn't happen usually)
+      onAddToCart?.(id);
+    }
+  }, [id, inStock, variants.length, sizes.length, colors.length, onAddToCart]);
+
+  // Handle cart modal add
+  const handleCartModalAdd = useCallback(async (variantId: string, quantity: number) => {
+    await addToCart(id, variantId, quantity);
+  }, [id, addToCart]);
+
+  // Handle like toggle - uses global context
+  const handleLikeToggle = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsWishlisted(!isWishlisted);
+    
+    if (!fingerprint || isLiking) return;
+
+    await toggleLike(id);
     onAddToWishlist?.(id);
-  };
+  }, [id, fingerprint, isLiking, toggleLike, onAddToWishlist]);
 
   const handleQuickView = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setShowQuickView(true);
     onQuickView?.(id);
   };
 
@@ -306,6 +373,44 @@ export default function ProductCard({
           font-size: var(--font-size-sm);
           font-weight: var(--font-weight-medium);
         }
+        
+        /* Like button with count */
+        .product-like-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: var(--spacing-sm);
+        }
+        .product-like-btn {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-xs);
+          padding: var(--spacing-xs) var(--spacing-sm);
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          color: var(--color-on-surface-secondary);
+          font-size: var(--font-size-xs);
+          font-family: inherit;
+          transition: all 0.2s ease;
+          border-radius: var(--border-radius-sm);
+        }
+        .product-like-btn:hover {
+          background: var(--color-surface-elevated);
+        }
+        .product-like-btn.liked {
+          color: var(--color-primary);
+        }
+        .product-like-btn:disabled {
+          opacity: 0.7;
+          cursor: wait;
+        }
+        @keyframes spinIcon {
+          to { transform: rotate(360deg); }
+        }
+        .spin-icon {
+          animation: spinIcon 0.8s linear infinite;
+        }
       `}</style>
 
       <div 
@@ -320,11 +425,16 @@ export default function ProductCard({
             
             <div className="product-actions">
               <button 
-                className={`product-action-btn ${isWishlisted ? 'wishlisted' : ''}`}
-                onClick={handleWishlist}
-                aria-label="Add to wishlist"
+                className={`product-action-btn ${isLiked ? 'wishlisted' : ''}`}
+                onClick={handleLikeToggle}
+                disabled={isLiking}
+                aria-label={isLiked ? 'Unlike' : 'Like'}
               >
-                <Heart size={18} fill={isWishlisted ? 'currentColor' : 'none'} />
+                {isLiking ? (
+                  <Loader2 size={18} className="spin-icon" />
+                ) : (
+                  <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} />
+                )}
               </button>
               <button 
                 className="product-action-btn"
@@ -344,7 +454,7 @@ export default function ProductCard({
 
             <div className="product-add-cart">
               <button 
-                className={`product-add-cart-btn ${isAddingToCart ? 'adding' : ''}`}
+                className="product-add-cart-btn"
                 onClick={handleAddToCart}
                 disabled={!inStock}
               >
@@ -385,12 +495,48 @@ export default function ProductCard({
               )}
             </div>
             
-            {!inStock && (
-              <span className="product-out-of-stock">Out of Stock</span>
-            )}
+            {/* Like count row */}
+            <div className="product-like-row">
+              <button 
+                className={`product-like-btn ${isLiked ? 'liked' : ''}`}
+                onClick={handleLikeToggle}
+                disabled={isLiking}
+              >
+                <Heart size={14} fill={isLiked ? 'currentColor' : 'none'} />
+                <span>{likeCount} {likeCount === 1 ? 'like' : 'likes'}</span>
+              </button>
+              
+              {!inStock && (
+                <span className="product-out-of-stock">Out of Stock</span>
+              )}
+            </div>
           </div>
         </SafeLink>
       </div>
+
+      {/* Add to Cart Modal */}
+      <AddToCartModal
+        isOpen={showCartModal}
+        onClose={() => setShowCartModal(false)}
+        onAddToCart={handleCartModalAdd}
+        product={{
+          id,
+          name,
+          price,
+          imageUrl,
+          sizes,
+          colors,
+          variants,
+        }}
+      />
+
+      {/* Image Quick View Modal */}
+      <ImageQuickViewModal
+        isOpen={showQuickView}
+        onClose={() => setShowQuickView(false)}
+        images={[imageUrl]}
+        productName={name}
+      />
     </>
   );
 }

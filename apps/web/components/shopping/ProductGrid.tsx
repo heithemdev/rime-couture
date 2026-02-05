@@ -19,6 +19,21 @@ export interface Product {
     name: string;
   } | null;
   badges?: string[];
+  rating?: number;
+  reviewCount?: number;
+  likeCount?: number;
+  inStock?: boolean;
+  sizes?: Array<{ id: string; code: string; label: string }>;
+  colors?: Array<{ id: string; code: string; hex?: string | null; label: string }>;
+  variants?: Array<{
+    id: string;
+    variantKey: string;
+    sku: string;
+    price: number | null;
+    stock: number;
+    sizeId: string | null;
+    colorId: string | null;
+  }>;
 }
 
 interface ProductGridProps {
@@ -76,6 +91,18 @@ export default function ProductGrid({
 
   const formatProductForCard = useCallback((product: Product) => {
     const primaryImage = product.images.find((img) => img.isPrimary) || product.images[0];
+    
+    // Transform variants for ProductCard - map sizeId/colorId to nested objects
+    const transformedVariants = product.variants?.map((v) => ({
+      id: v.id,
+      variantKey: v.variantKey,
+      sku: v.sku,
+      price: v.price,
+      stock: v.stock,
+      size: v.sizeId ? product.sizes?.find((s) => s.id === v.sizeId) || null : null,
+      color: v.colorId ? product.colors?.find((c) => c.id === v.colorId) || null : null,
+    })) || [];
+    
     return {
       id: product.id,
       name: product.name,
@@ -85,6 +112,13 @@ export default function ProductGrid({
       imageUrl: primaryImage?.url || '/assets/placeholder.png',
       imageAlt: primaryImage?.alt || product.name,
       badges: product.badges || [],
+      rating: product.rating,
+      reviewCount: product.reviewCount,
+      likeCount: product.likeCount,
+      inStock: product.inStock ?? true,
+      sizes: product.sizes || [],
+      colors: product.colors || [],
+      variants: transformedVariants,
     };
   }, []);
 

@@ -8,6 +8,29 @@ import ProductSkeleton from '@/components/shared/ProductSkeleton';
 import { getCache, setCache } from '@/lib/cache';
 
 // Product type matching the API response
+interface Size {
+  id: string;
+  code: string;
+  label: string;
+}
+
+interface Color {
+  id: string;
+  code: string;
+  hex?: string | null;
+  label: string;
+}
+
+interface Variant {
+  id: string;
+  variantKey: string;
+  sku: string;
+  price: number | null;
+  stock: number;
+  sizeId: string | null;
+  colorId: string | null;
+}
+
 interface ProductData {
   id: string;
   slug: string;
@@ -20,10 +43,13 @@ interface ProductData {
   badgeType?: 'sale' | 'new' | 'bestseller';
   rating: number;
   reviewCount: number;
+  likeCount?: number;
   salesCount?: number;
   inStock: boolean;
   isFeatured?: boolean;
-  colors: { code: string; hex: string | null; label: string }[];
+  colors: Color[];
+  sizes: Size[];
+  variants: Variant[];
   category: string;
 }
 
@@ -139,11 +165,6 @@ export default function BestSellers() {
 
     return () => observer.disconnect();
   }, [isVisible, fetchProducts]);
-
-  const handleAddToCart = (id: string) => {
-    console.log('Add to cart:', id);
-    // TODO: Implement cart functionality
-  };
 
   const handleAddToWishlist = (id: string) => {
     console.log('Add to wishlist:', id);
@@ -348,27 +369,43 @@ export default function BestSellers() {
               seeAllUrl="/shopping"
               seeAllText={t('showAll')}
             >
-              {products.map((product) => (
-                <div key={product.id} className="bestsellers-product-wrapper">
-                  <ProductCard
-                    id={product.id}
-                    slug={product.slug}
-                    name={product.name}
-                    price={formatPrice(product.price)}
-                    originalPrice={product.originalPrice ? formatPrice(product.originalPrice) : undefined}
-                    currency="DZD"
-                    imageUrl={product.imageUrl}
-                    badge={product.badge}
-                    badgeType={product.badgeType}
-                    rating={product.rating}
-                    reviewCount={product.reviewCount}
-                    inStock={product.inStock}
-                    onAddToCart={handleAddToCart}
-                    onAddToWishlist={handleAddToWishlist}
-                    onQuickView={handleQuickView}
-                  />
-                </div>
-              ))}
+              {products.map((product) => {
+                // Transform variants to include full size/color objects
+                const transformedVariants = (product.variants || []).map(v => ({
+                  id: v.id,
+                  variantKey: v.variantKey,
+                  sku: v.sku,
+                  price: v.price,
+                  stock: v.stock,
+                  size: v.sizeId ? product.sizes.find(s => s.id === v.sizeId) || null : null,
+                  color: v.colorId ? product.colors.find(c => c.id === v.colorId) || null : null,
+                }));
+                
+                return (
+                  <div key={product.id} className="bestsellers-product-wrapper">
+                    <ProductCard
+                      id={product.id}
+                      slug={product.slug}
+                      name={product.name}
+                      price={formatPrice(product.price)}
+                      originalPrice={product.originalPrice ? formatPrice(product.originalPrice) : undefined}
+                      currency="DZD"
+                      imageUrl={product.imageUrl}
+                      badge={product.badge}
+                      badgeType={product.badgeType}
+                      rating={product.rating}
+                      reviewCount={product.reviewCount}
+                      likeCount={product.likeCount || 0}
+                      inStock={product.inStock}
+                      sizes={product.sizes || []}
+                      colors={product.colors || []}
+                      variants={transformedVariants}
+                      onAddToWishlist={handleAddToWishlist}
+                      onQuickView={handleQuickView}
+                    />
+                  </div>
+                );
+              })}
             </ProductCarousel>
           )}
         </div>

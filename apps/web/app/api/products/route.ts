@@ -21,6 +21,43 @@ import {
 } from '@/lib/api-security';
 
 // ============================================================================
+// RETRY HELPER FOR DATABASE OPERATIONS
+// ============================================================================
+
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 500
+): Promise<T> {
+  let lastError: Error | unknown;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const isTimeoutError = error instanceof Error && (
+        error.message.includes('Connection terminated') ||
+        error.message.includes('timeout') ||
+        error.message.includes('ETIMEDOUT') ||
+        error.message.includes('connection pool')
+      );
+      
+      if (!isTimeoutError || attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Exponential backoff
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      console.log(`[Products API] Retry attempt ${attempt}/${maxRetries} after ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -35,19 +72,31 @@ export interface ProductResponse {
   imageUrl: string;
   rating: number;
   reviewCount: number;
+  likeCount: number;
   salesCount: number;
   inStock: boolean;
   isFeatured: boolean;
   category: string;
   categorySlug: string;
   colors: {
+    id: string;
     code: string;
     hex: string | null;
     label: string;
   }[];
   sizes: {
+    id: string;
     code: string;
     label: string;
+  }[];
+  variants: {
+    id: string;
+    variantKey: string;
+    sku: string;
+    price: number | null;
+    stock: number;
+    sizeId: string | null;
+    colorId: string | null;
   }[];
 }
 
@@ -91,6 +140,8 @@ export async function GET(request: NextRequest) {
     const calculatedOffset = page > 1 ? (page - 1) * limit : offset;
     const featured = searchParams.get('featured') === 'true';
     const category = validateSlug(searchParams.get('category'));
+    const categoryId = searchParams.get('categoryId');
+    const excludeId = searchParams.get('exclude');
     const sortBy = validateSortBy(searchParams.get('sort') || searchParams.get('sortBy'));
     const search = validateSearchQuery(searchParams.get('search'));
     
@@ -122,6 +173,16 @@ export async function GET(request: NextRequest) {
       where.category = {
         slug: category,
       };
+    }
+    
+    // Category ID filter (for related products)
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+    
+    // Exclude specific product ID (for related products)
+    if (excludeId) {
+      where.id = { not: excludeId };
     }
     
     // Search filter
@@ -231,10 +292,10 @@ export async function GET(request: NextRequest) {
         break;
     }
     
-    // ========== EXECUTE QUERIES ==========
+    // ========== EXECUTE QUERIES WITH RETRY ==========
     
-    // Get products and count in parallel
-    const [products, total] = await Promise.all([
+    // Get products and count in parallel with retry
+    const [products, total] = await withRetry(() => Promise.all([
       prisma.product.findMany({
         where,
         orderBy,
@@ -277,7 +338,7 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.product.count({ where }),
-    ]);
+    ]));
     
     if (products.length === 0) {
       const response = NextResponse.json({
@@ -309,26 +370,42 @@ export async function GET(request: NextRequest) {
       // Get thumbnail
       const thumbMedia = product.media[0]?.media;
       
-      // Extract unique colors and sizes
-      const colorsMap = new Map<string, { code: string; hex: string | null; label: string }>();
-      const sizesMap = new Map<string, { code: string; label: string }>();
+      // Extract unique colors and sizes with full data
+      const colorsMap = new Map<string, { id: string; code: string; hex: string | null; label: string }>();
+      const sizesMap = new Map<string, { id: string; code: string; label: string }>();
       let totalStock = 0;
+      
+      // Build variant list for cart functionality
+      const variantList: ProductResponse['variants'] = [];
       
       for (const variant of product.variants) {
         totalStock += variant.stock || 0;
         
-        if (variant.color && !colorsMap.has(variant.color.code)) {
+        // Add to variant list
+        variantList.push({
+          id: variant.id,
+          variantKey: variant.variantKey,
+          sku: variant.sku,
+          price: variant.priceMinor,
+          stock: variant.stock || 0,
+          sizeId: variant.size?.id || null,
+          colorId: variant.color?.id || null,
+        });
+        
+        if (variant.color && !colorsMap.has(variant.color.id)) {
           const colorTrans = variant.color.translations[0];
-          colorsMap.set(variant.color.code, {
+          colorsMap.set(variant.color.id, {
+            id: variant.color.id,
             code: variant.color.code,
             hex: variant.color.hex,
             label: colorTrans?.label || variant.color.code,
           });
         }
         
-        if (variant.size && !sizesMap.has(variant.size.code)) {
+        if (variant.size && !sizesMap.has(variant.size.id)) {
           const sizeTrans = variant.size.translations[0];
-          sizesMap.set(variant.size.code, {
+          sizesMap.set(variant.size.id, {
+            id: variant.size.id,
             code: variant.size.code,
             label: sizeTrans?.label || variant.size.code,
           });
@@ -345,6 +422,7 @@ export async function GET(request: NextRequest) {
         imageUrl: thumbMedia?.url || '',
         rating: product.avgRating,
         reviewCount: product.reviewCount,
+        likeCount: product.likeCount || 0,
         salesCount: product.salesCount,
         inStock: totalStock > 0,
         isFeatured: product.isFeatured,
@@ -352,6 +430,7 @@ export async function GET(request: NextRequest) {
         categorySlug: product.category?.slug || '',
         colors: Array.from(colorsMap.values()),
         sizes: Array.from(sizesMap.values()),
+        variants: variantList,
       };
     });
     

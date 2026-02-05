@@ -10,6 +10,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   CheckCircle2,
   ChevronDown,
@@ -35,12 +37,33 @@ import {
   type DeliveryType,
 } from '@/lib/algeria/wilayas';
 import { getBaladiyasForWilaya, type Baladiya } from '@/lib/algeria/baladiya';
+import { useFingerprint } from '@/lib/cart-context';
 
 export interface SelectedVariant {
   id: string;
   size?: { code: string; label: string } | null;
   color?: { code: string; label: string; hex?: string } | null;
   price: number;
+}
+
+// Cart item type for cart checkout
+interface CartItemForCheckout {
+  id: string;
+  productId: string;
+  variantId: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  product: {
+    name: string;
+    slug: string;
+    imageUrl: string | null;
+  };
+  variant: {
+    size: { code: string; label: string } | null;
+    color: { code: string; label: string; hex?: string } | null;
+  };
+  stock: number;
 }
 
 interface ProductCheckoutModalProps {
@@ -54,6 +77,9 @@ interface ProductCheckoutModalProps {
   };
   quantity: number;
   selectedVariant?: SelectedVariant | null;
+  // Cart checkout mode
+  isCartCheckout?: boolean;
+  cartItems?: CartItemForCheckout[];
 }
 
 function normalizePhone(input: string): string {
@@ -70,7 +96,13 @@ export default function ProductCheckoutModal({
   product,
   quantity,
   selectedVariant,
+  isCartCheckout = false,
+  cartItems = [],
 }: ProductCheckoutModalProps) {
+  const router = useRouter();
+  const fingerprint = useFingerprint();
+  const t = useTranslations('checkout');
+  
   // Form state
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -121,9 +153,11 @@ export default function ProductCheckoutModal({
     );
   }, [wilayaSearch]);
 
-  // Pricing
+  // Pricing - supports both single product and cart checkout
   const unitPrice = selectedVariant?.price ?? product.price;
-  const subtotal = unitPrice * quantity;
+  const subtotal = isCartCheckout && cartItems.length > 0
+    ? cartItems.reduce((sum, item) => sum + item.lineTotal, 0)
+    : unitPrice * quantity;
   const shippingPrice = selectedWilaya
     ? deliveryType === 'HOME'
       ? selectedWilaya.homeDeliveryPrice
@@ -214,30 +248,48 @@ export default function ProductCheckoutModal({
     setIsSubmitting(true);
 
     try {
-      const formData = new FormData();
-      formData.append('productId', product.id);
-      formData.append('quantity', String(quantity));
-      if (selectedVariant?.id) {
-        formData.append('variantId', selectedVariant.id);
-      }
-      formData.append('customerName', fullName.trim());
-      formData.append('phone', phoneDigits);
-      formData.append('wilayaCode', String(selectedWilaya.id));
-      formData.append('wilayaName', selectedWilaya.name);
-      formData.append('commune', selectedBaladiya?.name ?? selectedWilaya.name);
-      formData.append('deliveryType', deliveryType);
-      formData.append('shippingPrice', String(shippingPrice));
+      // Build order data as JSON for both single product and cart checkout
+      const orderData: Record<string, unknown> = {
+        customerName: fullName.trim(),
+        phone: phoneDigits,
+        wilayaCode: String(selectedWilaya.id),
+        wilayaName: selectedWilaya.name,
+        commune: selectedBaladiya?.name ?? selectedWilaya.name,
+        deliveryType,
+        shippingPrice: shippingPrice,
+        // Include fingerprint for user identification
+        fingerprint: fingerprint || undefined,
+      };
+
       if (deliveryType === 'HOME') {
-        formData.append('address', address.trim());
+        orderData.address = address.trim();
       }
       if (notes.trim()) {
-        formData.append('notes', notes.trim());
+        orderData.notes = notes.trim();
+      }
+
+      // For cart checkout, send all items
+      if (isCartCheckout && cartItems.length > 0) {
+        orderData.items = cartItems.map((item) => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        }));
+      } else {
+        // Single product checkout
+        orderData.productId = product.id;
+        orderData.quantity = quantity;
+        if (selectedVariant?.id) {
+          orderData.variantId = selectedVariant.id;
+        }
       }
 
       const res = await fetch('/api/orders', {
         method: 'POST',
-        body: formData,
+        body: JSON.stringify(orderData),
         headers: {
+          'Content-Type': 'application/json',
           'x-requested-with': 'XMLHttpRequest',
         },
       });
@@ -259,6 +311,12 @@ export default function ProductCheckoutModal({
       setIsSubmitting(false);
     }
   }
+  
+  // Navigate to orders page
+  const handleViewOrders = useCallback(() => {
+    onClose();
+    router.push('/orders');
+  }, [onClose, router]);
 
   if (!isOpen) return null;
 
@@ -824,6 +882,46 @@ export default function ProductCheckoutModal({
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(45, 175, 170, 0.3);
         }
+        .success-buttons {
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-sm);
+          width: 100%;
+          max-width: 280px;
+        }
+        .success-primary-btn {
+          background: linear-gradient(135deg, var(--color-primary) 0%, #ff6b9d 100%);
+          color: white;
+          border: none;
+          padding: var(--spacing-md) var(--spacing-2xl);
+          font-size: var(--font-size-sm);
+          font-weight: var(--font-weight-bold);
+          font-family: var(--font-family-body);
+          border-radius: var(--border-radius-md);
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 15px rgba(255, 77, 129, 0.3);
+        }
+        .success-primary-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(255, 77, 129, 0.4);
+        }
+        .success-secondary-btn {
+          background: transparent;
+          color: var(--color-on-surface-secondary);
+          border: 1px solid var(--color-border);
+          padding: var(--spacing-sm) var(--spacing-xl);
+          font-size: var(--font-size-sm);
+          font-weight: var(--font-weight-medium);
+          font-family: var(--font-family-body);
+          border-radius: var(--border-radius-md);
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .success-secondary-btn:hover {
+          border-color: var(--color-primary);
+          color: var(--color-primary);
+        }
       `}</style>
 
       <div className="checkout-overlay" onClick={onClose}>
@@ -832,11 +930,11 @@ export default function ProductCheckoutModal({
             <div className="checkout-header-content">
               <h2>
                 <Sparkles size={20} />
-                Complete Your Order
+                {t('completeOrder')}
               </h2>
               <p>
                 <ShieldCheck size={14} />
-                Secure • Pay on delivery
+                {t('securePayOnDelivery')}
               </p>
             </div>
             <button className="close-btn" onClick={onClose} aria-label="Close">
@@ -849,13 +947,18 @@ export default function ProductCheckoutModal({
               <div className="success-icon">
                 <CheckCircle2 size={36} />
               </div>
-              <h3 className="success-title">Order Placed!</h3>
+              <h3 className="success-title">{t('orderPlaced')}</h3>
               <p className="success-message">
-                Thank you for your order. We&apos;ll contact you shortly to confirm delivery details.
+                {t('orderConfirmation')}
               </p>
-              <button className="success-close-btn" onClick={onClose}>
-                Continue Shopping
-              </button>
+              <div className="success-buttons">
+                <button className="success-primary-btn" onClick={handleViewOrders}>
+                  {t('viewMyOrders')}
+                </button>
+                <button className="success-secondary-btn" onClick={onClose}>
+                  {t('continueShoppingBtn')}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="checkout-body">
@@ -891,7 +994,10 @@ export default function ProductCheckoutModal({
                 <div className="summary-pricing">
                   <div className="price-row">
                     <span>
-                      {formatPriceDA(unitPrice)} × {quantity}
+                      {isCartCheckout && cartItems.length > 0 
+                        ? `${cartItems.length} item${cartItems.length > 1 ? 's' : ''} (${cartItems.reduce((sum, item) => sum + item.quantity, 0)} total)`
+                        : `${formatPriceDA(unitPrice)} × ${quantity}`
+                      }
                     </span>
                     <span>{formatPriceDA(subtotal)}</span>
                   </div>
@@ -920,20 +1026,20 @@ export default function ProductCheckoutModal({
                 <div className="form-section">
                   <div className="form-section-title">
                     <User size={14} />
-                    Contact Information
+                    {t('contactInfo')}
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">
                       <User className="form-label-icon" />
-                      Full Name
+                      {t('fullName')}
                     </label>
                     <input
                       type="text"
                       className="form-input"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Enter your full name"
+                      placeholder={t('enterFullName')}
                       required
                     />
                   </div>
@@ -941,8 +1047,8 @@ export default function ProductCheckoutModal({
                   <div className="form-group">
                     <label className="form-label">
                       <Phone className="form-label-icon" />
-                      Phone Number
-                      <span className="form-hint">05, 06, or 07</span>
+                      {t('phone')}
+                      <span className="form-hint">{t('phoneHint')}</span>
                     </label>
                     <input
                       type="tel"
@@ -951,7 +1057,7 @@ export default function ProductCheckoutModal({
                       value={phone}
                       onChange={handlePhoneChange}
                       onBlur={handlePhoneBlur}
-                      placeholder="0512345678"
+                      placeholder={t('phonePlaceholder')}
                       maxLength={10}
                       required
                     />
@@ -963,14 +1069,14 @@ export default function ProductCheckoutModal({
                 <div className="form-section">
                   <div className="form-section-title">
                     <Truck size={14} />
-                    Delivery Details
+                    {t('deliveryDetails')}
                   </div>
 
                   {/* Wilaya */}
                   <div className="form-group">
                     <label className="form-label">
                       <MapPin className="form-label-icon" />
-                      Wilaya
+                      {t('wilaya')}
                     </label>
                     <div className="dropdown-wrapper">
                       <button
@@ -987,7 +1093,7 @@ export default function ProductCheckoutModal({
                               <span>{selectedWilaya.name}</span>
                             </>
                           ) : (
-                            'Select your wilaya'
+                            t('selectWilaya')
                           )}
                         </span>
                         <ChevronDown size={18} className="dropdown-trigger-icon" />
@@ -1000,7 +1106,7 @@ export default function ProductCheckoutModal({
                             <input
                               type="text"
                               className="dropdown-search-input"
-                              placeholder="Search wilayas..."
+                              placeholder={t('searchWilayas')}
                               value={wilayaSearch}
                               onChange={(e) => setWilayaSearch(e.target.value)}
                               autoFocus
@@ -1027,7 +1133,7 @@ export default function ProductCheckoutModal({
                               </div>
                             ))
                           ) : (
-                            <div className="dropdown-empty">No wilayas found</div>
+                            <div className="dropdown-empty">{t('noWilayasFound')}</div>
                           )}
                         </div>
                       )}
@@ -1039,8 +1145,8 @@ export default function ProductCheckoutModal({
                     <div className="form-group">
                       <label className="form-label">
                         <MapPin className="form-label-icon" />
-                        Commune
-                        <span className="form-hint">Optional</span>
+                        {t('commune')}
+                        <span className="form-hint">{t('communeOptional')}</span>
                       </label>
                       <div className="dropdown-wrapper">
                         <button
@@ -1051,7 +1157,7 @@ export default function ProductCheckoutModal({
                           <span
                             className={`dropdown-trigger-text ${!selectedBaladiya ? 'placeholder' : ''}`}
                           >
-                            {selectedBaladiya ? selectedBaladiya.name : 'Select commune (optional)'}
+                            {selectedBaladiya ? selectedBaladiya.name : t('selectCommune')}
                           </span>
                           <ChevronDown size={18} className="dropdown-trigger-icon" />
                         </button>
@@ -1076,7 +1182,7 @@ export default function ProductCheckoutModal({
                   {/* Delivery Type */}
                   {selectedWilaya && (
                     <div className="form-group">
-                      <label className="form-label">Delivery Type</label>
+                      <label className="form-label">{t('deliveryType')}</label>
                       <div className="delivery-options">
                         <div
                           className={`delivery-option ${deliveryType === 'HOME' ? 'selected' : ''}`}
@@ -1086,12 +1192,12 @@ export default function ProductCheckoutModal({
                             <div className="delivery-option-icon">
                               <Home size={16} />
                             </div>
-                            <span className="delivery-option-title">Home Delivery</span>
+                            <span className="delivery-option-title">{t('homeDelivery')}</span>
                           </div>
                           <div className="delivery-option-meta">
                             <span className="delivery-option-days">
                               <Clock size={12} />
-                              {selectedWilaya.homeDeliveryDays} days
+                              {selectedWilaya.homeDeliveryDays} {selectedWilaya.homeDeliveryDays === 1 ? t('day') : t('days')}
                             </span>
                             <span className="delivery-option-price">
                               {formatPriceDA(selectedWilaya.homeDeliveryPrice)}
@@ -1107,12 +1213,12 @@ export default function ProductCheckoutModal({
                             <div className="delivery-option-icon">
                               <Store size={16} />
                             </div>
-                            <span className="delivery-option-title">Pickup Center</span>
+                            <span className="delivery-option-title">{t('pickupCenter')}</span>
                           </div>
                           <div className="delivery-option-meta">
                             <span className="delivery-option-days">
                               <Clock size={12} />
-                              {selectedWilaya.centerDeliveryDays} days
+                              {selectedWilaya.centerDeliveryDays} {selectedWilaya.centerDeliveryDays === 1 ? t('day') : t('days')}
                             </span>
                             <span className="delivery-option-price">
                               {formatPriceDA(selectedWilaya.centerDeliveryPrice)}
@@ -1128,14 +1234,14 @@ export default function ProductCheckoutModal({
                     <div className="form-group">
                       <label className="form-label">
                         <MapPin className="form-label-icon" />
-                        Full Address
+                        {t('fullAddress')}
                       </label>
                       <input
                         type="text"
                         className="form-input"
                         value={address}
                         onChange={(e) => setAddress(e.target.value)}
-                        placeholder="Street, building, apartment..."
+                        placeholder={t('addressPlaceholder')}
                         required={deliveryType === 'HOME'}
                       />
                     </div>
@@ -1145,14 +1251,14 @@ export default function ProductCheckoutModal({
                   <div className="form-group">
                     <label className="form-label">
                       <MessageSquare className="form-label-icon" />
-                      Notes
-                      <span className="form-hint">Optional</span>
+                      {t('notes')}
+                      <span className="form-hint">{t('notesOptional')}</span>
                     </label>
                     <textarea
                       className="form-input form-textarea"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Any special instructions..."
+                      placeholder={t('notesPlaceholder')}
                     />
                   </div>
                 </div>
@@ -1163,12 +1269,12 @@ export default function ProductCheckoutModal({
                   {isSubmitting ? (
                     <>
                       <span className="spinner" />
-                      Processing...
+                      {t('processing')}
                     </>
                   ) : (
                     <>
                       <Package size={18} />
-                      Place Order • {formatPriceDA(total)}
+                      {t('placeOrder')} • {formatPriceDA(total)}
                     </>
                   )}
                 </button>

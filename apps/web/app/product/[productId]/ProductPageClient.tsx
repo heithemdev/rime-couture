@@ -5,13 +5,14 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Star,
   Heart,
   Share2,
   ShoppingBag,
+  ShoppingCart,
   ChevronLeft,
   ChevronRight,
   Play,
@@ -28,9 +29,16 @@ import {
   MessageCircle,
   User,
   ThumbsUp,
+  PenLine,
+  Loader2,
+  Expand,
 } from 'lucide-react';
 import ProductCheckoutModal, { type SelectedVariant } from '@/components/product/ProductCheckoutModal';
-import { WILAYAS_SORTED, formatPriceDA } from '@/lib/algeria/wilayas';
+import ReviewModal from '@/components/product/ReviewModal';
+import ImageQuickViewModal from '@/components/shared/ImageQuickViewModal';
+import ProductCard from '@/components/shared/ProductCard';
+import SafeLink from '@/components/shared/SafeLink';
+import { useCart, useFingerprint } from '@/lib/cart-context';
 
 // ============================================================================
 // TYPES
@@ -106,6 +114,7 @@ interface Product {
     salesCount: number;
     reviewCount: number;
     avgRating: number;
+    likeCount: number;
   };
   media: Media[];
   variants: Variant[];
@@ -142,15 +151,202 @@ function formatDate(dateStr: string, locale: string): string {
 
 export default function ProductPageClient({ product, locale }: ProductPageClientProps) {
   // --------------------------------------------------------------------------
+  // HOOKS
+  // --------------------------------------------------------------------------
+  const fingerprint = useFingerprint();
+  const { addToCart } = useCart();
+
+  // --------------------------------------------------------------------------
   // STATE
   // --------------------------------------------------------------------------
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null);
   const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+
+  // Review & Like state
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(product.stats.likeCount || 0);
+  const [isLiking, setIsLiking] = useState(false);
+  const [reviews, setReviews] = useState(product.reviews);
+  const [reviewCount, setReviewCount] = useState(product.stats.reviewCount);
+  const [avgRating, setAvgRating] = useState(product.stats.avgRating);
+
+  // Related products state
+  interface RelatedProduct {
+    id: string;
+    slug: string;
+    name: string;
+    price: number;
+    originalPrice?: number;
+    imageUrl: string;
+    rating?: number;
+    reviewCount?: number;
+    likeCount?: number;
+    inStock: boolean;
+    sizes: Size[];
+    colors: Color[];
+    variants: Variant[];
+  }
+  const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
+  const [isLoadingRelated, setIsLoadingRelated] = useState(true);
+
+  // --------------------------------------------------------------------------
+  // FETCH LIKE & REVIEW STATUS
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    if (!fingerprint) return;
+
+    // Check like status
+    fetch(`/api/likes?productId=${product.id}&fingerprint=${fingerprint}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.isLiked !== undefined) setIsLiked(data.isLiked);
+        if (data.likeCount !== undefined) setLikeCount(data.likeCount);
+      })
+      .catch(console.error);
+
+    // Check review status
+    fetch(`/api/reviews?productId=${product.id}&fingerprint=${fingerprint}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.hasReviewed !== undefined) setHasReviewed(data.hasReviewed);
+      })
+      .catch(console.error);
+  }, [product.id, fingerprint]);
+
+  // --------------------------------------------------------------------------
+  // FETCH RELATED PRODUCTS
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    const fetchRelatedProducts = async () => {
+      try {
+        setIsLoadingRelated(true);
+        // Fetch products from same category, excluding current product
+        const params = new URLSearchParams({
+          categoryId: product.category.id,
+          limit: '8',
+          exclude: product.id,
+        });
+        const res = await fetch(`/api/products?${params}`);
+        const data = await res.json();
+        
+        if (data.products && Array.isArray(data.products)) {
+          // Transform API response to RelatedProduct format
+          const related = data.products.map((p: {
+            id: string;
+            slug: string;
+            name: string;
+            price: number;
+            imageUrl: string;
+            rating?: number;
+            reviewCount?: number;
+            likeCount?: number;
+            inStock: boolean;
+            sizes: Size[];
+            colors: Color[];
+            variants: Array<{
+              id: string;
+              variantKey: string;
+              sku: string;
+              price: number | null;
+              stock: number;
+              sizeId: string | null;
+              colorId: string | null;
+            }>;
+          }) => ({
+            id: p.id,
+            slug: p.slug,
+            name: p.name,
+            price: p.price / 100, // Convert from minor to major
+            originalPrice: undefined,
+            imageUrl: p.imageUrl || '/assets/placeholder.jpg',
+            rating: p.rating,
+            reviewCount: p.reviewCount,
+            likeCount: p.likeCount,
+            inStock: p.inStock,
+            sizes: p.sizes || [],
+            colors: p.colors || [],
+            variants: (p.variants || []).map((v) => ({
+              id: v.id,
+              variantKey: v.variantKey,
+              sku: v.sku,
+              price: v.price ? v.price / 100 : null, // Convert from minor
+              stock: v.stock,
+              size: (p.sizes || []).find((s: Size) => s.id === v.sizeId) || null,
+              color: (p.colors || []).find((c: Color) => c.id === v.colorId) || null,
+            })),
+          }));
+          setRelatedProducts(related);
+        }
+      } catch (err) {
+        console.error('Error fetching related products:', err);
+      } finally {
+        setIsLoadingRelated(false);
+      }
+    };
+
+    fetchRelatedProducts();
+  }, [product.id, product.category.id]);
+
+  // --------------------------------------------------------------------------
+  // HANDLERS - LIKE
+  // --------------------------------------------------------------------------
+  const handleLikeToggle = useCallback(async () => {
+    if (!fingerprint || isLiking) return;
+
+    setIsLiking(true);
+    try {
+      const res = await fetch('/api/likes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: product.id, fingerprint }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setIsLiked(data.liked);
+        setLikeCount(data.likeCount);
+      }
+    } catch (err) {
+      console.error('Like error:', err);
+    } finally {
+      setIsLiking(false);
+    }
+  }, [product.id, fingerprint, isLiking]);
+
+  // --------------------------------------------------------------------------
+  // HANDLERS - REVIEW SUCCESS
+  // --------------------------------------------------------------------------
+  const handleReviewSuccess = useCallback(() => {
+    setHasReviewed(true);
+    // Refresh reviews immediately
+    fetch(`/api/reviews?productId=${product.id}&fingerprint=${fingerprint || ''}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.reviews && Array.isArray(data.reviews)) {
+          // Transform the reviews to match our interface (dates come as ISO strings)
+          const transformedReviews = data.reviews.map((r: Review & { createdAt: string | Date }) => ({
+            ...r,
+            createdAt: typeof r.createdAt === 'string' ? r.createdAt : new Date(r.createdAt).toISOString(),
+          }));
+          setReviews(transformedReviews);
+          setReviewCount(transformedReviews.length);
+          // Calculate new avg
+          if (transformedReviews.length > 0) {
+            const total = transformedReviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0);
+            setAvgRating(total / transformedReviews.length);
+          }
+        }
+      })
+      .catch(console.error);
+  }, [product.id, fingerprint]);
 
   // --------------------------------------------------------------------------
   // DERIVED STATE & LOGIC
@@ -223,6 +419,23 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
     (product.colors.length === 0 || !!selectedColorId);
   
   const canOrder = isSelectionComplete && selectedVariant && selectedVariant.stock > 0;
+
+  // --------------------------------------------------------------------------
+  // HANDLERS - ADD TO CART
+  // --------------------------------------------------------------------------
+  const handleAddToCart = useCallback(async () => {
+    if (!canOrder || !selectedVariant || isAddingToCart) return;
+    
+    setIsAddingToCart(true);
+    try {
+      await addToCart(product.id, selectedVariant.id, quantity);
+      // Could show a success toast here
+    } catch (err) {
+      console.error('Add to cart error:', err);
+    } finally {
+      setIsAddingToCart(false);
+    }
+  }, [canOrder, selectedVariant, isAddingToCart, addToCart, product.id, quantity]);
 
   // --------------------------------------------------------------------------
   // HANDLERS (Strict Reset Logic)
@@ -403,6 +616,19 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
         }
         .gallery-play:hover { transform: translate(-50%, -50%) scale(1.1); }
         
+        .gallery-expand {
+          position: absolute; bottom: var(--spacing-md); right: var(--spacing-md);
+          width: 44px; height: 44px; background: var(--color-surface);
+          border: none; border-radius: var(--border-radius-full); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          color: var(--color-on-surface); box-shadow: var(--shadow-level-2);
+          transition: all 0.2s ease; z-index: 10; opacity: 0.9;
+        }
+        .gallery-expand:hover { 
+          background: var(--color-primary); color: white; 
+          transform: scale(1.1); opacity: 1;
+        }
+        
         .gallery-thumbnails {
           display: flex; gap: var(--spacing-sm); overflow-x: auto; padding-bottom: var(--spacing-sm);
         }
@@ -549,16 +775,51 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
         .icon-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
         .icon-btn.wishlisted { background: var(--color-primary); border-color: var(--color-primary); color: white; }
         
-        /* Trust Features */
+        /* Cart Button */
+        .cart-btn {
+          width: 56px; height: 56px; border: 2px solid var(--color-secondary);
+          background: var(--color-secondary); border-radius: var(--border-radius-control);
+          cursor: pointer; display: flex; align-items: center; justify-content: center;
+          color: white; transition: all 0.2s ease;
+        }
+        .cart-btn:hover:not(:disabled) { 
+          background: var(--color-secondary-dark, #2563eb); 
+          transform: scale(1.05);
+        }
+        .cart-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* Like Button */
+        .like-btn {
+          min-width: 80px; height: 56px; padding: 0 var(--spacing-lg);
+          border: 2px solid var(--color-border); background: var(--color-surface);
+          border-radius: var(--border-radius-control); cursor: pointer; display: flex;
+          align-items: center; justify-content: center; gap: var(--spacing-sm);
+          font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+          color: var(--color-on-surface); transition: all 0.2s ease;
+        }
+        .like-btn:hover:not(:disabled) { border-color: var(--color-primary); color: var(--color-primary); }
+        .like-btn.liked { 
+          background: linear-gradient(135deg, #ff4d81 0%, #ff6b9d 100%);
+          border-color: var(--color-primary); color: white;
+        }
+        .like-btn:disabled { opacity: 0.7; cursor: wait; }
+        .like-count { font-variant-numeric: tabular-nums; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 0.8s linear infinite; }
+        
+        /* Trust Features - Always Horizontal */
         .trust-features {
-          display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md);
+          display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm);
           padding-top: var(--spacing-lg); border-top: 1px solid var(--color-border);
         }
-        .trust-item { text-align: center; }
+        .trust-item { 
+          display: flex; align-items: center; gap: var(--spacing-xs);
+          flex: 1; justify-content: center;
+        }
         .trust-icon {
-          width: 40px; height: 40px; background: var(--color-surface-elevated);
+          width: 36px; height: 36px; background: var(--color-surface-elevated);
           border-radius: var(--border-radius-full); display: flex; align-items: center;
-          justify-content: center; margin: 0 auto var(--spacing-xs); color: var(--color-secondary);
+          justify-content: center; color: var(--color-secondary); flex-shrink: 0;
         }
         .trust-text { font-size: var(--font-size-xs); color: var(--color-on-surface-secondary); line-height: 1.3; }
 
@@ -588,8 +849,8 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
         .tag-chip { background: var(--color-surface-elevated); padding: var(--spacing-xs) var(--spacing-md); border-radius: var(--border-radius-full); font-size: var(--font-size-sm); color: var(--color-on-surface); }
         
         .reviews-section { margin-top: var(--spacing-3xl); padding-top: var(--spacing-3xl); border-top: 2px solid var(--color-border); }
-        .reviews-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--spacing-xl); flex-wrap: wrap; gap: var(--spacing-md); }
-        .reviews-summary { display: flex; align-items: center; gap: var(--spacing-lg); }
+        .reviews-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--spacing-xl); flex-wrap: wrap; gap: var(--spacing-lg); }
+        .reviews-summary { display: flex; align-items: center; gap: var(--spacing-lg); margin-top: var(--spacing-md); }
         .reviews-avg { font-size: var(--font-size-4xl); font-weight: var(--font-weight-bold); color: var(--color-on-surface); }
         .reviews-avg-stars { display: flex; flex-direction: column; gap: var(--spacing-xs); }
         .reviews-avg-stars :global(.stars) { display: flex; gap: 2px; }
@@ -601,10 +862,355 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
         .review-avatar { width: 48px; height: 48px; background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%); border-radius: var(--border-radius-full); display: flex; align-items: center; justify-content: center; color: white; }
         .review-author-info h4 { font-weight: var(--font-weight-medium); color: var(--color-on-surface); margin-bottom: var(--spacing-xs); }
         .review-date { font-size: var(--font-size-xs); color: var(--color-on-surface-secondary); }
+        .review-rating { display: flex; align-items: center; gap: 2px; }
+        .review-rating :global(.stars) { display: flex; flex-direction: row; gap: 2px; }
         .review-title { font-weight: var(--font-weight-medium); color: var(--color-on-surface); margin-bottom: var(--spacing-sm); }
         .review-comment { color: var(--color-on-surface-secondary); line-height: 1.7; }
         .no-reviews { text-align: center; padding: var(--spacing-3xl); background: var(--color-surface-elevated); border-radius: var(--border-radius-lg); }
         .no-reviews-icon { width: 64px; height: 64px; background: var(--color-border); border-radius: var(--border-radius-full); display: flex; align-items: center; justify-content: center; margin: 0 auto var(--spacing-lg); color: var(--color-on-surface-secondary); }
+        
+        /* Add Review Button */
+        .add-review-btn {
+          display: flex; align-items: center; gap: var(--spacing-sm);
+          padding: var(--spacing-md) var(--spacing-xl);
+          background: var(--color-surface); border: 2px solid var(--color-primary);
+          border-radius: var(--border-radius-control); color: var(--color-primary);
+          font-size: var(--font-size-sm); font-weight: var(--font-weight-medium);
+          font-family: inherit; cursor: pointer; transition: all 0.2s ease;
+          white-space: nowrap;
+        }
+        .add-review-btn:hover:not(:disabled) {
+          background: var(--color-primary); color: white;
+        }
+        .add-review-btn:disabled {
+          opacity: 0.5; cursor: not-allowed; border-color: var(--color-border); color: var(--color-on-surface-secondary);
+        }
+        .add-review-btn.primary-cta {
+          margin-top: var(--spacing-lg);
+          background: linear-gradient(135deg, var(--color-primary) 0%, #ff6b9d 100%);
+          border-color: transparent; color: white;
+          box-shadow: 0 4px 15px rgba(255, 77, 129, 0.3);
+        }
+        .add-review-btn.primary-cta:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(255, 77, 129, 0.4);
+        }
+        
+        @media (max-width: 640px) {
+          .reviews-header { flex-direction: column; align-items: flex-start; }
+          .add-review-btn { width: 100%; justify-content: center; }
+        }
+        
+        /* Related Products Section */
+        .related-products-section {
+          margin-top: var(--spacing-3xl);
+          padding-top: var(--spacing-3xl);
+          border-top: 2px solid var(--color-border);
+        }
+        .related-products-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: var(--spacing-xl);
+        }
+        .related-products-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: var(--spacing-lg);
+        }
+        @media (max-width: 1100px) {
+          .related-products-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+        @media (max-width: 800px) {
+          .related-products-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-md);
+          }
+        }
+        @media (max-width: 500px) {
+          .related-products-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--spacing-sm);
+          }
+        }
+        .view-all-link {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-xs);
+          color: var(--color-primary);
+          font-size: var(--font-size-sm);
+          font-weight: var(--font-weight-medium);
+          text-decoration: none;
+          transition: all 0.2s ease;
+        }
+        .view-all-link:hover {
+          color: var(--color-accent);
+          gap: var(--spacing-sm);
+        }
+        .related-loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: var(--spacing-md);
+          padding: var(--spacing-3xl);
+          color: var(--color-on-surface-secondary);
+          font-size: var(--font-size-sm);
+        }
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        /* ================================================================
+           MOBILE RESPONSIVE STYLES
+           ================================================================ */
+        @media (max-width: 768px) {
+          .product-page {
+            padding: var(--spacing-md);
+          }
+          
+          .breadcrumb {
+            font-size: var(--font-size-xs);
+            flex-wrap: wrap;
+            gap: var(--spacing-xs);
+            margin-bottom: var(--spacing-md);
+          }
+          
+          .product-layout {
+            gap: var(--spacing-lg);
+          }
+          
+          .gallery-main {
+            aspect-ratio: 1 / 1;
+            border-radius: var(--border-radius-lg);
+          }
+          
+          .gallery-nav {
+            width: 40px;
+            height: 40px;
+          }
+          .gallery-nav.prev { left: var(--spacing-sm); }
+          .gallery-nav.next { right: var(--spacing-sm); }
+          
+          .gallery-thumbnails {
+            gap: var(--spacing-xs);
+            padding: var(--spacing-xs) 0;
+          }
+          
+          .gallery-thumb {
+            width: 60px;
+            height: 60px;
+          }
+          
+          .product-panel {
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius-lg);
+          }
+          
+          .panel-name {
+            font-size: var(--font-size-xl);
+          }
+          
+          .panel-price {
+            font-size: var(--font-size-2xl);
+          }
+          
+          .variant-section {
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-md);
+          }
+          
+          .size-options,
+          .color-options {
+            gap: var(--spacing-xs);
+          }
+          
+          .size-btn {
+            min-width: 44px;
+            height: 44px;
+            font-size: var(--font-size-xs);
+          }
+          
+          .color-btn {
+            width: 40px;
+            height: 40px;
+          }
+          
+          .quantity-section {
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+          }
+          
+          .quantity-btn {
+            width: 40px;
+            height: 40px;
+          }
+          
+          .action-buttons {
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+          }
+          
+          .order-btn {
+            flex: 1 1 100%;
+            height: 52px;
+            order: 1;
+          }
+          
+          .cart-btn,
+          .like-btn,
+          .icon-btn {
+            width: 52px;
+            height: 52px;
+            flex-shrink: 0;
+            order: 2;
+          }
+          
+          .like-btn {
+            min-width: auto;
+            padding: 0;
+          }
+          
+          .like-count {
+            display: none;
+          }
+          
+          .trust-features {
+            gap: var(--spacing-xs);
+          }
+          
+          .trust-item {
+            flex-direction: row;
+            justify-content: center;
+            gap: var(--spacing-xs);
+          }
+          
+          .trust-icon {
+            width: 32px;
+            height: 32px;
+          }
+          
+          .trust-text {
+            font-size: 10px;
+          }
+          
+          .shipping-estimate {
+            margin-top: var(--spacing-md);
+            padding: var(--spacing-sm);
+          }
+          
+          .shipping-estimate-header {
+            gap: var(--spacing-xs);
+          }
+          
+          .shipping-estimate-icon {
+            width: 28px;
+            height: 28px;
+          }
+          
+          .shipping-estimate-range {
+            padding-left: 36px;
+            font-size: var(--font-size-xs);
+          }
+          
+          .details-section {
+            margin-top: var(--spacing-xl);
+          }
+          
+          .section-title {
+            font-size: var(--font-size-lg);
+          }
+          
+          .description-box {
+            padding: var(--spacing-md);
+            font-size: var(--font-size-sm);
+          }
+          
+          .tags-grid {
+            grid-template-columns: 1fr;
+            gap: var(--spacing-sm);
+          }
+          
+          .tag-group {
+            padding: var(--spacing-sm);
+          }
+          
+          .reviews-section {
+            margin-top: var(--spacing-xl);
+            padding-top: var(--spacing-xl);
+          }
+          
+          .reviews-summary {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+          }
+          
+          .reviews-avg {
+            font-size: var(--font-size-3xl);
+          }
+          
+          .review-card {
+            padding: var(--spacing-md);
+          }
+          
+          .review-header {
+            flex-direction: column;
+            gap: var(--spacing-sm);
+          }
+          
+          .review-avatar {
+            width: 40px;
+            height: 40px;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .product-page {
+            padding: var(--spacing-sm);
+          }
+          
+          .panel-category {
+            font-size: 10px;
+            padding: 2px var(--spacing-sm);
+          }
+          
+          .panel-name {
+            font-size: var(--font-size-lg);
+            line-height: 1.3;
+          }
+          
+          .panel-price {
+            font-size: var(--font-size-xl);
+          }
+          
+          .panel-rating {
+            flex-wrap: wrap;
+            gap: var(--spacing-xs);
+          }
+          
+          .action-buttons {
+            gap: var(--spacing-xs);
+          }
+          
+          .order-btn {
+            height: 48px;
+            font-size: var(--font-size-sm);
+          }
+          
+          .cart-btn,
+          .like-btn,
+          .icon-btn {
+            width: 48px;
+            height: 48px;
+          }
+        }
       `}</style>
 
       <div className="product-page">
@@ -651,7 +1257,21 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
                   </>
                 )
               ) : currentMedia?.url ? (
-                <img src={currentMedia.url} alt={product.name} />
+                <>
+                  <img 
+                    src={currentMedia.url} 
+                    alt={product.name}
+                    onClick={() => setShowImageModal(true)}
+                    style={{ cursor: 'zoom-in' }}
+                  />
+                  <button 
+                    className="gallery-expand" 
+                    onClick={() => setShowImageModal(true)}
+                    aria-label="View fullscreen"
+                  >
+                    <Expand size={20} />
+                  </button>
+                </>
               ) : (
                 <div className="gallery-placeholder">
                   <Package size={40} />
@@ -846,12 +1466,34 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
                     ? 'Select Options' 
                     : 'Out of Stock'}
               </button>
+              
+              {/* Add to Cart Button */}
               <button
-                className={`icon-btn ${isWishlisted ? 'wishlisted' : ''}`}
-                onClick={() => setIsWishlisted(!isWishlisted)}
+                className="cart-btn"
+                onClick={handleAddToCart}
+                disabled={!canOrder || isAddingToCart}
               >
-                <Heart size={22} fill={isWishlisted ? 'currentColor' : 'none'} />
+                {isAddingToCart ? (
+                  <Loader2 size={20} className="spin" />
+                ) : (
+                  <ShoppingCart size={20} />
+                )}
               </button>
+              
+              {/* Like Button with Count */}
+              <button
+                className={`like-btn ${isLiked ? 'liked' : ''}`}
+                onClick={handleLikeToggle}
+                disabled={isLiking}
+              >
+                {isLiking ? (
+                  <Loader2 size={20} className="spin" />
+                ) : (
+                  <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />
+                )}
+                <span className="like-count">{likeCount}</span>
+              </button>
+              
               <button className="icon-btn" onClick={handleShare}>
                 <Share2 size={22} />
               </button>
@@ -868,12 +1510,10 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
             <div className="shipping-estimate">
               <div className="shipping-estimate-header">
                 <div className="shipping-estimate-icon"><Truck size={16} /></div>
-                <span className="shipping-estimate-title">Nationwide Delivery via Yalidine</span>
+                <span className="shipping-estimate-title">64 Wilaya Delivery!</span>
               </div>
               <div className="shipping-estimate-range">
-                Home delivery from <span className="shipping-estimate-price">{formatPriceDA(WILAYAS_SORTED[0]?.homeDeliveryPrice || 500)}</span>
-                <span style={{ margin: '0 4px' }}>•</span>
-                Pickup from <span className="shipping-estimate-price">{formatPriceDA(WILAYAS_SORTED[0]?.centerDeliveryPrice || 400)}</span>
+                Fast & secure shipping across all of Algeria
               </div>
             </div>
 
@@ -889,19 +1529,31 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
         {/* Reviews Section */}
         <section className="reviews-section">
           <div className="reviews-header">
-            <h2 className="section-title"><MessageCircle size={24} /> Customer Reviews</h2>
-            <div className="reviews-summary">
-              <span className="reviews-avg">{product.stats.avgRating.toFixed(1)}</span>
-              <div className="reviews-avg-stars">
-                {renderStars(product.stats.avgRating, 20)}
-                <span className="reviews-count-text">Based on {product.stats.reviewCount} reviews</span>
+            <div>
+              <h2 className="section-title"><MessageCircle size={24} /> Customer Reviews</h2>
+              <div className="reviews-summary">
+                <span className="reviews-avg">{avgRating.toFixed(1)}</span>
+                <div className="reviews-avg-stars">
+                  {renderStars(avgRating, 20)}
+                  <span className="reviews-count-text">Based on {reviewCount} reviews</span>
+                </div>
               </div>
             </div>
+            
+            {/* Add Review Button */}
+            <button
+              className="add-review-btn"
+              onClick={() => setShowReviewModal(true)}
+              disabled={hasReviewed}
+            >
+              <PenLine size={18} />
+              {hasReviewed ? 'Already Reviewed' : 'Write a Review'}
+            </button>
           </div>
 
-          {product.reviews.length > 0 ? (
+          {reviews.length > 0 ? (
             <div className="reviews-list">
-              {product.reviews.map((review) => (
+              {reviews.map((review) => (
                 <div key={review.id} className="review-card">
                   <div className="review-header">
                     <div className="review-author">
@@ -923,9 +1575,60 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
               <div className="no-reviews-icon"><ThumbsUp size={28} /></div>
               <h3>No Reviews Yet</h3>
               <p>Be the first to review this product!</p>
+              <button
+                className="add-review-btn primary-cta"
+                onClick={() => setShowReviewModal(true)}
+                disabled={hasReviewed}
+              >
+                <PenLine size={18} />
+                Write the First Review
+              </button>
             </div>
           )}
         </section>
+
+        {/* Related Products Section */}
+        {relatedProducts.length > 0 && (
+          <section className="related-products-section">
+            <div className="related-products-header">
+              <h2 className="section-title"><Package size={24} /> You May Also Like</h2>
+              <SafeLink href={`/shopping?category=${product.category.slug}`} className="view-all-link">
+                View All <ChevronRight size={18} />
+              </SafeLink>
+            </div>
+            <div className="related-products-grid">
+              {relatedProducts.slice(0, 4).map((rp) => (
+                <ProductCard
+                  key={rp.id}
+                  id={rp.id}
+                  slug={rp.slug}
+                  name={rp.name}
+                  price={rp.price}
+                  originalPrice={rp.originalPrice}
+                  imageUrl={rp.imageUrl}
+                  rating={rp.rating}
+                  reviewCount={rp.reviewCount}
+                  likeCount={rp.likeCount}
+                  inStock={rp.inStock}
+                  sizes={rp.sizes}
+                  colors={rp.colors}
+                  variants={rp.variants}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {isLoadingRelated && (
+          <section className="related-products-section">
+            <div className="related-products-header">
+              <h2 className="section-title"><Package size={24} /> You May Also Like</h2>
+            </div>
+            <div className="related-loading">
+              <Loader2 size={24} className="spin" /> Loading related products...
+            </div>
+          </section>
+        )}
       </div>
 
       <ProductCheckoutModal
@@ -939,6 +1642,23 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
         }}
         quantity={quantity}
         selectedVariant={checkoutVariant}
+      />
+
+      <ReviewModal
+        isOpen={showReviewModal}
+        onClose={() => setShowReviewModal(false)}
+        onSuccess={handleReviewSuccess}
+        productId={product.id}
+        productName={product.name}
+        fingerprint={fingerprint}
+      />
+
+      <ImageQuickViewModal
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+        images={images.map(img => img.url)}
+        productName={product.name}
+        initialIndex={selectedImageIndex}
       />
     </>
   );

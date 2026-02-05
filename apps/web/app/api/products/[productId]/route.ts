@@ -251,6 +251,7 @@ export async function GET(
         salesCount: product.salesCount,
         reviewCount: product.reviewCount,
         avgRating: product.avgRating,
+        likeCount: product.likeCount,
       },
       media: product.media.map((pm) => ({
         id: pm.media.id,
@@ -304,7 +305,7 @@ export async function GET(
         rating: r.rating,
         title: r.title,
         comment: r.comment,
-        reviewerName: r.user?.displayName || 'Anonymous',
+        reviewerName: r.reviewerName || r.user?.displayName || 'Anonymous',
         createdAt: r.createdAt,
       })),
     };
