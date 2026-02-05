@@ -6,7 +6,6 @@ datasource db {
   provider = "postgresql"
 }
 
-
 /**
  * ============================================================================
  * ENUMS
@@ -137,31 +136,32 @@ enum AiEndpoint {
  * ============================================================================
  */
 model User {
-  id             String   @id @default(uuid()) @db.Uuid
-  role           UserRole @default(CLIENT)
+  id   String   @id @default(uuid()) @db.Uuid
+  role UserRole @default(CLIENT)
 
-  email          String   @unique
-  phone          String?
-  displayName    String?
-  passwordHash   String?
+  email        String  @unique
+  phone        String?
+  displayName  String?
+  passwordHash String?
 
-  preferredLocale Locale   @default(EN)
+  preferredLocale Locale    @default(EN)
   emailVerifiedAt DateTime?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  deletedAt      DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   // --- Relations ---
-  sessions       Session[]        // Added for Auth
-  wishlistItems  WishlistItem[]
-  carts          Cart[]
-  orders         Order[]
-  reviews        Review[]
-  reviewsHidden  Review[]         @relation("ReviewHiddenBy")
-  returnDecisions ReturnRequest[] @relation("ReturnDecisionBy")
+  sessions        Session[] // Added for Auth
+  wishlistItems   WishlistItem[]
+  carts           Cart[]
+  orders          Order[]
+  reviews         Review[]
+  reviewsHidden   Review[]         @relation("ReviewHiddenBy")
+  returnDecisions ReturnRequest[]  @relation("ReturnDecisionBy")
   analyticsEvents AnalyticsEvent[]
-  aiRequests     AiRequestLog[]
+  aiRequests      AiRequestLog[]
+  productLikes    ProductLike[]
 
   @@index([role])
   @@index([deletedAt])
@@ -169,30 +169,30 @@ model User {
 
 // Added for Secure Auth
 model Session {
-  id            String   @id @default(uuid()) @db.Uuid
-  userId        String   @db.Uuid
-  sessionIdHash String   @unique
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @db.Uuid
+  sessionIdHash String    @unique
   ip            String?
   userAgent     String?
   expiresAt     DateTime
   revokedAt     DateTime?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId])
 }
 
 // Added for OTP / Email Verification
 model VerificationToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  email     String
-  purpose   String   // "SIGNUP" or "RESET"
-  tokenHash String
-  expiresAt DateTime
+  id         String    @id @default(uuid()) @db.Uuid
+  email      String
+  purpose    String // "SIGNUP" or "RESET"
+  tokenHash  String
+  expiresAt  DateTime
   consumedAt DateTime?
-  createdAt DateTime @default(now())
-  attempts  Int      @default(0)
+  createdAt  DateTime  @default(now())
+  attempts   Int       @default(0)
 
   @@index([email, purpose])
 }
@@ -213,8 +213,8 @@ model CmsPage {
 }
 
 model CmsPageTranslation {
-  id             String @id @default(uuid()) @db.Uuid
-  pageId         String @db.Uuid
+  id             String  @id @default(uuid()) @db.Uuid
+  pageId         String  @db.Uuid
   locale         Locale
   title          String
   body           String
@@ -247,8 +247,8 @@ model Category {
 }
 
 model CategoryTranslation {
-  id          String @id @default(uuid()) @db.Uuid
-  categoryId  String @db.Uuid
+  id          String  @id @default(uuid()) @db.Uuid
+  categoryId  String  @db.Uuid
   locale      Locale
   name        String
   description String?
@@ -329,8 +329,8 @@ model Tag {
 }
 
 model TagTranslation {
-  id    String @id @default(uuid()) @db.Uuid
-  tagId String @db.Uuid
+  id     String @id @default(uuid()) @db.Uuid
+  tagId  String @db.Uuid
   locale Locale
   label  String
 
@@ -346,17 +346,17 @@ model TagTranslation {
  * ============================================================================
  */
 model MediaAsset {
-  id          String   @id @default(uuid()) @db.Uuid
-  kind        MediaKind
-  url         String
-  mimeType    String?
-  bytes       Int?
-  width       Int?
-  height      Int?
-  durationS   Int?
-  provider    String?
-  meta        Json?
-  createdAt   DateTime @default(now())
+  id        String    @id @default(uuid()) @db.Uuid
+  kind      MediaKind
+  url       String
+  mimeType  String?
+  bytes     Int?
+  width     Int?
+  height    Int?
+  durationS Int?
+  provider  String?
+  meta      Json?
+  createdAt DateTime  @default(now())
 
   productLinks     ProductMedia[]
   shipmentLabelFor Shipment?
@@ -382,26 +382,28 @@ model Product {
   isFeatured     Boolean       @default(false)
   featuredOrder  Int?          @default(0)
 
-  isActive       Boolean       @default(true)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  deletedAt      DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
-  salesCount     Int           @default(0)
-  wishlistCount  Int           @default(0)
-  reviewCount    Int           @default(0)
-  avgRating      Float         @default(0)
+  salesCount    Int   @default(0)
+  wishlistCount Int   @default(0)
+  reviewCount   Int   @default(0)
+  avgRating     Float @default(0)
+  likeCount     Int   @default(0)
 
-  category       Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  translations   ProductTranslation[]
-  variants       ProductVariant[]
-  media          ProductMedia[]
-  tags           ProductTag[]
-  orderItems     OrderItem[]
-  reviews        Review[]
-  wishlistItems  WishlistItem[]
+  category        Category             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  translations    ProductTranslation[]
+  variants        ProductVariant[]
+  media           ProductMedia[]
+  tags            ProductTag[]
+  orderItems      OrderItem[]
+  reviews         Review[]
+  wishlistItems   WishlistItem[]
   analyticsEvents AnalyticsEvent[]
-  cartItems      CartItem[] 
+  cartItems       CartItem[]
+  likes           ProductLike[]
 
   @@index([categoryId, status, isActive])
   @@index([createdAt])
@@ -410,8 +412,8 @@ model Product {
 }
 
 model ProductTranslation {
-  id             String @id @default(uuid()) @db.Uuid
-  productId      String @db.Uuid
+  id             String  @id @default(uuid()) @db.Uuid
+  productId      String  @db.Uuid
   locale         Locale
   name           String
   description    String
@@ -452,14 +454,14 @@ model ProductVariant {
 }
 
 model ProductMedia {
-  id        String   @id @default(uuid()) @db.Uuid
-  productId String   @db.Uuid
-  mediaId   String   @db.Uuid
-  position  Int      @default(0)
-  isThumb   Boolean  @default(false)
+  id        String  @id @default(uuid()) @db.Uuid
+  productId String  @db.Uuid
+  mediaId   String  @db.Uuid
+  position  Int     @default(0)
+  isThumb   Boolean @default(false)
 
-  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
-  media     MediaAsset @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  product Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  media   MediaAsset @relation(fields: [mediaId], references: [id], onDelete: Restrict)
 
   @@unique([productId, mediaId])
   @@unique([productId, position])
@@ -484,15 +486,15 @@ model ProductTag {
  * ============================================================================
  */
 model Cart {
-  id            String   @id @default(uuid()) @db.Uuid
-  userId        String?  @db.Uuid
-  guestToken    String?  @unique
-  currency      Currency @default(DZD)
-  locale        Locale   @default(EN)
-  isActive      Boolean  @default(true)
-  abandonedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String?   @db.Uuid
+  guestToken  String?   @unique
+  currency    Currency  @default(DZD)
+  locale      Locale    @default(EN)
+  isActive    Boolean   @default(true)
+  abandonedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
   items           CartItem[]
@@ -567,18 +569,18 @@ model Order {
   postalCode    String?
   customerNote  String?
 
-  confirmedAt   DateTime?
-  shippedAt     DateTime?
-  deliveredAt   DateTime?
-  canceledAt    DateTime?
-  cancelReason  String?
+  confirmedAt  DateTime?
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+  canceledAt   DateTime?
+  cancelReason String?
 
   exportedToSheetsAt DateTime?
 
-  utmSource     String?
-  utmMedium     String?
-  utmCampaign   String?
-  sessionId     String?
+  utmSource      String?
+  utmMedium      String?
+  utmCampaign    String?
+  sessionId      String?
   cartIdSnapshot String?
 
   createdAt DateTime  @default(now())
@@ -639,8 +641,8 @@ model PaymentTransaction {
 
   payload     Json?
   processedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -698,17 +700,19 @@ model ShipmentEvent {
  * ============================================================================
  */
 model Review {
-  id                String   @id @default(uuid()) @db.Uuid
-  productId         String   @db.Uuid
-  orderItemId       String   @unique @db.Uuid
-  userId            String?  @db.Uuid
+  id                String  @id @default(uuid()) @db.Uuid
+  productId         String  @db.Uuid
+  orderItemId       String? @unique @db.Uuid
+  userId            String? @db.Uuid
   guestEmail        String?
   guestPhone        String?
   verificationToken String?
+  fingerprint       String? // Browser fingerprint to prevent spam
 
-  rating  Int
-  title   String?
-  comment String?
+  reviewerName String  @default("Anonymous")
+  rating       Int
+  title        String?
+  comment      String?
 
   isHidden       Boolean   @default(false)
   hiddenReason   String?
@@ -718,14 +722,36 @@ model Review {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  orderItem    OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
-  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  hiddenByUser User?     @relation("ReviewHiddenBy", fields: [hiddenByUserId], references: [id], onDelete: SetNull)
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItem    OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  user         User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  hiddenByUser User?      @relation("ReviewHiddenBy", fields: [hiddenByUserId], references: [id], onDelete: SetNull)
 
+  @@unique([productId, fingerprint])
   @@index([productId, createdAt])
   @@index([userId, createdAt])
   @@index([isHidden, createdAt])
+  @@index([fingerprint])
+}
+
+/**
+ * ============================================================================
+ * PRODUCT LIKES
+ * ============================================================================
+ */
+model ProductLike {
+  id          String   @id @default(uuid()) @db.Uuid
+  productId   String   @db.Uuid
+  userId      String?  @db.Uuid
+  fingerprint String // Browser fingerprint for guests
+  createdAt   DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, fingerprint])
+  @@index([productId])
+  @@index([userId])
 }
 
 /**
@@ -745,8 +771,8 @@ model ReturnRequest {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
-  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  decidedBy User?       @relation("ReturnDecisionBy", fields: [decidedByUserId], references: [id], onDelete: SetNull)
+  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  decidedBy User?        @relation("ReturnDecisionBy", fields: [decidedByUserId], references: [id], onDelete: SetNull)
   items     ReturnItem[]
 
   @@index([status, createdAt])
@@ -855,14 +881,14 @@ model AiRequestLog {
  * ============================================================================
  */
 model WebhookLog {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
   source      String
   eventType   String?
   externalId  String?
   status      String?
   error       String?
   payload     Json?
-  receivedAt  DateTime @default(now())
+  receivedAt  DateTime  @default(now())
   processedAt DateTime?
 
   @@index([source, receivedAt])

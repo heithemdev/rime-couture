@@ -29,23 +29,35 @@ const globalForDb = globalThis as unknown as {
 function makePgPool() {
   const connectionString = requiredEnv("DATABASE_URL");
 
-  return new Pool({
-    connectionString,
-    // Supabase free-tier: keep pool small but allow some concurrency
-    max: intEnv("PG_POOL_MAX", 5),
-    min: 1,
-    idleTimeoutMillis: intEnv("PG_POOL_IDLE_TIMEOUT_MS", 30_000),
-    connectionTimeoutMillis: intEnv("PG_POOL_CONN_TIMEOUT_MS", 30_000),
-    
-    // Allow idle connections to be released
-    allowExitOnIdle: true,
+  // Parse connection string and add sslmode=verify-full to suppress warnings
+  const urlObj = new URL(connectionString);
+  if (!isLocal(connectionString) && !urlObj.searchParams.has('sslmode')) {
+    urlObj.searchParams.set('sslmode', 'verify-full');
+  }
+  const finalConnectionString = urlObj.toString();
 
-    // Supabase is hosted: SSL required; local usually not
+  const pool = new Pool({
+    connectionString: finalConnectionString,
+    // More aggressive pool settings for Prisma Postgres
+    max: intEnv("PG_POOL_MAX", 10),
+    min: intEnv("PG_POOL_MIN", 2), // Keep 2 warm connections for faster response
+    idleTimeoutMillis: intEnv("PG_POOL_IDLE_TIMEOUT_MS", 60_000), // 60s idle timeout (longer)
+    connectionTimeoutMillis: intEnv("PG_POOL_CONN_TIMEOUT_MS", 30_000), // 30s to connect (longer for cold starts)
+    allowExitOnIdle: false, // Prevent pool from closing when idle
+
+    // SSL config for remote databases
     ssl: isLocal(connectionString) ? undefined : { rejectUnauthorized: false },
 
-    // Prevent runaway queries from eating free-tier resources
-    options: `-c statement_timeout=${intEnv("PG_STATEMENT_TIMEOUT_MS", 30_000)}`,
+    // Prevent runaway queries
+    options: `-c statement_timeout=${intEnv("PG_STATEMENT_TIMEOUT_MS", 60_000)}`,
   });
+  
+  // Handle pool errors without crashing
+  pool.on("error", (err: Error) => {
+    console.error("[db] pg pool error (will attempt to recover):", err.message);
+  });
+
+  return pool;
 }
 
 function makePrismaClient() {
@@ -53,26 +65,22 @@ function makePrismaClient() {
     ? makePgPool()
     : (globalForDb.__pgPool ?? (globalForDb.__pgPool = makePgPool()));
 
-  pool.on("error", (err: Error) => {
-    console.error("[db] pg pool error:", err);
-  });
-
   const adapter = new PrismaPg(pool);
 
   const log: (Prisma.LogLevel | Prisma.LogDefinition)[] = isProd
     ? ["warn", "error"]
     : process.env.DEBUG_SQL === "1"
       ? ["query", "info", "warn", "error"]
-      : ["info", "warn", "error"];
+      : ["warn", "error"]; // Reduce noise in dev too
 
   return new PrismaClient({
     adapter,
     log,
     errorFormat: isProd ? "minimal" : "pretty",
     transactionOptions: {
-      // Allow more time for Supabase free-tier latency
-      maxWait: 10000,
-      timeout: 30000,
+      // Shorter timeouts to fail fast and allow retry
+      maxWait: 5000,
+      timeout: 15000,
     },
   });
 }

@@ -109,7 +109,7 @@ export default function ReviewModal({
 
     try {
       const response = await fetch('/api/reviews', {
-        method: 'POST',
+        method: editMode ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId,
@@ -124,7 +124,7 @@ export default function ReviewModal({
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Failed to submit review');
+        setError(data.error || `Failed to ${editMode ? 'update' : 'submit'} review`);
         return;
       }
 
@@ -141,7 +141,7 @@ export default function ReviewModal({
     } finally {
       setIsSubmitting(false);
     }
-  }, [productId, rating, title, comment, reviewerName, fingerprint, onSuccess, onClose]);
+  }, [productId, rating, title, comment, reviewerName, fingerprint, editMode, onSuccess, onClose]);
 
   if (!isOpen) return null;
 
@@ -413,7 +413,7 @@ export default function ReviewModal({
       <div className="review-modal-overlay" onClick={onClose}>
         <div className="review-modal" onClick={(e) => e.stopPropagation()}>
           <div className="review-modal-header">
-            <h2 className="review-modal-title">Write a Review</h2>
+            <h2 className="review-modal-title">{editMode ? 'Edit Your Review' : 'Write a Review'}</h2>
             <button className="review-modal-close" onClick={onClose} aria-label="Close">
               <X size={20} />
             </button>
@@ -522,17 +522,17 @@ export default function ReviewModal({
               {isSubmitting ? (
                 <>
                   <Loader2 size={20} className="spinner" />
-                  Submitting...
+                  {editMode ? 'Updating...' : 'Submitting...'}
                 </>
               ) : success ? (
                 <>
                   <CheckCircle2 size={20} />
-                  Review Submitted!
+                  {editMode ? 'Review Updated!' : 'Review Submitted!'}
                 </>
               ) : (
                 <>
-                  <Send size={20} />
-                  Submit Review
+                  {editMode ? <Pencil size={20} /> : <Send size={20} />}
+                  {editMode ? 'Update Review' : 'Submit Review'}
                 </>
               )}
             </button>

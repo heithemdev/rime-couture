@@ -171,6 +171,8 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
   // Review & Like state
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
+  const [userReview, setUserReview] = useState<Review | null>(null);
+  const [editingReview, setEditingReview] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(product.stats.likeCount || 0);
   const [isLiking, setIsLiking] = useState(false);
@@ -217,6 +219,7 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
       .then((res) => res.json())
       .then((data) => {
         if (data.hasReviewed !== undefined) setHasReviewed(data.hasReviewed);
+        if (data.userReview) setUserReview(data.userReview);
       })
       .catch(console.error);
   }, [product.id, fingerprint]);
@@ -326,6 +329,7 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
   // --------------------------------------------------------------------------
   const handleReviewSuccess = useCallback(() => {
     setHasReviewed(true);
+    setEditingReview(false);
     // Refresh reviews immediately
     fetch(`/api/reviews?productId=${product.id}&fingerprint=${fingerprint || ''}`)
       .then((res) => res.json())
@@ -344,9 +348,22 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
             setAvgRating(total / transformedReviews.length);
           }
         }
+        if (data.userReview) setUserReview(data.userReview);
       })
       .catch(console.error);
   }, [product.id, fingerprint]);
+
+  // Open review modal for editing
+  const handleEditReview = useCallback(() => {
+    setEditingReview(true);
+    setShowReviewModal(true);
+  }, []);
+
+  // Open review modal for new review
+  const handleWriteReview = useCallback(() => {
+    setEditingReview(false);
+    setShowReviewModal(true);
+  }, []);
 
   // --------------------------------------------------------------------------
   // DERIVED STATE & LOGIC
@@ -1541,14 +1558,23 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
             </div>
             
             {/* Add Review Button */}
-            <button
-              className="add-review-btn"
-              onClick={() => setShowReviewModal(true)}
-              disabled={hasReviewed}
-            >
-              <PenLine size={18} />
-              {hasReviewed ? 'Already Reviewed' : 'Write a Review'}
-            </button>
+            {hasReviewed ? (
+              <button
+                className="add-review-btn"
+                onClick={handleEditReview}
+              >
+                <PenLine size={18} />
+                Edit Your Review
+              </button>
+            ) : (
+              <button
+                className="add-review-btn"
+                onClick={handleWriteReview}
+              >
+                <PenLine size={18} />
+                Write a Review
+              </button>
+            )}
           </div>
 
           {reviews.length > 0 ? (
@@ -1577,8 +1603,7 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
               <p>Be the first to review this product!</p>
               <button
                 className="add-review-btn primary-cta"
-                onClick={() => setShowReviewModal(true)}
-                disabled={hasReviewed}
+                onClick={handleWriteReview}
               >
                 <PenLine size={18} />
                 Write the First Review
@@ -1646,11 +1671,16 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
 
       <ReviewModal
         isOpen={showReviewModal}
-        onClose={() => setShowReviewModal(false)}
+        onClose={() => {
+          setShowReviewModal(false);
+          setEditingReview(false);
+        }}
         onSuccess={handleReviewSuccess}
         productId={product.id}
         productName={product.name}
         fingerprint={fingerprint}
+        editMode={editingReview}
+        existingReview={userReview}
       />
 
       <ImageQuickViewModal
