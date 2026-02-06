@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@repo/db';
 import { getCache, setCache } from '@/lib/cache';
+import { resolveHex } from '@/lib/constants';
 
 // Valid locale validation
 const VALID_LOCALES = ['en', 'ar', 'fr', 'EN', 'AR', 'FR'] as const;
@@ -210,7 +211,7 @@ export async function GET(
         colorsMap.set(variant.color.id, {
           id: variant.color.id,
           code: variant.color.code,
-          hex: variant.color.hex,
+          hex: resolveHex(variant.color.code, variant.color.hex),
           label: colorTranslation?.label || variant.color.code,
         });
       }
@@ -236,9 +237,9 @@ export async function GET(
           }
         : null,
       price: {
-        base: product.basePriceMinor / 100,
-        min: minPrice / 100,
-        max: maxPrice / 100,
+        base: Math.round(product.basePriceMinor / 100),
+        min: Math.round(minPrice / 100),
+        max: Math.round(maxPrice / 100),
         currency: product.currency,
       },
       flags: {
@@ -263,6 +264,7 @@ export async function GET(
         durationS: pm.media.durationS,
         isThumb: pm.isThumb,
         position: pm.position,
+        colorId: pm.colorId || null,
       })),
       variants: product.variants.map((v) => {
         const sizeTrans =
@@ -278,7 +280,7 @@ export async function GET(
           id: v.id,
           variantKey: v.variantKey,
           sku: v.sku,
-          price: v.priceMinor ? v.priceMinor / 100 : null,
+          price: v.priceMinor ? Math.round(v.priceMinor / 100) : null,
           stock: v.stock,
           size: v.size
             ? {
@@ -291,7 +293,7 @@ export async function GET(
             ? {
                 id: v.color.id,
                 code: v.color.code,
-                hex: v.color.hex,
+                hex: resolveHex(v.color.code, v.color.hex),
                 label: colorTrans?.label || v.color.code,
               }
             : null,

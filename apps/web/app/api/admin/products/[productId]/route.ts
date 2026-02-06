@@ -11,9 +11,108 @@ import { prisma, Prisma, Locale } from '@repo/db';
 import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
+import {
+  CATEGORY_SLUG_MAP,
+  COLOR_CODE_MAP,
+  COLOR_HEX_MAP,
+  SIZE_CODE_MAP,
+} from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+// ============================================================================
+// RESOLVE HELPERS
+// ============================================================================
+
+function isUUID(str: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
+async function resolveCategoryId(tx: Prisma.TransactionClient, frontendId: string): Promise<string> {
+  if (isUUID(frontendId)) return frontendId;
+  const slug = CATEGORY_SLUG_MAP[frontendId] || frontendId;
+  let category = await tx.category.findUnique({ where: { slug }, select: { id: true } });
+  if (!category) {
+    const name = slug === 'kids-clothes' ? 'Kids Clothes' : slug === 'kitchen-stuff' ? 'Kitchen Stuff' : slug;
+    category = await tx.category.create({
+      data: {
+        slug, sortOrder: slug === 'kids-clothes' ? 1 : 2, isActive: true,
+        translations: { create: [
+          { locale: 'EN' as Locale, name },
+          { locale: 'AR' as Locale, name },
+          { locale: 'FR' as Locale, name },
+        ] },
+      },
+      select: { id: true },
+    });
+  }
+  return category.id;
+}
+
+async function resolveColorId(tx: Prisma.TransactionClient, frontendId: string): Promise<string> {
+  if (isUUID(frontendId)) return frontendId;
+  const code = COLOR_CODE_MAP[frontendId] || frontendId;
+  const hex = COLOR_HEX_MAP[frontendId] || '#888888';
+  const color = await tx.color.findUnique({ where: { code }, select: { id: true, hex: true } });
+  if (color) {
+    if (!color.hex || color.hex === '#888888' || color.hex !== hex) {
+      await tx.color.update({ where: { code }, data: { hex } });
+    }
+    return color.id;
+  }
+  const created = await tx.color.create({
+    data: {
+      code, hex, isActive: true,
+      translations: { create: [
+        { locale: 'EN' as Locale, label: code.charAt(0).toUpperCase() + code.slice(1) },
+        { locale: 'AR' as Locale, label: code },
+        { locale: 'FR' as Locale, label: code },
+      ] },
+    },
+    select: { id: true },
+  });
+  return created.id;
+}
+
+async function resolveSizeId(tx: Prisma.TransactionClient, frontendId: string): Promise<string> {
+  if (isUUID(frontendId)) return frontendId;
+  const code = SIZE_CODE_MAP[frontendId] || frontendId;
+  let size = await tx.size.findUnique({ where: { code }, select: { id: true } });
+  if (!size) {
+    const num = code.replace(/\D/g, '');
+    size = await tx.size.create({
+      data: {
+        code, sortOrder: parseInt(num) || 0, isActive: true,
+        translations: { create: [
+          { locale: 'EN' as Locale, label: `${num} Years` },
+          { locale: 'AR' as Locale, label: `${num} سنوات` },
+          { locale: 'FR' as Locale, label: `${num} Ans` },
+        ] },
+      },
+      select: { id: true },
+    });
+  }
+  return size.id;
+}
+
+async function resolveOrCreateTag(tx: Prisma.TransactionClient, slug: string, type: 'MATERIAL' | 'PATTERN' | 'OCCASION'): Promise<string> {
+  const existing = await tx.tag.findUnique({ where: { type_slug: { type, slug } }, select: { id: true } });
+  if (existing) return existing.id;
+  const label = slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' ');
+  const created = await tx.tag.create({
+    data: {
+      type, slug, isActive: true,
+      translations: { create: [
+        { locale: 'EN' as Locale, label },
+        { locale: 'AR' as Locale, label },
+        { locale: 'FR' as Locale, label },
+      ] },
+    },
+    select: { id: true },
+  });
+  return created.id;
+}
 
 async function saveUploadedFile(file: File): Promise<{ url: string; mimeType: string; bytes: number; kind: 'IMAGE' | 'VIDEO' }> {
   const mimeType = file.type || 'application/octet-stream';
@@ -54,7 +153,13 @@ export async function GET(
       where: { id: productId },
       include: {
         translations: true,
-        variants: true,
+        category: { select: { slug: true } },
+        variants: {
+          include: {
+            size: { select: { id: true, code: true } },
+            color: { select: { id: true, code: true, hex: true } },
+          },
+        },
         media: {
           include: {
             media: true,
@@ -82,10 +187,28 @@ export async function GET(
       );
     }
 
+    // Separate tags by type into materials and patterns
+    const materials: string[] = [];
+    const patterns: string[] = [];
+    const tagsList: { id: string; type: string; slug: string; label: string }[] = [];
+
+    for (const t of product.tags) {
+      const tag = t.tag;
+      const label = tag.translations[0]?.label || tag.slug;
+      tagsList.push({ id: tag.id, type: tag.type, slug: tag.slug, label });
+
+      if (tag.type === 'MATERIAL') {
+        materials.push(label);
+      } else if (tag.type === 'PATTERN') {
+        patterns.push(label);
+      }
+    }
+
     const formattedProduct = {
       id: product.id,
       slug: product.slug,
       categoryId: product.categoryId,
+      categorySlug: product.category?.slug || null,
       basePriceMinor: product.basePriceMinor,
       isActive: product.isActive,
       status: product.status,
@@ -104,6 +227,8 @@ export async function GET(
         variantKey: v.variantKey,
         sizeId: v.sizeId,
         colorId: v.colorId,
+        sizeCode: v.size?.code || null,
+        colorCode: v.color?.code || null,
       })),
       media: product.media.map((m) => ({
         id: m.id,
@@ -113,12 +238,9 @@ export async function GET(
         position: m.position,
         colorId: m.colorId || null,
       })),
-      tags: product.tags.map((t) => ({
-        id: t.tag.id,
-        type: t.tag.type,
-        slug: t.tag.slug,
-        label: t.tag.translations[0]?.label || t.tag.slug,
-      })),
+      tags: tagsList,
+      materials,
+      patterns,
     };
 
     return NextResponse.json({ success: true, data: formattedProduct });
@@ -167,12 +289,43 @@ export async function PUT(
 
     // Update product within transaction
     const updatedProduct = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Resolve category ID (might be frontend ID like 'cat-kids-clothes')
+      const realCategoryId = data.categoryId ? await resolveCategoryId(tx, data.categoryId) : undefined;
+
+      // Resolve all color IDs from variants
+      const colorIdMap = new Map<string, string>();
+      if (Array.isArray(data.variants)) {
+        for (const v of data.variants) {
+          if (v.colorId && typeof v.colorId === 'string' && !colorIdMap.has(v.colorId)) {
+            colorIdMap.set(v.colorId, await resolveColorId(tx, v.colorId));
+          }
+        }
+      }
+      // Also resolve colors from media
+      if (Array.isArray(data.media)) {
+        for (const m of data.media) {
+          if (m.colorId && typeof m.colorId === 'string' && !colorIdMap.has(m.colorId)) {
+            colorIdMap.set(m.colorId, await resolveColorId(tx, m.colorId));
+          }
+        }
+      }
+
+      // Resolve all size IDs
+      const sizeIdMap = new Map<string, string>();
+      if (Array.isArray(data.variants)) {
+        for (const v of data.variants) {
+          if (v.sizeId && typeof v.sizeId === 'string' && !sizeIdMap.has(v.sizeId)) {
+            sizeIdMap.set(v.sizeId, await resolveSizeId(tx, v.sizeId));
+          }
+        }
+      }
+
       // Update main product
       const product = await tx.product.update({
         where: { id: productId },
         data: {
           slug: data.slug,
-          categoryId: data.categoryId,
+          categoryId: realCategoryId,
           basePriceMinor: data.basePriceMinor,
           isActive: data.isActive,
           status: data.status,
@@ -218,8 +371,8 @@ export async function PUT(
         for (let i = 0; i < data.variants.length; i++) {
           const v = data.variants[i];
           const hasDbId = typeof v.id === 'string' && !v.id.startsWith('temp-');
-          const sizeId = v.sizeId ?? null;
-          const colorId = v.colorId ?? null;
+          const sizeId = v.sizeId ? (sizeIdMap.get(v.sizeId) || v.sizeId) : null;
+          const colorId = v.colorId ? (colorIdMap.get(v.colorId) || v.colorId) : null;
           const variantKey = `${colorId || 'no-color'}:${sizeId || 'no-size'}`;
 
           if (hasDbId) {
@@ -301,7 +454,7 @@ export async function PUT(
             data: {
               productId,
               mediaId: asset.id,
-              colorId: typeof m.colorId === 'string' && m.colorId.length > 0 ? m.colorId : null,
+              colorId: typeof m.colorId === 'string' && m.colorId.length > 0 ? (colorIdMap.get(m.colorId) || m.colorId) : null,
               position: typeof m.position === 'number' ? m.position : i,
               isThumb: Boolean(m.isThumb),
             },
@@ -316,7 +469,7 @@ export async function PUT(
             data: {
               position: typeof m.position === 'number' ? m.position : 0,
               isThumb: Boolean(m.isThumb),
-              colorId: typeof m.colorId === 'string' && m.colorId.length > 0 ? m.colorId : null,
+              colorId: typeof m.colorId === 'string' && m.colorId.length > 0 ? (colorIdMap.get(m.colorId) || m.colorId) : null,
             },
           });
         }
@@ -338,17 +491,47 @@ export async function PUT(
         }
       }
 
-      // Handle tags (delete old, create new)
-      if (Array.isArray(data.tags)) {
-        await tx.productTag.deleteMany({ where: { productId } });
+      // Handle tags (delete old, create new — including materials & patterns)
+      await tx.productTag.deleteMany({ where: { productId } });
 
+      const tagIds: string[] = [];
+
+      // Existing tag IDs
+      if (Array.isArray(data.tags)) {
         for (const tagId of data.tags) {
           if (typeof tagId === 'string' && tagId.length > 0) {
-            await tx.productTag.create({
-              data: { productId, tagId },
-            });
+            tagIds.push(tagId);
           }
         }
+      }
+
+      // Materials → resolve/create as MATERIAL tags
+      if (Array.isArray(data.materials)) {
+        for (const mat of data.materials) {
+          if (typeof mat === 'string' && mat.trim()) {
+            tagIds.push(await resolveOrCreateTag(tx, mat.trim().toLowerCase().replace(/\s+/g, '-'), 'MATERIAL'));
+          }
+        }
+      }
+
+      // Patterns → resolve/create as PATTERN tags
+      if (Array.isArray(data.patterns)) {
+        for (const pat of data.patterns) {
+          if (typeof pat === 'string' && pat.trim()) {
+            tagIds.push(await resolveOrCreateTag(tx, pat.trim().toLowerCase().replace(/\s+/g, '-'), 'PATTERN'));
+          }
+        }
+      }
+
+      // Subcategory as OCCASION tag
+      if (data.subcategoryId) {
+        const subMap: Record<string, string> = { 'sub-boy': 'boy', 'sub-girl': 'girl', 'sub-for-mama': 'for-mama', 'sub-items': 'items' };
+        const subSlug = subMap[data.subcategoryId] || data.subcategoryId;
+        tagIds.push(await resolveOrCreateTag(tx, subSlug, 'OCCASION'));
+      }
+
+      for (const tagId of [...new Set(tagIds)]) {
+        await tx.productTag.create({ data: { productId, tagId } });
       }
 
       return product;

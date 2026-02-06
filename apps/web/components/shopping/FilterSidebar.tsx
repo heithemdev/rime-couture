@@ -3,6 +3,12 @@
 import { useCallback, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { X, Baby, UtensilsCrossed, Check, RotateCcw } from 'lucide-react';
+import {
+  FILTER_COLORS,
+  FILTER_SIZES,
+  PRICE_RANGES,
+  type FilterOption,
+} from '@/lib/constants';
 
 // ============================================================================
 // TYPES
@@ -21,11 +27,7 @@ export interface FilterState {
   searchQuery: string | null;
 }
 
-export interface FilterOption {
-  code: string;
-  label: string;
-  hex?: string | null;
-}
+export { type FilterOption };
 
 export interface FilterData {
   sizes: FilterOption[];
@@ -41,54 +43,6 @@ interface FilterSidebarProps {
   onFiltersChange: (filters: FilterState) => void;
   filterData: FilterData;
 }
-
-// ============================================================================
-// KIDS SIZE OPTIONS (Industry Standard)
-// Toddlers: 2T-5T (T = Toddler)
-// Kids: 6-16 (by age/height)
-// ============================================================================
-
-const KIDS_SIZES: FilterOption[] = [
-  { code: '2Y', label: '2Y' },
-  { code: '3Y', label: '3Y' },
-  { code: '4Y', label: '4Y' },
-  { code: '5Y', label: '5Y' },
-  { code: '6Y', label: '6Y' },
-  { code: '7Y', label: '7Y' },
-  { code: '8Y', label: '8Y' },
-  { code: '9Y', label: '9Y' },
-  { code: '10Y', label: '10Y' },
-  { code: '11Y', label: '11Y' },
-  { code: '12Y', label: '12Y' },
-];
-
-const PRESET_COLORS: FilterOption[] = [
-  { code: 'black', hex: '#000000', label: 'Black' },
-  { code: 'white', hex: '#FFFFFF', label: 'White' },
-  { code: 'red', hex: '#DC2626', label: 'Red' },
-  { code: 'pink', hex: '#EC4899', label: 'Pink' },
-  { code: 'rose', hex: '#F43F5E', label: 'Rose' },
-  { code: 'orange', hex: '#EA580C', label: 'Orange' },
-  { code: 'yellow', hex: '#EAB308', label: 'Yellow' },
-  { code: 'green', hex: '#16A34A', label: 'Green' },
-  { code: 'teal', hex: '#0D9488', label: 'Teal' },
-  { code: 'blue', hex: '#2563EB', label: 'Blue' },
-  { code: 'navy', hex: '#1E3A5F', label: 'Navy' },
-  { code: 'purple', hex: '#7C3AED', label: 'Purple' },
-  { code: 'lavender', hex: '#A78BFA', label: 'Lavender' },
-  { code: 'brown', hex: '#92400E', label: 'Brown' },
-  { code: 'beige', hex: '#D4B896', label: 'Beige' },
-  { code: 'gray', hex: '#6B7280', label: 'Gray' },
-  { code: 'silver', hex: '#C0C0C0', label: 'Silver' },
-  { code: 'gold', hex: '#D4A017', label: 'Gold' },
-];
-
-const PRICE_RANGES = [
-  { id: 'under2000', label: '< 2,000 DZD' },
-  { id: '2000to5000', label: '2,000 - 5,000 DZD' },
-  { id: '5000to10000', label: '5,000 - 10,000 DZD' },
-  { id: 'over10000', label: '> 10,000 DZD' },
-];
 
 // ============================================================================
 // COMPONENT
@@ -173,9 +127,9 @@ export default function FilterSidebar({
     });
   }, [filters.sortBy, onFiltersChange]);
 
-  // Use hardcoded sizes and colors (always consistent with admin page)
-  const availableSizes = KIDS_SIZES;
-  const availableColors = PRESET_COLORS;
+  // Use shared sizes and colors from constants (always consistent across the app)
+  const availableSizes = FILTER_SIZES;
+  const availableColors = FILTER_COLORS;
   const availableMaterials = filterData.materials.length > 0 ? filterData.materials : [];
   const availablePatterns = filterData.patterns.length > 0 ? filterData.patterns : [];
 

@@ -56,6 +56,7 @@ interface Media {
   durationS?: number;
   isThumb: boolean;
   position: number;
+  colorId?: string | null;
 }
 
 interface Size {
@@ -291,7 +292,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
             id: p.id,
             slug: p.slug,
             name: p.name,
-            price: p.price / 100, // Convert from minor to major
+            price: p.price, // Already in DA from the listing API
             originalPrice: undefined,
             imageUrl: p.imageUrl || '/assets/placeholder.jpg',
             rating: p.rating,
@@ -304,7 +305,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
               id: v.id,
               variantKey: v.variantKey,
               sku: v.sku,
-              price: v.price ? v.price / 100 : null, // Convert from minor
+              price: v.price, // Already in DA from the listing API
               stock: v.stock,
               size: (p.sizes || []).find((s: Size) => s.id === v.sizeId) || null,
               color: (p.colors || []).find((c: Color) => c.id === v.colorId) || null,
@@ -393,9 +394,20 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   // DERIVED STATE & LOGIC
   // --------------------------------------------------------------------------
 
-  const images = product.media.filter((m) => m.kind === 'IMAGE');
-  const videos = product.media.filter((m) => m.kind === 'VIDEO');
-  const allMedia = [...images, ...videos];
+  const images = useMemo(() => product.media.filter((m) => m.kind === 'IMAGE'), [product.media]);
+  const videos = useMemo(() => product.media.filter((m) => m.kind === 'VIDEO'), [product.media]);
+
+  // Filter media by selected color — show color-specific media + generic (no color) media
+  // When no color is selected, show all media
+  const allMedia = useMemo(() => {
+    const all = [...images, ...videos];
+    if (!selectedColorId) return all;
+    const filtered = all.filter(
+      (m) => m.colorId === selectedColorId || !m.colorId
+    );
+    return filtered.length > 0 ? filtered : all;
+  }, [images, videos, selectedColorId]);
+
   const currentMedia = allMedia[selectedImageIndex];
 
   // 1. Get all variants that actually have stock
@@ -508,6 +520,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   const handleColorClick = (colorId: string) => {
     if (selectedColorId === colorId) {
       setSelectedColorId(null); // Deselect
+      setSelectedImageIndex(0); // Reset gallery to first image
       return;
     }
 
@@ -517,7 +530,10 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
     // 2. RESET QUANTITY TO 1 (Requested Requirement)
     setQuantity(1);
 
-    // 3. Smart Filter: If current size is not available in new color, deselect size
+    // 3. Reset gallery to first image for the new color
+    setSelectedImageIndex(0);
+
+    // 4. Smart Filter: If current size is not available in new color, deselect size
     if (selectedSizeId) {
       const isCombinationValid = inStockVariants.some(
         (v) => v.color?.id === colorId && v.size?.id === selectedSizeId
@@ -1368,7 +1384,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                     src={currentMedia.url}
                     controls
                     autoPlay
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 ) : (
                   <>
@@ -1449,16 +1465,24 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
               <div className="description-box">{product.description}</div>
               {Object.keys(product.tags).length > 0 && (
                 <div className="tags-grid">
-                  {Object.entries(product.tags).map(([type, tags]) => (
-                    <div key={type} className="tag-group">
-                      <div className="tag-group-title"><Tag size={14} />{type.replace(/_/g, ' ')}</div>
-                      <div className="tag-list">
-                        {tags.map((tag) => (
-                          <span key={tag.slug} className="tag-chip">{tag.label}</span>
-                        ))}
+                  {Object.entries(product.tags).map(([type, tags]) => {
+                    const friendlyName: Record<string, string> = {
+                      MATERIAL: 'Material',
+                      PATTERN: 'Pattern',
+                      MOOD_SEASON: 'Season',
+                      OCCASION: 'Occasion',
+                    };
+                    return (
+                      <div key={type} className="tag-group">
+                        <div className="tag-group-title"><Tag size={14} />{friendlyName[type] || type.replace(/_/g, ' ')}</div>
+                        <div className="tag-list">
+                          {tags.map((tag) => (
+                            <span key={tag.slug} className="tag-chip">{tag.label}</span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

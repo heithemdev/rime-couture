@@ -5,6 +5,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, type Prisma, Locale } from '@repo/db';
+import { resolveHex, CATEGORY_FILTER_TO_SLUG } from '@/lib/constants';
+
 import {
   checkRateLimit,
   rateLimitResponse,
@@ -170,8 +172,10 @@ export async function GET(request: NextRequest) {
     }
     
     if (category) {
+      // Support both short UI keys ('kids', 'kitchen') and full DB slugs ('kids-clothes', 'kitchen-stuff')
+      const categorySlug = CATEGORY_FILTER_TO_SLUG[category] || category;
       where.category = {
-        slug: category,
+        slug: categorySlug,
       };
     }
     
@@ -406,7 +410,7 @@ export async function GET(request: NextRequest) {
           id: variant.id,
           variantKey: variant.variantKey,
           sku: variant.sku,
-          price: (variant.priceMinor || 0) / 100,
+          price: Math.round((variant.priceMinor || 0) / 100),
           stock: variant.stock || 0,
           sizeId: variant.size?.id || null,
           colorId: variant.color?.id || null,
@@ -417,7 +421,7 @@ export async function GET(request: NextRequest) {
           colorsMap.set(variant.color.id, {
             id: variant.color.id,
             code: variant.color.code,
-            hex: variant.color.hex,
+            hex: resolveHex(variant.color.code, variant.color.hex),
             label: colorTrans?.label || variant.color.code,
           });
         }
@@ -437,7 +441,7 @@ export async function GET(request: NextRequest) {
         slug: product.slug,
         name: translation?.name || product.slug,
         description: translation?.description || '',
-        price: product.basePriceMinor / 100,
+        price: Math.round(product.basePriceMinor / 100),
         currency: product.currency,
         imageUrl: thumbMedia?.url || '',
         rating: product.avgRating,

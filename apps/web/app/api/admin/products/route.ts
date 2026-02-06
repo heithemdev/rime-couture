@@ -13,33 +13,15 @@ import { prisma, Prisma, Locale } from '@repo/db';
 import { mkdir, writeFile } from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
+import {
+  CATEGORY_SLUG_MAP,
+  COLOR_CODE_MAP,
+  COLOR_HEX_MAP,
+  SIZE_CODE_MAP,
+} from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-// ============================================================================
-// SLUG MAPPINGS - resolve hardcoded frontend IDs to DB slugs/codes
-// ============================================================================
-
-const CATEGORY_SLUG_MAP: Record<string, string> = {
-  'cat-kids-clothes': 'kids-clothes',
-  'cat-kitchen-stuff': 'kitchen-stuff',
-};
-
-const COLOR_CODE_MAP: Record<string, string> = {
-  'clr-black': 'black', 'clr-white': 'white', 'clr-red': 'red',
-  'clr-pink': 'pink', 'clr-rose': 'rose', 'clr-orange': 'orange',
-  'clr-yellow': 'yellow', 'clr-green': 'green', 'clr-teal': 'teal',
-  'clr-blue': 'blue', 'clr-navy': 'navy', 'clr-purple': 'purple',
-  'clr-lavender': 'lavender', 'clr-brown': 'brown', 'clr-beige': 'beige',
-  'clr-gray': 'gray', 'clr-silver': 'silver', 'clr-gold': 'gold',
-};
-
-const SIZE_CODE_MAP: Record<string, string> = {
-  'size-2y': '2Y', 'size-3y': '3Y', 'size-4y': '4Y', 'size-5y': '5Y',
-  'size-6y': '6Y', 'size-7y': '7Y', 'size-8y': '8Y', 'size-9y': '9Y',
-  'size-10y': '10Y', 'size-11y': '11Y', 'size-12y': '12Y',
-};
 
 // ============================================================================
 // HELPERS
@@ -85,25 +67,31 @@ async function resolveCategoryId(tx: Prisma.TransactionClient, frontendId: strin
   return category.id;
 }
 
-/** Resolve a hardcoded color ID to a real DB UUID (find-or-create) */
+/** Resolve a hardcoded color ID to a real DB UUID (find-or-create, and ensure hex is set) */
 async function resolveColorId(tx: Prisma.TransactionClient, frontendId: string, hex?: string): Promise<string> {
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(frontendId)) return frontendId;
   const code = COLOR_CODE_MAP[frontendId] || frontendId;
-  let color = await tx.color.findUnique({ where: { code }, select: { id: true } });
-  if (!color) {
-    color = await tx.color.create({
-      data: {
-        code, hex: hex || '#888888', isActive: true,
-        translations: { create: [
-          { locale: 'EN' as Locale, label: code.charAt(0).toUpperCase() + code.slice(1) },
-          { locale: 'AR' as Locale, label: code },
-          { locale: 'FR' as Locale, label: code },
-        ] },
-      },
-      select: { id: true },
-    });
+  const resolvedHex = hex || COLOR_HEX_MAP[frontendId] || '#888888';
+  let color = await tx.color.findUnique({ where: { code }, select: { id: true, hex: true } });
+  if (color) {
+    // Ensure hex is always up to date
+    if (!color.hex || color.hex === '#888888' || color.hex !== resolvedHex) {
+      await tx.color.update({ where: { code }, data: { hex: resolvedHex } });
+    }
+    return color.id;
   }
-  return color.id;
+  const created = await tx.color.create({
+    data: {
+      code, hex: resolvedHex, isActive: true,
+      translations: { create: [
+        { locale: 'EN' as Locale, label: code.charAt(0).toUpperCase() + code.slice(1) },
+        { locale: 'AR' as Locale, label: code },
+        { locale: 'FR' as Locale, label: code },
+      ] },
+    },
+    select: { id: true },
+  });
+  return created.id;
 }
 
 /** Resolve a hardcoded size ID to a real DB UUID (find-or-create) */

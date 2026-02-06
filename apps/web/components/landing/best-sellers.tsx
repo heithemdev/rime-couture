@@ -90,7 +90,7 @@ export default function BestSellers() {
       const timeoutId = setTimeout(() => controller.abort(), 8000);
       
       const response = await fetch(
-        `/api/products?locale=${locale.toUpperCase()}&featured=true&limit=8&sortBy=bestselling`,
+        `/api/products?locale=${locale.toUpperCase()}&limit=5&sortBy=rating`,
         { signal: controller.signal }
       );
       
