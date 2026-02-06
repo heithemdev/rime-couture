@@ -140,7 +140,7 @@ export default function BestSellers() {
   }, [locale, tc]);
 
   // Convert minor units to major units for display
-  const formatPrice = (priceMinor: number) => priceMinor / 100;
+  const formatPrice = (price: number) => price;
 
   // Lazy load: trigger fetch when section becomes visible
   useEffect(() => {

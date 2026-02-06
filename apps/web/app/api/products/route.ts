@@ -200,6 +200,26 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        {
+          category: {
+            OR: [
+              { slug: { contains: searchLower, mode: 'insensitive' } },
+              { translations: { some: { name: { contains: searchLower, mode: 'insensitive' } } } },
+            ],
+          },
+        },
+        {
+          tags: {
+            some: {
+              tag: {
+                OR: [
+                  { slug: { contains: searchLower, mode: 'insensitive' } },
+                  { translations: { some: { label: { contains: searchLower, mode: 'insensitive' } } } },
+                ],
+              },
+            },
+          },
+        },
       ];
     }
     
@@ -386,7 +406,7 @@ export async function GET(request: NextRequest) {
           id: variant.id,
           variantKey: variant.variantKey,
           sku: variant.sku,
-          price: variant.priceMinor,
+          price: (variant.priceMinor || 0) / 100,
           stock: variant.stock || 0,
           sizeId: variant.size?.id || null,
           colorId: variant.color?.id || null,
@@ -417,7 +437,7 @@ export async function GET(request: NextRequest) {
         slug: product.slug,
         name: translation?.name || product.slug,
         description: translation?.description || '',
-        price: product.basePriceMinor,
+        price: product.basePriceMinor / 100,
         currency: product.currency,
         imageUrl: thumbMedia?.url || '',
         rating: product.avgRating,

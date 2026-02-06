@@ -156,6 +156,7 @@ export async function GET(request: NextRequest) {
     for (const tag of tags) {
       const tagType = tag.type.toLowerCase();
       const formattedTag = {
+        code: tag.slug,
         slug: tag.slug,
         label: tag.translations[0]?.label || tag.slug,
       };

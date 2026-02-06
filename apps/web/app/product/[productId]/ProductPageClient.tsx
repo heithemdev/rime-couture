@@ -32,6 +32,8 @@ import {
   PenLine,
   Loader2,
   Expand,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import ProductCheckoutModal, { type SelectedVariant } from '@/components/product/ProductCheckoutModal';
 import ReviewModal from '@/components/product/ReviewModal';
@@ -127,6 +129,7 @@ interface Product {
 interface ProductPageClientProps {
   product: Product;
   locale: string;
+  isAdmin?: boolean;
 }
 
 // ============================================================================
@@ -149,7 +152,7 @@ function formatDate(dateStr: string, locale: string): string {
 // COMPONENT
 // ============================================================================
 
-export default function ProductPageClient({ product, locale }: ProductPageClientProps) {
+export default function ProductPageClient({ product, locale, isAdmin = false }: ProductPageClientProps) {
   // --------------------------------------------------------------------------
   // HOOKS
   // --------------------------------------------------------------------------
@@ -180,6 +183,10 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
   const [reviewCount, setReviewCount] = useState(product.stats.reviewCount);
   const [avgRating, setAvgRating] = useState(product.stats.avgRating);
 
+  // Admin state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Related products state
   interface RelatedProduct {
     id: string;
@@ -198,6 +205,23 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
   }
   const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
   const [isLoadingRelated, setIsLoadingRelated] = useState(true);
+
+  // --------------------------------------------------------------------------
+  // TRACK PRODUCT VIEW
+  // --------------------------------------------------------------------------
+  useEffect(() => {
+    // Fire-and-forget view tracking
+    fetch('/api/analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'VIEW_PRODUCT',
+        productId: product.id,
+        sessionId: fingerprint || undefined,
+        path: `/product/${product.slug}`,
+      }),
+    }).catch(() => {});
+  }, [product.id, product.slug, fingerprint]);
 
   // --------------------------------------------------------------------------
   // FETCH LIKE & REVIEW STATUS
@@ -526,6 +550,32 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
     }
   };
 
+  // Admin Delete Handler
+  const handleDeleteProduct = async () => {
+    if (!isAdmin) return;
+    setIsDeleting(true);
+    
+    try {
+      const res = await fetch(`/api/admin/products/${product.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (res.ok) {
+        // Redirect to admin page after deletion
+        window.location.href = '/admin';
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to delete product');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('Failed to delete product');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const checkoutVariant: SelectedVariant | null = selectedVariant
     ? {
         id: selectedVariant.id,
@@ -675,6 +725,64 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
           border: 1px solid var(--color-border);
         }
         @media (max-width: 1024px) { .product-panel { position: static; } }
+        
+        /* Admin Actions */
+        .admin-actions {
+          display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-lg);
+          padding-bottom: var(--spacing-lg); border-bottom: 2px dashed var(--color-border);
+        }
+        .admin-btn {
+          display: inline-flex; align-items: center; gap: var(--spacing-xs);
+          padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--border-radius-md);
+          font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold);
+          cursor: pointer; transition: all 0.2s ease; text-decoration: none; border: 2px solid;
+        }
+        .admin-edit-btn {
+          background: var(--color-secondary); color: white; border-color: var(--color-secondary);
+        }
+        .admin-edit-btn:hover {
+          background: #1e918d; transform: translateY(-1px);
+        }
+        .admin-delete-btn {
+          background: transparent; color: #dc2626; border-color: #fecaca;
+        }
+        .admin-delete-btn:hover {
+          background: #fef2f2; border-color: #dc2626;
+        }
+        
+        /* Admin Delete Modal */
+        .admin-delete-modal {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+          display: flex; align-items: center; justify-content: center; z-index: 1000; padding: var(--spacing-md);
+        }
+        .admin-delete-modal-content {
+          background: white; border-radius: var(--border-radius-xl); padding: var(--spacing-xl);
+          max-width: 400px; width: 100%; text-align: center;
+        }
+        .admin-delete-modal-content h3 {
+          font-size: var(--font-size-xl); margin-bottom: var(--spacing-md);
+        }
+        .admin-delete-modal-content p {
+          color: var(--color-on-surface-secondary); margin-bottom: var(--spacing-lg);
+        }
+        .admin-delete-modal-actions {
+          display: flex; gap: var(--spacing-md); justify-content: center;
+        }
+        .admin-delete-modal-actions button {
+          padding: var(--spacing-sm) var(--spacing-lg); border-radius: var(--border-radius-md);
+          font-weight: var(--font-weight-semibold); cursor: pointer; transition: all 0.2s;
+        }
+        .admin-cancel-btn {
+          background: transparent; color: var(--color-on-surface-secondary);
+          border: 2px solid var(--color-border);
+        }
+        .admin-cancel-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+        .admin-confirm-delete-btn {
+          background: #dc2626; color: white; border: none;
+          display: inline-flex; align-items: center; gap: var(--spacing-xs);
+        }
+        .admin-confirm-delete-btn:hover { background: #b91c1c; }
+        .admin-confirm-delete-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         
         .panel-header { margin-bottom: var(--spacing-lg); }
         .panel-category {
@@ -1358,6 +1466,23 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
 
           {/* Product Panel (Sticky) */}
           <div className="product-panel">
+            {/* Admin Actions */}
+            {isAdmin && (
+              <div className="admin-actions">
+                <Link href={`/admin/product/${product.id}`} className="admin-btn admin-edit-btn">
+                  <Edit3 size={16} />
+                  Edit Product
+                </Link>
+                <button 
+                  className="admin-btn admin-delete-btn"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  <Trash2 size={16} />
+                  Delete
+                </button>
+              </div>
+            )}
+
             <div className="panel-header">
               <div className="panel-category"><Tag size={12} />{product.category.name}</div>
               <h1 className="panel-name">{product.name}</h1>
@@ -1690,6 +1815,31 @@ export default function ProductPageClient({ product, locale }: ProductPageClient
         productName={product.name}
         initialIndex={selectedImageIndex}
       />
+
+      {/* Admin Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="admin-delete-modal" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="admin-delete-modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Delete Product?</h3>
+            <p>
+              This action cannot be undone. The product <strong>{product.name}</strong> and all its data will be permanently removed.
+            </p>
+            <div className="admin-delete-modal-actions">
+              <button className="admin-cancel-btn" onClick={() => setShowDeleteConfirm(false)}>
+                Cancel
+              </button>
+              <button 
+                className="admin-confirm-delete-btn" 
+                onClick={handleDeleteProduct}
+                disabled={isDeleting}
+              >
+                {isDeleting ? <Loader2 size={16} className="spin" /> : <Trash2 size={16} />}
+                {isDeleting ? 'Deleting...' : 'Delete Product'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

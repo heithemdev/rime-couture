@@ -36,6 +36,7 @@ const initialFilters: FilterState = {
   colors: [],
   priceRange: null,
   materials: [],
+  patterns: [],
   gender: null,
   kitchenType: null,
   sortBy: 'featured',
@@ -47,6 +48,7 @@ const initialFilterData: FilterData = {
   sizes: [],
   colors: [],
   materials: [],
+  patterns: [],
 };
 
 // Transform API product response to grid Product format
@@ -193,6 +195,7 @@ export default function ShoppingPage() {
     filters.colors.length +
     (filters.priceRange ? 1 : 0) +
     filters.materials.length +
+    filters.patterns.length +
     (filters.gender ? 1 : 0) +
     (filters.kitchenType ? 1 : 0);
 
@@ -210,10 +213,12 @@ export default function ShoppingPage() {
       const response = await fetch('/api/filters');
       if (response.ok) {
         const data = await response.json();
+        const f = data.filters || data;
         const filterDataResult = {
-          sizes: data.sizes || [],
-          colors: data.colors || [],
-          materials: data.materials || [],
+          sizes: f.sizes || [],
+          colors: f.colors || [],
+          materials: f.materials || [],
+          patterns: f.patterns || [],
         };
         setFilterData(filterDataResult);
         // Cache the result
@@ -247,6 +252,9 @@ export default function ShoppingPage() {
     }
     if (filters.materials.length > 0) {
       params.set('materials', filters.materials.join(','));
+    }
+    if (filters.patterns.length > 0) {
+      params.set('patterns', filters.patterns.join(','));
     }
     if (filters.gender) {
       params.set('gender', filters.gender);
@@ -404,6 +412,8 @@ export default function ShoppingPage() {
         return tFilters(`priceRange.${value}`);
       case 'materials':
         return filterData.materials.find((m: { code: string; label: string }) => m.code === value)?.label || value;
+      case 'patterns':
+        return filterData.patterns.find((p: { code: string; label: string }) => p.code === value)?.label || value;
       case 'gender':
         return tFilters(value);
       case 'kitchenType':
@@ -760,6 +770,14 @@ export default function ShoppingPage() {
                       <span key={material} className="filter-chip">
                         {getFilterLabel('materials', material)}
                         <button className="filter-chip-remove" onClick={() => clearFilter('materials', material)}>
+                          <X size={10} />
+                        </button>
+                      </span>
+                    ))}
+                    {filters.patterns.map((pattern: string) => (
+                      <span key={pattern} className="filter-chip">
+                        {getFilterLabel('patterns', pattern)}
+                        <button className="filter-chip-remove" onClick={() => clearFilter('patterns', pattern)}>
                           <X size={10} />
                         </button>
                       </span>

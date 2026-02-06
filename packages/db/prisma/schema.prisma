@@ -46,15 +46,10 @@ enum ProductStatus {
 }
 
 enum OrderStatus {
-  PENDING_PAYMENT
-  PAID
+  PENDING
   CONFIRMED
-  IN_PREPARATION
-  SHIPPED
+  SHIPPING
   DELIVERED
-  CANCELED
-  RETURN_REQUESTED
-  RETURNED
 }
 
 enum PaymentProvider {
@@ -296,6 +291,7 @@ model Color {
 
   translations ColorTranslation[]
   variants     ProductVariant[]
+  productMedia ProductMedia[]
 
   @@index([isActive, sortOrder])
 }
@@ -457,16 +453,19 @@ model ProductMedia {
   id        String  @id @default(uuid()) @db.Uuid
   productId String  @db.Uuid
   mediaId   String  @db.Uuid
+  colorId   String? @db.Uuid
   position  Int     @default(0)
   isThumb   Boolean @default(false)
 
   product Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   media   MediaAsset @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+  color   Color?     @relation(fields: [colorId], references: [id], onDelete: SetNull)
 
   @@unique([productId, mediaId])
   @@unique([productId, position])
   @@index([productId, position])
   @@index([isThumb])
+  @@index([colorId])
 }
 
 model ProductTag {
@@ -550,7 +549,7 @@ model Order {
   userId         String?       @db.Uuid
   checkoutLocale Locale        @default(EN)
   currency       Currency      @default(DZD)
-  status         OrderStatus   @default(PENDING_PAYMENT)
+  status         OrderStatus   @default(PENDING)
   paymentStatus  PaymentStatus @default(PENDING)
 
   subtotalMinor Int

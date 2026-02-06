@@ -14,6 +14,7 @@ export interface FilterState {
   colors: string[];
   priceRange: string | null;
   materials: string[];
+  patterns: string[];
   gender: string | null;
   kitchenType: string | null;
   sortBy: string;
@@ -30,6 +31,7 @@ export interface FilterData {
   sizes: FilterOption[];
   colors: FilterOption[];
   materials: FilterOption[];
+  patterns: FilterOption[];
 }
 
 interface FilterSidebarProps {
@@ -47,16 +49,38 @@ interface FilterSidebarProps {
 // ============================================================================
 
 const KIDS_SIZES: FilterOption[] = [
-  { code: '2t', label: '2T (2 ans)' },
-  { code: '3t', label: '3T (3 ans)' },
-  { code: '4t', label: '4T (4 ans)' },
-  { code: '5t', label: '5T (5 ans)' },
-  { code: '6', label: '6 (6 ans)' },
-  { code: '7', label: '7 (7 ans)' },
-  { code: '8', label: '8 (8 ans)' },
-  { code: '10', label: '10 (10 ans)' },
-  { code: '12', label: '12 (12 ans)' },
-  { code: '14', label: '14 (14 ans)' },
+  { code: '2Y', label: '2Y' },
+  { code: '3Y', label: '3Y' },
+  { code: '4Y', label: '4Y' },
+  { code: '5Y', label: '5Y' },
+  { code: '6Y', label: '6Y' },
+  { code: '7Y', label: '7Y' },
+  { code: '8Y', label: '8Y' },
+  { code: '9Y', label: '9Y' },
+  { code: '10Y', label: '10Y' },
+  { code: '11Y', label: '11Y' },
+  { code: '12Y', label: '12Y' },
+];
+
+const PRESET_COLORS: FilterOption[] = [
+  { code: 'black', hex: '#000000', label: 'Black' },
+  { code: 'white', hex: '#FFFFFF', label: 'White' },
+  { code: 'red', hex: '#DC2626', label: 'Red' },
+  { code: 'pink', hex: '#EC4899', label: 'Pink' },
+  { code: 'rose', hex: '#F43F5E', label: 'Rose' },
+  { code: 'orange', hex: '#EA580C', label: 'Orange' },
+  { code: 'yellow', hex: '#EAB308', label: 'Yellow' },
+  { code: 'green', hex: '#16A34A', label: 'Green' },
+  { code: 'teal', hex: '#0D9488', label: 'Teal' },
+  { code: 'blue', hex: '#2563EB', label: 'Blue' },
+  { code: 'navy', hex: '#1E3A5F', label: 'Navy' },
+  { code: 'purple', hex: '#7C3AED', label: 'Purple' },
+  { code: 'lavender', hex: '#A78BFA', label: 'Lavender' },
+  { code: 'brown', hex: '#92400E', label: 'Brown' },
+  { code: 'beige', hex: '#D4B896', label: 'Beige' },
+  { code: 'gray', hex: '#6B7280', label: 'Gray' },
+  { code: 'silver', hex: '#C0C0C0', label: 'Silver' },
+  { code: 'gold', hex: '#D4A017', label: 'Gold' },
 ];
 
 const PRICE_RANGES = [
@@ -99,6 +123,7 @@ export default function FilterSidebar({
       filters.colors.length +
       (filters.priceRange ? 1 : 0) +
       filters.materials.length +
+      filters.patterns.length +
       (filters.gender ? 1 : 0) +
       (filters.kitchenType ? 1 : 0)
     );
@@ -113,10 +138,11 @@ export default function FilterSidebar({
       sizes: [],
       gender: null,
       kitchenType: null,
+      patterns: [],
     });
   }, [filters, onFiltersChange]);
 
-  const handleMultiSelect = useCallback((key: 'sizes' | 'colors' | 'materials', value: string) => {
+  const handleMultiSelect = useCallback((key: 'sizes' | 'colors' | 'materials' | 'patterns', value: string) => {
     const currentValues = filters[key];
     const newValues = currentValues.includes(value)
       ? currentValues.filter((v) => v !== value)
@@ -139,15 +165,19 @@ export default function FilterSidebar({
       colors: [],
       priceRange: null,
       materials: [],
+      patterns: [],
       gender: null,
       kitchenType: null,
-      sortBy: filters.sortBy, // Keep sort
-      searchQuery: null, // Clear search
+      sortBy: filters.sortBy,
+      searchQuery: null,
     });
   }, [filters.sortBy, onFiltersChange]);
 
-  // Use database sizes or fallback to standard kids sizes
-  const availableSizes = filterData.sizes.length > 0 ? filterData.sizes : KIDS_SIZES;
+  // Use hardcoded sizes and colors (always consistent with admin page)
+  const availableSizes = KIDS_SIZES;
+  const availableColors = PRESET_COLORS;
+  const availableMaterials = filterData.materials.length > 0 ? filterData.materials : [];
+  const availablePatterns = filterData.patterns.length > 0 ? filterData.patterns : [];
 
   return (
     <>
@@ -674,38 +704,54 @@ export default function FilterSidebar({
               </div>
 
               {/* Color Filter */}
-              {filterData.colors.length > 0 && (
-                <div className="filter-section">
-                  <h3 className="filter-section-title">{t('color')}</h3>
-                  <div className="color-grid">
-                    {filterData.colors.map((color) => (
-                      <button
-                        key={color.code}
-                        className={`color-swatch ${filters.colors.includes(color.code) ? 'active' : ''}`}
-                        style={{ backgroundColor: color.hex || '#ccc' }}
-                        onClick={() => handleMultiSelect('colors', color.code)}
-                        title={color.label}
-                        aria-label={color.label}
-                      >
-                        <Check className="color-swatch-check" size={16} />
-                      </button>
-                    ))}
-                  </div>
+              <div className="filter-section">
+                <h3 className="filter-section-title">{t('color')}</h3>
+                <div className="color-grid">
+                  {availableColors.map((color) => (
+                    <button
+                      key={color.code}
+                      className={`color-swatch ${filters.colors.includes(color.code) ? 'active' : ''}`}
+                      style={{ backgroundColor: color.hex || '#ccc' }}
+                      onClick={() => handleMultiSelect('colors', color.code)}
+                      title={color.label}
+                      aria-label={color.label}
+                    >
+                      <Check className="color-swatch-check" size={16} />
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
 
               {/* Material Filter */}
-              {filterData.materials.length > 0 && (
+              {availableMaterials.length > 0 && (
                 <div className="filter-section">
                   <h3 className="filter-section-title">{t('material')}</h3>
                   <div className="material-grid">
-                    {filterData.materials.map((material) => (
+                    {availableMaterials.map((material) => (
                       <button
                         key={material.code}
                         className={`material-chip ${filters.materials.includes(material.code) ? 'active' : ''}`}
                         onClick={() => handleMultiSelect('materials', material.code)}
                       >
                         {material.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pattern Filter */}
+              {availablePatterns.length > 0 && (
+                <div className="filter-section">
+                  <h3 className="filter-section-title">{t('pattern')}</h3>
+                  <div className="material-grid">
+                    {availablePatterns.map((pattern) => (
+                      <button
+                        key={pattern.code}
+                        className={`material-chip ${filters.patterns.includes(pattern.code) ? 'active' : ''}`}
+                        onClick={() => handleMultiSelect('patterns', pattern.code)}
+                      >
+                        {pattern.label}
                       </button>
                     ))}
                   </div>
@@ -739,38 +785,54 @@ export default function FilterSidebar({
               </div>
 
               {/* Color Filter */}
-              {filterData.colors.length > 0 && (
-                <div className="filter-section">
-                  <h3 className="filter-section-title">{t('color')}</h3>
-                  <div className="color-grid">
-                    {filterData.colors.map((color) => (
-                      <button
-                        key={color.code}
-                        className={`color-swatch ${filters.colors.includes(color.code) ? 'active' : ''}`}
-                        style={{ backgroundColor: color.hex || '#ccc' }}
-                        onClick={() => handleMultiSelect('colors', color.code)}
-                        title={color.label}
-                        aria-label={color.label}
-                      >
-                        <Check className="color-swatch-check" size={16} />
-                      </button>
-                    ))}
-                  </div>
+              <div className="filter-section">
+                <h3 className="filter-section-title">{t('color')}</h3>
+                <div className="color-grid">
+                  {availableColors.map((color) => (
+                    <button
+                      key={color.code}
+                      className={`color-swatch ${filters.colors.includes(color.code) ? 'active' : ''}`}
+                      style={{ backgroundColor: color.hex || '#ccc' }}
+                      onClick={() => handleMultiSelect('colors', color.code)}
+                      title={color.label}
+                      aria-label={color.label}
+                    >
+                      <Check className="color-swatch-check" size={16} />
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
 
               {/* Material Filter */}
-              {filterData.materials.length > 0 && (
+              {availableMaterials.length > 0 && (
                 <div className="filter-section">
                   <h3 className="filter-section-title">{t('material')}</h3>
                   <div className="material-grid">
-                    {filterData.materials.map((material) => (
+                    {availableMaterials.map((material) => (
                       <button
                         key={material.code}
                         className={`material-chip ${filters.materials.includes(material.code) ? 'active' : ''}`}
                         onClick={() => handleMultiSelect('materials', material.code)}
                       >
                         {material.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pattern Filter */}
+              {availablePatterns.length > 0 && (
+                <div className="filter-section">
+                  <h3 className="filter-section-title">{t('pattern')}</h3>
+                  <div className="material-grid">
+                    {availablePatterns.map((pattern) => (
+                      <button
+                        key={pattern.code}
+                        className={`material-chip ${filters.patterns.includes(pattern.code) ? 'active' : ''}`}
+                        onClick={() => handleMultiSelect('patterns', pattern.code)}
+                      >
+                        {pattern.label}
                       </button>
                     ))}
                   </div>

@@ -63,7 +63,6 @@ export async function GET(request: NextRequest) {
         where: {
           createdAt: { gte: startDate },
           deletedAt: null,
-          status: { notIn: ['CANCELED'] },
         },
         select: {
           id: true,

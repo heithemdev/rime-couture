@@ -90,34 +90,24 @@ function formatDate(dateStr: string): string {
 
 function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
-    PENDING_PAYMENT: '#f59e0b',
-    PAID: '#10b981',
+    PENDING: '#f59e0b',
     CONFIRMED: '#3b82f6',
-    IN_PREPARATION: '#8b5cf6',
-    SHIPPED: '#06b6d4',
+    SHIPPING: '#06b6d4',
     DELIVERED: '#22c55e',
-    CANCELED: '#ef4444',
-    RETURN_REQUESTED: '#f97316',
-    RETURNED: '#6b7280',
   };
   return colors[status] || '#6b7280';
 }
 
 function getStatusIcon(status: string) {
   switch (status) {
-    case 'PENDING_PAYMENT':
+    case 'PENDING':
       return <Clock size={16} />;
-    case 'PAID':
     case 'CONFIRMED':
       return <CheckCircle2 size={16} />;
-    case 'IN_PREPARATION':
-      return <Package size={16} />;
-    case 'SHIPPED':
+    case 'SHIPPING':
       return <Truck size={16} />;
     case 'DELIVERED':
       return <CheckCircle2 size={16} />;
-    case 'CANCELED':
-      return <AlertCircle size={16} />;
     default:
       return <Clock size={16} />;
   }
@@ -864,9 +854,9 @@ export default function OrdersPage() {
                             {t('orderStatus')}
                           </h3>
                           <div className="status-timeline">
-                            {['PENDING_PAYMENT', 'CONFIRMED', 'IN_PREPARATION', 'SHIPPED', 'DELIVERED'].map(
+                            {['PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED'].map(
                               (status, index) => {
-                                const statusOrder = ['PENDING_PAYMENT', 'CONFIRMED', 'IN_PREPARATION', 'SHIPPED', 'DELIVERED'];
+                                const statusOrder = ['PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED'];
                                 const currentIndex = statusOrder.indexOf(order.status);
                                 const isCompleted = index < currentIndex;
                                 const isActive = index === currentIndex;

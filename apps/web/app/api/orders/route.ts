@@ -409,7 +409,7 @@ export async function POST(request: NextRequest) {
         orderNumber: generateOrderNumber(),
         checkoutLocale: 'EN' as Locale,
         currency: 'DZD',
-        status: 'PENDING_PAYMENT' as OrderStatus,
+        status: 'PENDING' as OrderStatus,
         paymentStatus: 'PENDING' as PaymentStatus,
         
         subtotalMinor,

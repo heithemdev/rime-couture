@@ -8,6 +8,7 @@ import { getLocale } from 'next-intl/server';
 import ProductPageClient from './ProductPageClient';
 import Header from '@/components/shared/header';
 import Footer from '@/components/shared/footer';
+import { validateSession } from '@/lib/auth/session';
 
 interface PageProps {
   params: Promise<{ productId: string }>;
@@ -60,6 +61,10 @@ export default async function ProductPage({ params }: PageProps) {
   const locale = await getLocale();
   const product = await getProduct(productId, locale);
 
+  // Check if user is admin
+  const session = await validateSession();
+  const isAdmin = session?.user?.role === 'ADMIN';
+
   if (!product) {
     return (
       <>
@@ -88,7 +93,7 @@ export default async function ProductPage({ params }: PageProps) {
   return (
     <>
       <Header />
-      <ProductPageClient product={product} locale={locale} />
+      <ProductPageClient product={product} locale={locale} isAdmin={isAdmin} />
       <Footer />
     </>
   );

@@ -101,11 +101,9 @@ export default function ProductCard({
   const isLiking = checkIsLiking(id);
 
   const formatPrice = (amount: number) => {
-    return new Intl.NumberFormat('en-DZ', {
-      style: 'decimal',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+    return amount.toLocaleString('fr-DZ', {
+      maximumFractionDigits: 0,
+    });
   };
 
   // Handle add to cart - show modal if variants exist
