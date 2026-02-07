@@ -2,6 +2,7 @@
 'use client';
 
 import { forwardRef, type AnchorHTMLAttributes } from 'react';
+import Link from 'next/link';
 import { safeHref, safeRedirectTarget, externalRel } from '@/lib/secured/secure-ui';
 
 type Props = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
@@ -37,9 +38,9 @@ const SafeLink = forwardRef<HTMLAnchorElement, Props>(function SafeLink(
 
   if (isInternal) {
     return (
-      <a ref={ref} href={href} {...rest}>
+      <Link ref={ref} href={href} {...rest}>
         {children}
-      </a>
+      </Link>
     );
   }
 

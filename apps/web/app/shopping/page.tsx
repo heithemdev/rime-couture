@@ -124,21 +124,7 @@ export default function ShoppingPage() {
   
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
-  const [filters, setFilters] = useState<FilterState>(() => {
-    // Initialize filters from URL params (including smart search results)
-    const categoryFromUrl = searchParams.get('category');
-    const searchFromUrl = searchParams.get('search');
-    const genderFromUrl = searchParams.get('gender');
-    const kitchenTypeFromUrl = searchParams.get('kitchenType');
-    
-    return {
-      ...initialFilters,
-      category: categoryFromUrl && ['kids', 'kitchen'].includes(categoryFromUrl) ? categoryFromUrl : null,
-      searchQuery: searchFromUrl || null,
-      gender: genderFromUrl && ['boy', 'girl'].includes(genderFromUrl) ? genderFromUrl : null,
-      kitchenType: kitchenTypeFromUrl && ['items', 'mama'].includes(kitchenTypeFromUrl) ? kitchenTypeFromUrl : null,
-    };
-  });
+  const [filters, setFilters] = useState<FilterState>(initialFilters);
   const [filterData, setFilterData] = useState<FilterData>(initialFilterData);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -149,20 +135,20 @@ export default function ShoppingPage() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const sortRef = useRef<HTMLDivElement>(null);
 
-  // Update filters when URL params change (after navigation)
+  // Sync filters from URL search params — this is the single source of truth
+  // for URL-driven filters. Runs on mount and whenever the URL changes.
   useEffect(() => {
     const categoryFromUrl = searchParams.get('category');
     const searchFromUrl = searchParams.get('search');
     const genderFromUrl = searchParams.get('gender');
     const kitchenTypeFromUrl = searchParams.get('kitchenType');
     
+    const newCategory = categoryFromUrl && ['kids', 'kitchen'].includes(categoryFromUrl) ? categoryFromUrl : null;
+    const newSearch = searchFromUrl || null;
+    const newGender = genderFromUrl && ['boy', 'girl'].includes(genderFromUrl) ? genderFromUrl : null;
+    const newKitchenType = kitchenTypeFromUrl && ['items', 'mama'].includes(kitchenTypeFromUrl) ? kitchenTypeFromUrl : null;
+    
     setFilters(prev => {
-      const newCategory = categoryFromUrl && ['kids', 'kitchen'].includes(categoryFromUrl) ? categoryFromUrl : null;
-      const newSearch = searchFromUrl || null;
-      const newGender = genderFromUrl && ['boy', 'girl'].includes(genderFromUrl) ? genderFromUrl : null;
-      const newKitchenType = kitchenTypeFromUrl && ['items', 'mama'].includes(kitchenTypeFromUrl) ? kitchenTypeFromUrl : null;
-      
-      // Only update if there are actual changes
       if (prev.category !== newCategory || prev.searchQuery !== newSearch || 
           prev.gender !== newGender || prev.kitchenType !== newKitchenType) {
         return {
@@ -372,20 +358,18 @@ export default function ShoppingPage() {
   // Initial fetch
   useEffect(() => {
     fetchFilterData();
-    // Fetch products immediately on mount
-    fetchProducts(1, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch when filters change (after initial mount)
-  const isInitialMount = useRef(true);
+  // Fetch products whenever filters change (including on initial mount)
+  // We use a ref to track the serialized filters to avoid double-fetching
+  const lastFetchedFiltersRef = useRef<string>('');
   useEffect(() => {
-    // Skip initial mount - we already fetched above
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
+    const serialized = JSON.stringify(filters);
+    if (serialized === lastFetchedFiltersRef.current) {
+      return; // Already fetched with these exact filters
     }
-    // Fetch when filters change
+    lastFetchedFiltersRef.current = serialized;
     fetchProducts(1, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);

@@ -2,18 +2,18 @@
 
 import { useState, useTransition, useEffect, useRef } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
 import { setUserLocale } from '@/i18n/actions';
 import { locales, LOCALE_LABEL } from '@/i18n/routing';
 import type { Locale } from '@/i18n/routing';
 import SafeLink from '@/components/shared/SafeLink';
 import { useCart } from '@/lib/cart-context';
+import { useNavigating } from '@/lib/use-navigating';
 import { Search, ShoppingCart, User, Truck, X, Menu, ChevronDown, Sparkles } from 'lucide-react';
 
 export default function Header() {
   const tc = useTranslations('common');
   const locale = useLocale() as Locale;
-  const router = useRouter();
+  const { push } = useNavigating();
   const { items } = useCart();
   // Show number of unique products in cart, not total quantity
   const cartItemCount = items.length;
@@ -23,16 +23,39 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const [smartSearchPrompt, setSmartSearchPrompt] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const smartSearchRef = useRef<HTMLTextAreaElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const currentY = window.scrollY;
+        setIsScrolled(currentY > 20);
+        /* Only hide/show after scrolling past 80px to avoid flickering at top */
+        if (currentY > 80) {
+          /* Scrolling DOWN → hide header */
+          if (currentY > lastScrollY.current + 5) {
+            setIsHeaderHidden(true);
+          }
+          /* Scrolling UP → show header */
+          else if (currentY < lastScrollY.current - 5) {
+            setIsHeaderHidden(false);
+          }
+        } else {
+          setIsHeaderHidden(false);
+        }
+        lastScrollY.current = currentY;
+        ticking = false;
+      });
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -152,7 +175,7 @@ export default function Header() {
 
   const handleSmartSearchSubmit = () => {
     if (smartSearchPrompt.trim()) {
-      router.push(buildSmartSearchUrl(smartSearchPrompt));
+      push(buildSmartSearchUrl(smartSearchPrompt));
       setIsSmartSearchOpen(false);
       setSmartSearchPrompt('');
     }
@@ -161,7 +184,7 @@ export default function Header() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(buildSmartSearchUrl(searchQuery));
+      push(buildSmartSearchUrl(searchQuery));
       setSearchQuery('');
     }
   };
@@ -171,15 +194,20 @@ export default function Header() {
       <style jsx>{`
         .header-wrapper {
           top: 0;
+          left: 0;
           width: 100%;
           z-index: 1000;
-          position: sticky;
-          transition: all 0.3s ease;
+          position: fixed;
+          transition: transform 0.35s ease, box-shadow 0.3s ease;
           background-color: var(--color-surface);
           font-family: var(--font-work-sans), 'Work Sans', sans-serif;
+          will-change: transform;
         }
         .header-wrapper.scrolled {
           box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+        }
+        .header-wrapper.header-hidden {
+          transform: translateY(-100%);
         }
         .header-container {
           margin: 0 auto;
@@ -788,7 +816,8 @@ export default function Header() {
         }
       `}</style>
 
-      <nav className={`header-wrapper ${isScrolled ? 'scrolled' : ''}`}>
+      <div style={{ height: '72px', flexShrink: 0 }} />
+      <nav className={`header-wrapper ${isScrolled ? 'scrolled' : ''} ${isHeaderHidden ? 'header-hidden' : ''}`}>
         <div className="header-container">
           <div className="header-main">
             {/* Mobile Toggle */}
