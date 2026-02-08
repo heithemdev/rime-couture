@@ -29,23 +29,15 @@ const globalForDb = globalThis as unknown as {
 function makePgPool() {
   const connectionString = requiredEnv("DATABASE_URL");
 
-  // Parse connection string and add sslmode=verify-full to suppress warnings
-  const urlObj = new URL(connectionString);
-  if (!isLocal(connectionString) && !urlObj.searchParams.has('sslmode')) {
-    urlObj.searchParams.set('sslmode', 'verify-full');
-  }
-  const finalConnectionString = urlObj.toString();
-
   const pool = new Pool({
-    connectionString: finalConnectionString,
-    // More aggressive pool settings for Prisma Postgres
+    connectionString,
     max: intEnv("PG_POOL_MAX", 10),
-    min: intEnv("PG_POOL_MIN", 2), // Keep 2 warm connections for faster response
-    idleTimeoutMillis: intEnv("PG_POOL_IDLE_TIMEOUT_MS", 60_000), // 60s idle timeout (longer)
-    connectionTimeoutMillis: intEnv("PG_POOL_CONN_TIMEOUT_MS", 30_000), // 30s to connect (longer for cold starts)
-    allowExitOnIdle: false, // Prevent pool from closing when idle
+    min: intEnv("PG_POOL_MIN", 2),
+    idleTimeoutMillis: intEnv("PG_POOL_IDLE_TIMEOUT_MS", 60_000),
+    connectionTimeoutMillis: intEnv("PG_POOL_CONN_TIMEOUT_MS", 30_000),
+    allowExitOnIdle: false,
 
-    // SSL config for remote databases
+    // SSL: accept Supabase's self-signed certs without the global NODE_TLS env hack
     ssl: isLocal(connectionString) ? undefined : { rejectUnauthorized: false },
 
     // Prevent runaway queries

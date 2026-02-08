@@ -1,5 +1,15 @@
 import createNextIntlPlugin from "next-intl/plugin";
 
+// Suppress noisy TLS/SSL warnings (needed for Supabase pooler's self-signed certs)
+const originalEmitWarning = process.emitWarning;
+process.emitWarning = function (...args) {
+  if (typeof args[0] === 'string' && (
+    args[0].includes('NODE_TLS_REJECT_UNAUTHORIZED') ||
+    args[0].includes('SECURITY WARNING: The SSL modes')
+  )) return;
+  return originalEmitWarning.apply(process, args);
+};
+
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 /** @type {import('next').NextConfig} */

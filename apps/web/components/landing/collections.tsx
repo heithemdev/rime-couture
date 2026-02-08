@@ -48,210 +48,263 @@ export default function Collections() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
+            entry.target.classList.add('in-view');
             fetchCategoryCounts();
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.12 }
     );
 
-    const cards = sectionRef.current?.querySelectorAll('.col-card');
-    cards?.forEach((card) => observer.observe(card));
+    if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, [fetchCategoryCounts]);
 
   const formatCount = (slug: string) => {
     const count = categoryCounts[slug];
-    if (count === undefined) return '...';
-    if (count === 0) return tc('noItems') || 'No items';
+    if (count === undefined) return null;
+    if (count === 0) return null;
     return `${count} ${count === 1 ? tc('item') || 'item' : tc('items') || 'items'}`;
   };
 
   return (
     <>
       <style jsx>{`
-        .col-section {
-          padding: 80px 0;
+        .cx {
+          padding: 96px 0;
           background: #fff;
+          opacity: 0;
+          transform: translateY(24px);
+          transition: opacity 0.7s ease, transform 0.7s ease;
         }
-        .col-container {
+        .cx.in-view {
+          opacity: 1;
+          transform: none;
+        }
+        .cx-inner {
           margin: 0 auto;
           padding: 0 24px;
           max-width: var(--content-max-width);
         }
-        .col-header {
-          text-align: center;
-          margin-bottom: 56px;
+
+        /* heading row */
+        .cx-top {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          margin-bottom: 48px;
+          gap: 24px;
         }
-        .col-title {
+        .cx-heading {
           font-size: var(--font-size-3xl);
           font-family: var(--font-family-heading);
           font-weight: 700;
           color: #1a1a1a;
-          margin-bottom: 12px;
-          line-height: 1.2;
+          line-height: 1.15;
+          margin: 0;
+          max-width: 420px;
         }
-        .col-subtitle {
-          font-size: 16px;
-          color: #777;
-          max-width: 480px;
-          margin: 0 auto;
-          line-height: 1.6;
+        .cx-tagline {
+          font-size: 14px;
+          color: #999;
+          line-height: 1.5;
+          margin: 0;
+          flex-shrink: 0;
+          padding-bottom: 4px;
         }
-        .col-grid {
+
+        /* asymmetric layout */
+        .cx-layout {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 24px;
+          grid-template-columns: 1.15fr 1fr;
+          gap: 20px;
+          align-items: stretch;
         }
-        .col-card {
+
+        /* card base */
+        .cx-card {
           display: block;
           text-decoration: none;
-          border-radius: 16px;
-          overflow: hidden;
-          background: #fff;
-          border: 1px solid #eee5e0;
-          opacity: 0;
-          transform: translateY(20px);
-          transition: opacity 0.5s ease, transform 0.5s ease, box-shadow 0.3s ease;
-        }
-        .col-card.visible {
-          opacity: 1;
-          transform: translateY(0);
-        }
-        .col-card:nth-child(2) {
-          transition-delay: 0.1s;
-        }
-        .col-card:hover {
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-        }
-        .col-image-wrap {
           position: relative;
-          height: 300px;
+          border-radius: 14px;
           overflow: hidden;
+          cursor: pointer;
         }
-        .col-image {
+        .cx-card:focus-visible {
+          outline: 2px solid var(--color-primary, #ff4d81);
+          outline-offset: 3px;
+        }
+
+        /* image */
+        .cx-img-box {
+          width: 100%;
+          aspect-ratio: auto;
+          overflow: hidden;
+          border-radius: 14px;
+        }
+        .cx-card-a .cx-img-box { height: 440px; }
+        .cx-card-b .cx-img-box { height: 440px; }
+
+        .cx-img {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          transition: transform 0.6s ease;
+          display: block;
+          transition: transform 0.65s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter 0.5s ease;
+          filter: brightness(0.97);
         }
-        .col-card:hover .col-image {
-          transform: scale(1.04);
+        .cx-card:hover .cx-img {
+          transform: scale(1.05);
+          filter: brightness(0.92);
         }
-        .col-tag {
+
+        /* count pill floating on image */
+        .cx-pill {
           position: absolute;
-          top: 16px;
-          left: 16px;
-          padding: 6px 14px;
-          background: #fff;
-          border-radius: 8px;
+          top: 18px;
+          left: 18px;
+          z-index: 2;
+          padding: 5px 14px;
+          border-radius: 100px;
           font-size: 12px;
           font-weight: 600;
-          font-family: var(--font-family-heading);
-          color: var(--color-primary, #e8627c);
-          letter-spacing: 0.3px;
+          letter-spacing: 0.2px;
+          color: #fff;
+          background: rgba(0, 0, 0, 0.45);
+          backdrop-filter: blur(10px);
         }
-        .col-body {
-          padding: 24px;
+
+        /* text block below image */
+        .cx-info {
+          padding: 20px 4px 0;
         }
-        .col-name {
-          font-size: 20px;
+        .cx-name {
+          font-size: 19px;
           font-family: var(--font-family-heading);
           font-weight: 700;
           color: #1a1a1a;
-          margin-bottom: 8px;
+          margin: 0 0 6px;
           line-height: 1.3;
         }
-        .col-desc {
+        .cx-desc {
           font-size: 14px;
-          color: #777;
+          color: #888;
           line-height: 1.6;
-          margin-bottom: 20px;
-        }
-        .col-footer {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-        .col-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 14px;
-          font-weight: 600;
-          color: var(--color-primary, #e8627c);
-          transition: gap 0.2s ease;
-        }
-        .col-card:hover .col-link {
-          gap: 12px;
-        }
-        .col-count {
-          font-size: 13px;
-          color: #999;
+          margin: 0 0 14px;
         }
 
-        @media (max-width: 768px) {
-          .col-section { padding: 56px 0; }
-          .col-header { margin-bottom: 40px; }
-          .col-grid { grid-template-columns: 1fr; gap: 20px; }
-          .col-image-wrap { height: 240px; }
-          .col-body { padding: 20px; }
-          .col-name { font-size: 18px; }
+        /* CTA link */
+        .cx-cta {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--color-primary, #ff4d81);
+          letter-spacing: 0.2px;
+          position: relative;
+        }
+        .cx-cta::after {
+          content: '';
+          position: absolute;
+          bottom: -2px;
+          left: 0;
+          width: 0;
+          height: 1.5px;
+          background: var(--color-primary, #ff4d81);
+          transition: width 0.3s ease;
+        }
+        .cx-card:hover .cx-cta::after {
+          width: 100%;
+        }
+        .cx-cta svg {
+          transition: transform 0.25s ease;
+        }
+        .cx-card:hover .cx-cta svg {
+          transform: translateX(3px);
+        }
+
+        /* responsive */
+        @media (max-width: 820px) {
+          .cx { padding: 64px 0; }
+          .cx-top {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 36px;
+          }
+          .cx-layout {
+            grid-template-columns: 1fr;
+            gap: 36px;
+          }
+          .cx-card-a .cx-img-box,
+          .cx-card-b .cx-img-box {
+            height: 280px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .cx { padding: 48px 0; }
+          .cx-inner { padding: 0 16px; }
+          .cx-card-a .cx-img-box,
+          .cx-card-b .cx-img-box {
+            height: 240px;
+          }
+          .cx-img-box { border-radius: 12px; }
+          .cx-info { padding: 16px 2px 0; }
+          .cx-name { font-size: 17px; }
         }
       `}</style>
 
-      <section className="col-section" ref={sectionRef}>
-        <div className="col-container">
-          <div className="col-header">
-            <h2 className="col-title">{t('title')}</h2>
-            <p className="col-subtitle">{t('kidsDresses.description')}</p>
+      <section className="cx" ref={sectionRef}>
+        <div className="cx-inner">
+          <div className="cx-top">
+            <h2 className="cx-heading">{t('title')}</h2>
+            <p className="cx-tagline">{t('kidsDresses.description')}</p>
           </div>
 
-          <div className="col-grid">
-            <SafeLink href="/shopping?category=kids" newTab={false} className="col-card">
-              <div className="col-image-wrap">
-                <span className="col-tag">{t('kidsDresses.title')}</span>
+          <div className="cx-layout">
+            <SafeLink href="/shopping?category=kids" newTab={false} className="cx-card cx-card-a">
+              <div className="cx-img-box">
                 <img
+                  src="https://images.pexels.com/photos/6274665/pexels-photo-6274665.jpeg?auto=compress&cs=tinysrgb&w=900"
                   alt={t('kidsDresses.imageAlt')}
-                  src="https://images.pexels.com/photos/6274665/pexels-photo-6274665.jpeg?auto=compress&cs=tinysrgb&w=1500"
-                  className="col-image"
+                  className="cx-img"
                   loading="lazy"
                 />
               </div>
-              <div className="col-body">
-                <h3 className="col-name">{t('kidsDresses.title')}</h3>
-                <p className="col-desc">{t('kidsDresses.description')}</p>
-                <div className="col-footer">
-                  <span className="col-link">
-                    {tc('viewCollection')}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                  </span>
-                  <span className="col-count">{formatCount('kids')}</span>
-                </div>
+              {formatCount('kids') && (
+                <span className="cx-pill">{formatCount('kids')}</span>
+              )}
+              <div className="cx-info">
+                <h3 className="cx-name">{t('kidsDresses.title')}</h3>
+                <p className="cx-desc">{t('kidsDresses.description')}</p>
+                <span className="cx-cta">
+                  {tc('viewCollection')}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </span>
               </div>
             </SafeLink>
 
-            <SafeLink href="/shopping?category=kitchen" newTab={false} className="col-card">
-              <div className="col-image-wrap">
-                <span className="col-tag">{t('homeTextiles.title')}</span>
+            <SafeLink href="/shopping?category=kitchen" newTab={false} className="cx-card cx-card-b">
+              <div className="cx-img-box">
                 <img
+                  src="https://images.pexels.com/photos/5593101/pexels-photo-5593101.jpeg?auto=compress&cs=tinysrgb&w=900"
                   alt={t('homeTextiles.imageAlt')}
-                  src="https://images.pexels.com/photos/5593101/pexels-photo-5593101.jpeg?auto=compress&cs=tinysrgb&w=1500"
-                  className="col-image"
+                  className="cx-img"
                   loading="lazy"
                 />
               </div>
-              <div className="col-body">
-                <h3 className="col-name">{t('homeTextiles.title')}</h3>
-                <p className="col-desc">{t('homeTextiles.description')}</p>
-                <div className="col-footer">
-                  <span className="col-link">
-                    {tc('viewCollection')}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                  </span>
-                  <span className="col-count">{formatCount('kitchen')}</span>
-                </div>
+              {formatCount('kitchen') && (
+                <span className="cx-pill">{formatCount('kitchen')}</span>
+              )}
+              <div className="cx-info">
+                <h3 className="cx-name">{t('homeTextiles.title')}</h3>
+                <p className="cx-desc">{t('homeTextiles.description')}</p>
+                <span className="cx-cta">
+                  {tc('viewCollection')}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </span>
               </div>
             </SafeLink>
           </div>
