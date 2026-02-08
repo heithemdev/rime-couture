@@ -16,7 +16,10 @@ interface PageProps {
 
 // Fetch product data
 async function getProduct(productId: string, locale: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  // Always use internal URL for server-side fetches to avoid ngrok/proxy loops
+  const baseUrl = typeof window === 'undefined'
+    ? (process.env.INTERNAL_APP_URL || 'http://localhost:3000')
+    : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
   
   try {
     const res = await fetch(`${baseUrl}/api/products/${productId}?locale=${locale}`, {

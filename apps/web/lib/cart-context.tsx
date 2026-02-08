@@ -53,7 +53,7 @@ interface CartContextValue extends CartState {
   isLoading: boolean;
   error: string | null;
   fingerprint: string;
-  addToCart: (productId: string, variantId: string, quantity: number) => Promise<void>;
+  addToCart: (productId: string, variantId: string, quantity: number) => Promise<boolean>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeFromCart: (itemId: string) => Promise<void>;
   clearError: () => void;
@@ -272,7 +272,7 @@ export function CartProvider({ children, locale = 'EN' }: CartProviderProps) {
   }, [cart.guestToken, refreshCart]);
 
   // Add to cart with retry
-  const addToCart = useCallback(async (productId: string, variantId: string, quantity: number) => {
+  const addToCart = useCallback(async (productId: string, variantId: string, quantity: number): Promise<boolean> => {
     setError(null);
     
     const token = localStorage.getItem(GUEST_TOKEN_KEY);
@@ -295,7 +295,7 @@ export function CartProvider({ children, locale = 'EN' }: CartProviderProps) {
       if (!res.ok) {
         const errorMessage = data.error || 'Failed to add to cart';
         setError(errorMessage);
-        throw new Error(errorMessage);
+        return false;
       }
 
       // Update local state
@@ -310,10 +310,11 @@ export function CartProvider({ children, locale = 'EN' }: CartProviderProps) {
         itemCount: data.itemCount || 0,
         subtotal: data.subtotal || 0,
       });
+      return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add to cart';
       setError(errorMessage);
-      throw err;
+      return false;
     }
   }, [locale]);
 

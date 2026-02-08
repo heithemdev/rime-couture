@@ -2,19 +2,18 @@
 
 import { useTranslations } from 'next-intl';
 import { useEffect, useRef } from 'react';
-import { Shield, Star, Package, Truck, Heart, CheckCircle } from 'lucide-react';
 
 export default function TrustFeatures() {
   const t = useTranslations('trustFeatures');
   const sectionRef = useRef<HTMLElement>(null);
 
   const features = [
-    { icon: Shield, key: 'safeForKids', color: '#3B82F6' },
-    { icon: Star, key: 'familyMade', color: '#F59E0B' },
-    { icon: Package, key: 'carefullyPacked', color: '#D97706' },
-    { icon: Truck, key: 'fastShipping', color: '#0EA5E9' },
-    { icon: Heart, key: 'madeWithLove', color: '#8B5CF6' },
-    { icon: CheckCircle, key: 'qualityCheck', color: '#14B8A6' },
+    { key: 'premiumMaterials', emoji: '🧶' },
+    { key: 'looksGreatInPerson', emoji: '👗' },
+    { key: 'handSewn', emoji: '🪡' },
+    { key: 'twentyYears', emoji: '🏅' },
+    { key: 'mothersTouchTitle', emoji: '🤱' },
+    { key: 'weGetEachOther', emoji: '💕' },
   ];
 
   useEffect(() => {
@@ -22,15 +21,15 @@ export default function TrustFeatures() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add('animate-in');
+            entry.target.classList.add('visible');
           }
         });
       },
-      { threshold: 0.1 }
+      { threshold: 0.15 }
     );
 
-    const cards = sectionRef.current?.querySelectorAll('.trust-card');
-    cards?.forEach((card) => observer.observe(card));
+    const items = sectionRef.current?.querySelectorAll('.tf-item');
+    items?.forEach((item) => observer.observe(item));
 
     return () => observer.disconnect();
   }, []);
@@ -38,103 +37,96 @@ export default function TrustFeatures() {
   return (
     <>
       <style jsx>{`
-        .trust-section {
-          padding: var(--spacing-4xl) 0;
-          background-color: var(--color-surface-elevated);
+        .tf-section {
+          padding: 80px 0;
+          background: #faf8f6;
         }
-        .trust-container {
+        .tf-container {
           margin: 0 auto;
-          padding: 0 var(--spacing-xl);
+          padding: 0 24px;
           max-width: var(--content-max-width);
         }
-        .trust-title {
-          font-size: var(--font-size-3xl);
-          font-style: var(--font-style-heading);
-          font-family: var(--font-family-heading);
-          font-weight: var(--font-weight-heading);
-          line-height: var(--line-height-heading);
-          margin-bottom: var(--spacing-3xl);
+        .tf-header {
+          text-align: center;
+          margin-bottom: 56px;
         }
-        .trust-grid {
-          gap: var(--spacing-xl);
+        .tf-title {
+          font-size: var(--font-size-3xl);
+          font-family: var(--font-family-heading);
+          font-weight: 700;
+          color: #1a1a1a;
+          line-height: 1.2;
+        }
+        .tf-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
         }
-        .trust-card {
-          border: 1px solid var(--color-border);
-          display: flex;
-          padding: var(--spacing-2xl) var(--spacing-xl);
-          background: var(--color-surface);
+        .tf-item {
+          background: #fff;
+          border: 1px solid #eee5e0;
+          border-radius: 16px;
+          padding: 32px 24px;
           text-align: center;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-          align-items: center;
-          border-radius: var(--border-radius-lg);
-          flex-direction: column;
           opacity: 0;
-          transform: translateY(30px);
+          transform: translateY(20px);
+          transition: opacity 0.5s ease, transform 0.5s ease;
         }
-        .trust-card.animate-in {
+        .tf-item.visible {
           opacity: 1;
           transform: translateY(0);
         }
-        .trust-card:nth-child(1) { transition-delay: 0s; }
-        .trust-card:nth-child(2) { transition-delay: 0.1s; }
-        .trust-card:nth-child(3) { transition-delay: 0.2s; }
-        .trust-card:nth-child(4) { transition-delay: 0.3s; }
-        .trust-card:nth-child(5) { transition-delay: 0.4s; }
-        .trust-card:nth-child(6) { transition-delay: 0.5s; }
-        .trust-card:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
-          border-color: var(--color-secondary);
+        .tf-item:nth-child(1) { transition-delay: 0s; }
+        .tf-item:nth-child(2) { transition-delay: 0.07s; }
+        .tf-item:nth-child(3) { transition-delay: 0.14s; }
+        .tf-item:nth-child(4) { transition-delay: 0.21s; }
+        .tf-item:nth-child(5) { transition-delay: 0.28s; }
+        .tf-item:nth-child(6) { transition-delay: 0.35s; }
+        .tf-emoji {
+          font-size: 36px;
+          line-height: 1;
+          margin-bottom: 16px;
+          display: block;
         }
-        .trust-icon-wrapper {
-          margin-bottom: var(--spacing-md);
-          transition: transform 0.3s ease;
-        }
-        .trust-card:hover .trust-icon-wrapper {
-          transform: scale(1.15);
-        }
-        .trust-card-title {
-          font-size: var(--font-size-lg);
+        .tf-item-title {
+          font-size: 16px;
           font-family: var(--font-family-heading);
-          font-weight: var(--font-weight-heading);
-          margin-bottom: var(--spacing-sm);
+          font-weight: 700;
+          color: #1a1a1a;
+          margin-bottom: 8px;
+          line-height: 1.3;
         }
-        .trust-card-description {
-          font-size: var(--font-size-sm);
-          font-family: var(--font-family-body);
-          line-height: var(--line-height-body);
-          color: var(--color-on-surface-secondary);
+        .tf-item-desc {
+          font-size: 14px;
+          color: #666;
+          line-height: 1.6;
+          margin: 0;
         }
-        @media (max-width: 991px) {
-          .trust-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
+        @media (max-width: 900px) {
+          .tf-section { padding: 64px 0; }
+          .tf-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
         }
-        @media (max-width: 479px) {
-          .trust-grid {
-            grid-template-columns: 1fr;
-          }
+        @media (max-width: 520px) {
+          .tf-section { padding: 48px 0; }
+          .tf-header { margin-bottom: 40px; }
+          .tf-grid { grid-template-columns: 1fr; gap: 12px; }
+          .tf-item { padding: 24px 20px; }
         }
       `}</style>
 
-      <section className="trust-section" ref={sectionRef}>
-        <div className="trust-container">
-          <h2 className="trust-title">{t('title')}</h2>
-          <div className="trust-grid">
-            {features.map((feature, index) => {
-              const IconComponent = feature.icon;
-              return (
-                <div key={index} className="trust-card">
-                  <div className="trust-icon-wrapper">
-                    <IconComponent size={40} color={feature.color} strokeWidth={1.5} />
-                  </div>
-                  <h3 className="trust-card-title">{t(`features.${feature.key}.title`)}</h3>
-                  <p className="trust-card-description">{t(`features.${feature.key}.description`)}</p>
-                </div>
-              );
-            })}
+      <section className="tf-section" ref={sectionRef}>
+        <div className="tf-container">
+          <div className="tf-header">
+            <h2 className="tf-title">{t('title')}</h2>
+          </div>
+          <div className="tf-grid">
+            {features.map((feature) => (
+              <div key={feature.key} className="tf-item">
+                <span className="tf-emoji" role="img">{feature.emoji}</span>
+                <h3 className="tf-item-title">{t(`features.${feature.key}.title`)}</h3>
+                <p className="tf-item-desc">{t(`features.${feature.key}.description`)}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>

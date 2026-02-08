@@ -12,7 +12,8 @@
     "SMTP_USER",
     "SMTP_PASS",
     "MAIL_FROM",
-    "NEXT_PUBLIC_APP_URL"
+    "NEXT_PUBLIC_APP_URL",
+    "INTERNAL_APP_URL"
   ],
   "tasks": {
     "build": {
@@ -27,7 +28,8 @@
         "SMTP_USER",
         "SMTP_PASS",
         "MAIL_FROM",
-        "NEXT_PUBLIC_APP_URL"
+        "NEXT_PUBLIC_APP_URL",
+        "INTERNAL_APP_URL"
       ],
       "inputs": ["$TURBO_DEFAULT$", ".env*", "apps/*/.env*", "packages/*/.env*"],
       "outputs": [".next/**", "dist/**", "!.next/cache/**"]
@@ -43,7 +45,8 @@
         "SMTP_USER",
         "SMTP_PASS",
         "MAIL_FROM",
-        "NEXT_PUBLIC_APP_URL"
+        "NEXT_PUBLIC_APP_URL",
+        "INTERNAL_APP_URL"
       ]
     },
     "check-types": {

@@ -97,49 +97,50 @@
   "trustFeatures": {
     "title": "Why Mothers Trust Us",
     "features": {
-      "safeForKids": {
-        "title": "Safe for Kids",
-        "description": "Hypoallergenic natural fabrics only."
+      "premiumMaterials": {
+        "title": "Premium Materials",
+        "description": "Only the finest fabrics. Soft, durable, and gentle on your little one's skin."
       },
-      "familyMade": {
-        "title": "Family Made",
-        "description": "Authentic Algerian craftsmanship."
+      "looksGreatInPerson": {
+        "title": "Beautiful in Real Life",
+        "description": "Our pieces look just as stunning on your girls as they do in the photos."
       },
-      "carefullyPacked": {
-        "title": "Carefully Packed",
-        "description": "Eco-friendly and secure packaging."
+      "handSewn": {
+        "title": "Hand-Sewn with Care",
+        "description": "Every stitch is made by hand with close attention to the smallest details."
       },
-      "fastShipping": {
-        "title": "Fast Shipping",
-        "description": "Nationwide delivery in 3-5 days."
+      "twentyYears": {
+        "title": "20+ Years of Expertise",
+        "description": "Two decades of sewing experience behind every single piece we make."
       },
-      "madeWithLove": {
-        "title": "Made with Love",
-        "description": "Every piece is uniquely hand-sewn."
+      "mothersTouchTitle": {
+        "title": "A Mother's Touch",
+        "description": "Every piece is sewn with the same care we give our own children's clothes."
       },
-      "qualityCheck": {
-        "title": "Quality Check",
-        "description": "Rigorous testing for daily family use."
+      "weGetEachOther": {
+        "title": "We Understand Mothers",
+        "description": "Me mother, you mother, we know exactly what your family needs."
       }
     }
   },
   "testimonials": {
-    "title": "Happy Families",
+    "title": "What Moms Say",
+    "subtitle": "Real words from real moms",
     "reviews": {
       "sarah": {
-        "name": "Sarah M.",
-        "location": "Algiers, Algeria",
-        "text": "The quality is exceptional! My daughter loves her new dress and the fabric is so soft. Highly recommend!"
+        "name": "ome elkhayre",
+        "location": "Bouira",
+        "text": "this is just TOP, i can't say nothing more!!"
       },
       "amira": {
         "name": "Amira B.",
-        "location": "Oran, Algeria",
-        "text": "Finally found a brand that understands what mothers need. The custom sizing is perfect!"
+        "location": "Bouira",
+        "text": "thank you sooo mutch my little girl went to the wedding party and everyone prazed here dress, even i didn't expect that"
       },
       "fatima": {
         "name": "Fatima K.",
-        "location": "Constantine, Algeria",
-        "text": "Beautiful craftsmanship and fast delivery. The kitchen set matches my home perfectly!"
+        "location": "Bouira",
+        "text": "it is just as I imagened it to be, I'm exited to see the next dresses and order them"
       }
     }
   },
@@ -261,7 +262,17 @@
     "writeFirstReview": "Write the First Review",
     "youMayAlsoLike": "You May Also Like",
     "viewAll": "View All",
-    "loadingRelated": "Loading related products..."
+    "loadingRelated": "Loading related products...",
+    "addedToCart": "Added to Cart!",
+    "editReview": "Edit Your Review",
+    "noImage": "No image available",
+    "reviewsCount": "({count} reviews)",
+    "tagTypes": {
+      "MATERIAL": "Material",
+      "PATTERN": "Pattern",
+      "MOOD_SEASON": "Season",
+      "OCCASION": "Occasion"
+    }
   },
   "cart": {
     "title": "Shopping Cart",

@@ -5,8 +5,9 @@
 
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   Star,
   Heart,
@@ -34,6 +35,7 @@ import {
   Expand,
   Edit3,
   Trash2,
+  X,
 } from 'lucide-react';
 import ProductCheckoutModal, { type SelectedVariant } from '@/components/product/ProductCheckoutModal';
 import ReviewModal from '@/components/product/ReviewModal';
@@ -159,6 +161,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   // --------------------------------------------------------------------------
   const fingerprint = useFingerprint();
   const { addToCart } = useCart();
+  const t = useTranslations('product');
 
   // --------------------------------------------------------------------------
   // STATE
@@ -170,6 +173,8 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   const [showCheckout, setShowCheckout] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [showCartSuccess, setShowCartSuccess] = useState(false);
+  const cartSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
 
   // Review & Like state
@@ -208,10 +213,15 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   const [isLoadingRelated, setIsLoadingRelated] = useState(true);
 
   // --------------------------------------------------------------------------
-  // TRACK PRODUCT VIEW
+  // TRACK PRODUCT VIEW (once per product, not per fingerprint change)
   // --------------------------------------------------------------------------
+  const viewTrackedRef = useRef(false);
   useEffect(() => {
-    // Fire-and-forget view tracking
+    // Guard: only fire once per product mount, not on fingerprint hydration
+    if (viewTrackedRef.current) return;
+    viewTrackedRef.current = true;
+
+    // Fire-and-forget — sessionId is optional, server deduplicates anyway
     fetch('/api/analytics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -250,9 +260,10 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   }, [product.id, fingerprint]);
 
   // --------------------------------------------------------------------------
-  // FETCH RELATED PRODUCTS
+  // FETCH RELATED PRODUCTS (with abort + cache to prevent duplicate calls)
   // --------------------------------------------------------------------------
   useEffect(() => {
+    const controller = new AbortController();
     const fetchRelatedProducts = async () => {
       try {
         setIsLoadingRelated(true);
@@ -262,7 +273,9 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           limit: '8',
           exclude: product.id,
         });
-        const res = await fetch(`/api/products?${params}`);
+        const res = await fetch(`/api/products?${params}`, {
+          signal: controller.signal,
+        });
         const data = await res.json();
         
         if (data.products && Array.isArray(data.products)) {
@@ -314,13 +327,15 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           setRelatedProducts(related);
         }
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         console.error('Error fetching related products:', err);
       } finally {
-        setIsLoadingRelated(false);
+        if (!controller.signal.aborted) setIsLoadingRelated(false);
       }
     };
 
     fetchRelatedProducts();
+    return () => controller.abort();
   }, [product.id, product.category.id]);
 
   // --------------------------------------------------------------------------
@@ -481,14 +496,26 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
     
     setIsAddingToCart(true);
     try {
-      await addToCart(product.id, selectedVariant.id, quantity);
-      // Could show a success toast here
+      const success = await addToCart(product.id, selectedVariant.id, quantity);
+      if (success) {
+        // Clear any previous timer
+        if (cartSuccessTimerRef.current) clearTimeout(cartSuccessTimerRef.current);
+        setShowCartSuccess(true);
+        cartSuccessTimerRef.current = setTimeout(() => setShowCartSuccess(false), 2500);
+      }
     } catch (err) {
       console.error('Add to cart error:', err);
     } finally {
       setIsAddingToCart(false);
     }
   }, [canOrder, selectedVariant, isAddingToCart, addToCart, product.id, quantity]);
+
+  // Cleanup success timer on unmount
+  useEffect(() => {
+    return () => {
+      if (cartSuccessTimerRef.current) clearTimeout(cartSuccessTimerRef.current);
+    };
+  }, []);
 
   // --------------------------------------------------------------------------
   // HANDLERS (Strict Reset Logic)
@@ -555,14 +582,21 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   };
 
   const handleShare = async () => {
-    if (navigator.share) {
-      await navigator.share({
-        title: product.name,
-        text: product.description,
-        url: window.location.href,
-      });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: product.name,
+          text: product.description,
+          url: window.location.href,
+        });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+      }
+    } catch (err) {
+      // User cancelled the share dialog — ignore
+      if (err instanceof Error && err.name !== 'AbortError') {
+        console.error('Share failed:', err);
+      }
     }
   };
 
@@ -929,6 +963,63 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         }
         .cart-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
+        /* Cart Success Toast */
+        .cart-success-toast {
+          display: flex; align-items: center; gap: var(--spacing-md);
+          padding: var(--spacing-md) var(--spacing-lg);
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          border-radius: var(--border-radius-control);
+          color: white; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35);
+          animation: toast-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+          overflow: hidden;
+          position: relative;
+        }
+        .cart-success-toast::after {
+          content: '';
+          position: absolute; bottom: 0; left: 0; right: 0;
+          height: 3px; background: rgba(255,255,255,0.4);
+          animation: toast-progress 2.5s linear forwards;
+        }
+        .cart-success-icon {
+          width: 32px; height: 32px; border-radius: 50%;
+          background: rgba(255,255,255,0.25);
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+          animation: toast-check-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+        }
+        .cart-success-text {
+          display: flex; flex-direction: column; gap: 2px;
+          min-width: 0; flex: 1;
+        }
+        .cart-success-title {
+          font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
+          line-height: 1.2;
+        }
+        .cart-success-detail {
+          font-size: 12px; opacity: 0.85;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .cart-success-close {
+          background: rgba(255,255,255,0.2); border: none; color: white;
+          width: 24px; height: 24px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; flex-shrink: 0; transition: background 0.2s;
+        }
+        .cart-success-close:hover { background: rgba(255,255,255,0.35); }
+
+        @keyframes toast-slide-in {
+          from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes toast-check-pop {
+          from { transform: scale(0); }
+          to { transform: scale(1); }
+        }
+        @keyframes toast-progress {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+
         /* Like Button */
         .like-btn {
           min-width: 80px; height: 56px; padding: 0 var(--spacing-lg);
@@ -1357,9 +1448,9 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
       <div className="product-page">
         {/* Breadcrumb */}
         <nav className="breadcrumb">
-          <Link href="/">Home</Link>
+          <Link href="/">{t('breadcrumb.home')}</Link>
           <span className="breadcrumb-separator">/</span>
-          <Link href="/shopping">Shop</Link>
+          <Link href="/shopping">{t('breadcrumb.shop')}</Link>
           <span className="breadcrumb-separator">/</span>
           <Link href={`/shopping?category=${product.category.slug}`}>{product.category.name}</Link>
           <span className="breadcrumb-separator">/</span>
@@ -1374,7 +1465,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
               {product.flags.isFeatured && (
                 <div className="featured-badge">
                   <Sparkles size={14} />
-                  Featured
+                  {t('featured')}
                 </div>
               )}
               
@@ -1416,7 +1507,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
               ) : (
                 <div className="gallery-placeholder">
                   <Package size={40} />
-                  <span>No image available</span>
+                  <span>{t('noImage')}</span>
                 </div>
               )}
 
@@ -1461,20 +1552,14 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
 
             {/* Product Description */}
             <div className="details-section">
-              <h2 className="section-title"><Package size={24} /> Product Description</h2>
+              <h2 className="section-title"><Package size={24} /> {t('description')}</h2>
               <div className="description-box">{product.description}</div>
               {Object.keys(product.tags).length > 0 && (
                 <div className="tags-grid">
                   {Object.entries(product.tags).map(([type, tags]) => {
-                    const friendlyName: Record<string, string> = {
-                      MATERIAL: 'Material',
-                      PATTERN: 'Pattern',
-                      MOOD_SEASON: 'Season',
-                      OCCASION: 'Occasion',
-                    };
                     return (
                       <div key={type} className="tag-group">
-                        <div className="tag-group-title"><Tag size={14} />{friendlyName[type] || type.replace(/_/g, ' ')}</div>
+                        <div className="tag-group-title"><Tag size={14} />{t(`tagTypes.${type}`)}</div>
                         <div className="tag-list">
                           {tags.map((tag) => (
                             <span key={tag.slug} className="tag-chip">{tag.label}</span>
@@ -1515,14 +1600,14 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 {renderStars(product.stats.avgRating)}
                 <span className="panel-rating-text">
                   <span className="panel-rating-count">{product.stats.avgRating.toFixed(1)}</span>
-                  {' '}({product.stats.reviewCount} reviews)
+                  {' '}{t('reviewsCount', { count: product.stats.reviewCount })}
                 </span>
               </div>
               
               <div className="panel-price">{formatPrice(currentPrice)}</div>
               {product.price.min !== product.price.max && (
                 <div className="panel-price-range">
-                  Price range: {formatPrice(product.price.min)} - {formatPrice(product.price.max)}
+                  {t('priceRange')}: {formatPrice(product.price.min)} - {formatPrice(product.price.max)}
                 </div>
               )}
             </div>
@@ -1531,7 +1616,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
             {product.sizes.length > 0 && (
               <div className="variant-section">
                 <div className="variant-label">
-                  <Ruler size={16} /> Select Size
+                  <Ruler size={16} /> {t('selectSize')}
                 </div>
                 <div className="size-options">
                   {product.sizes.map((size) => {
@@ -1556,7 +1641,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
             {product.colors.length > 0 && (
               <div className="variant-section">
                 <div className="variant-label">
-                  <Palette size={16} /> Select Color
+                  <Palette size={16} /> {t('selectColor')}
                   {selectedColorId && (
                     <span style={{ fontWeight: 'normal', marginLeft: 'auto' }}>
                       {product.colors.find((c) => c.id === selectedColorId)?.label}
@@ -1586,7 +1671,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
 
             {/* Quantity */}
             <div className="quantity-section">
-              <span className="quantity-label">Quantity</span>
+              <span className="quantity-label">{t('quantity')}</span>
               <div className="quantity-controls">
                 <button
                   className="quantity-btn"
@@ -1609,11 +1694,11 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
               {/* Detailed Stock Status Display */}
               {isSelectionComplete && selectedVariant ? (
                 <span style={{ fontSize: 'var(--font-size-xs)', color: selectedVariant.stock < 10 ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
-                  {selectedVariant.stock} units available in this style
+                  {selectedVariant.stock} {t('unitsAvailable')}
                 </span>
               ) : (
                 <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-on-surface-secondary)' }}>
-                  Select options to see stock
+                  {t('selectOptions')}
                 </span>
               )}
             </div>
@@ -1627,10 +1712,10 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
               >
                 <ShoppingBag size={20} />
                 {canOrder 
-                  ? 'Order Now' 
+                  ? t('orderNow') 
                   : !isSelectionComplete 
-                    ? 'Select Options' 
-                    : 'Out of Stock'}
+                    ? t('selectOptionsBtn') 
+                    : t('outOfStock')}
               </button>
               
               {/* Add to Cart Button */}
@@ -1665,28 +1750,44 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
               </button>
             </div>
 
+            {/* ── Added to Cart Success Popup ── */}
+            {showCartSuccess && (
+              <div className="cart-success-toast">
+                <div className="cart-success-icon">
+                  <Check size={20} />
+                </div>
+                <div className="cart-success-text">
+                  <span className="cart-success-title">{t('addedToCart')}</span>
+                  <span className="cart-success-detail">{product.name} × {quantity}</span>
+                </div>
+                <button className="cart-success-close" onClick={() => setShowCartSuccess(false)}>
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
             {/* Trust Features */}
             <div className="trust-features">
-              <div className="trust-item"><div className="trust-icon"><Truck size={20} /></div><div className="trust-text">Fast Delivery</div></div>
-              <div className="trust-item"><div className="trust-icon"><Shield size={20} /></div><div className="trust-text">Secure Payment</div></div>
-              <div className="trust-item"><div className="trust-icon"><RotateCcw size={20} /></div><div className="trust-text">Easy Returns</div></div>
+              <div className="trust-item"><div className="trust-icon"><Truck size={20} /></div><div className="trust-text">{t('fastDelivery')}</div></div>
+              <div className="trust-item"><div className="trust-icon"><Shield size={20} /></div><div className="trust-text">{t('securePayment')}</div></div>
+              <div className="trust-item"><div className="trust-icon"><RotateCcw size={20} /></div><div className="trust-text">{t('easyReturns')}</div></div>
             </div>
 
             {/* Shipping Estimate */}
             <div className="shipping-estimate">
               <div className="shipping-estimate-header">
                 <div className="shipping-estimate-icon"><Truck size={16} /></div>
-                <span className="shipping-estimate-title">64 Wilaya Delivery!</span>
+                <span className="shipping-estimate-title">{t('shipping.title')}</span>
               </div>
               <div className="shipping-estimate-range">
-                Fast & secure shipping across all of Algeria
+                {t('shipping.description')}
               </div>
             </div>
 
             {product.flags.isMadeToOrder && product.leadTimeDays && (
               <div style={{ marginTop: 'var(--spacing-lg)', padding: 'var(--spacing-md)', background: 'var(--color-surface-elevated)', borderRadius: 'var(--border-radius-md)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', fontSize: 'var(--font-size-sm)', color: 'var(--color-on-surface-secondary)' }}>
                 <Clock size={16} style={{ color: 'var(--color-secondary)' }} />
-                Made to order • Ships in {product.leadTimeDays} days
+                {t('madeToOrder', { days: product.leadTimeDays })}
               </div>
             )}
           </div>
@@ -1696,12 +1797,12 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         <section className="reviews-section">
           <div className="reviews-header">
             <div>
-              <h2 className="section-title"><MessageCircle size={24} /> Customer Reviews</h2>
+              <h2 className="section-title"><MessageCircle size={24} /> {t('customerReviews')}</h2>
               <div className="reviews-summary">
                 <span className="reviews-avg">{avgRating.toFixed(1)}</span>
                 <div className="reviews-avg-stars">
                   {renderStars(avgRating, 20)}
-                  <span className="reviews-count-text">Based on {reviewCount} reviews</span>
+                  <span className="reviews-count-text">{t('basedOn', { count: reviewCount })}</span>
                 </div>
               </div>
             </div>
@@ -1713,7 +1814,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 onClick={handleEditReview}
               >
                 <PenLine size={18} />
-                Edit Your Review
+                {t('editReview')}
               </button>
             ) : (
               <button
@@ -1721,7 +1822,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 onClick={handleWriteReview}
               >
                 <PenLine size={18} />
-                Write a Review
+                {t('writeReview')}
               </button>
             )}
           </div>
@@ -1748,14 +1849,14 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           ) : (
             <div className="no-reviews">
               <div className="no-reviews-icon"><ThumbsUp size={28} /></div>
-              <h3>No Reviews Yet</h3>
-              <p>Be the first to review this product!</p>
+              <h3>{t('noReviews')}</h3>
+              <p>{t('beFirstReviewer')}</p>
               <button
                 className="add-review-btn primary-cta"
                 onClick={handleWriteReview}
               >
                 <PenLine size={18} />
-                Write the First Review
+                {t('writeFirstReview')}
               </button>
             </div>
           )}
@@ -1765,9 +1866,9 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         {relatedProducts.length > 0 && (
           <section className="related-products-section">
             <div className="related-products-header">
-              <h2 className="section-title"><Package size={24} /> You May Also Like</h2>
+              <h2 className="section-title"><Package size={24} /> {t('youMayAlsoLike')}</h2>
               <SafeLink href={`/shopping?category=${product.category.slug}`} className="view-all-link">
-                View All <ChevronRight size={18} />
+                {t('viewAll')} <ChevronRight size={18} />
               </SafeLink>
             </div>
             <div className="related-products-grid">
@@ -1796,10 +1897,10 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         {isLoadingRelated && (
           <section className="related-products-section">
             <div className="related-products-header">
-              <h2 className="section-title"><Package size={24} /> You May Also Like</h2>
+              <h2 className="section-title"><Package size={24} /> {t('youMayAlsoLike')}</h2>
             </div>
             <div className="related-loading">
-              <Loader2 size={24} className="spin" /> Loading related products...
+              <Loader2 size={24} className="spin" /> {t('loadingRelated')}
             </div>
           </section>
         )}

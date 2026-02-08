@@ -256,13 +256,17 @@ export default function ShoppingPage() {
   }, [filters]);
 
   // Fetch products - with caching for better navigation experience
+  // NOTE: products.length removed from deps to prevent infinite re-creation.
+  // We use the functional updater form of setProducts + setHasMore to access
+  // current length without a stale closure.
   const fetchProducts = useCallback(async (pageNum: number, reset: boolean = false) => {
     // Cancel any pending request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     
-    abortControllerRef.current = new AbortController();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     
     const queryString = buildQueryParams(pageNum);
     const cacheKey = generateCacheKey('/api/products', { query: queryString, page: pageNum });
@@ -285,7 +289,7 @@ export default function ShoppingPage() {
     
     try {
       const response = await fetch(`/api/products?${queryString}`, {
-        signal: abortControllerRef.current.signal,
+        signal: controller.signal,
       });
       
       if (!response.ok) throw new Error('Failed to fetch products');
@@ -299,26 +303,34 @@ export default function ShoppingPage() {
       
       // Transform products to grid format
       const transformedProducts = (data.products || []).map(transformProduct);
+      const total = data.total || transformedProducts.length;
       
       if (reset) {
         setProducts(transformedProducts);
+        setHasMore(transformedProducts.length === PRODUCTS_PER_PAGE && transformedProducts.length < total);
       } else {
-        setProducts(prev => [...prev, ...transformedProducts]);
+        setProducts(prev => {
+          const merged = [...prev, ...transformedProducts];
+          // Compute hasMore using the merged length (avoids stale closure)
+          setHasMore(transformedProducts.length === PRODUCTS_PER_PAGE && merged.length < total);
+          return merged;
+        });
       }
       
-      setTotalProducts(data.total || transformedProducts.length);
-      setHasMore(transformedProducts.length === PRODUCTS_PER_PAGE && 
-        (reset ? transformedProducts.length : products.length + transformedProducts.length) < (data.total || Infinity));
+      setTotalProducts(total);
       setPage(pageNum);
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        return; // Ignore aborted requests
+        return; // Ignore aborted requests — don't touch loading state
       }
       console.error('Error fetching products:', error);
-    } finally {
+    }
+
+    // Only clear loading if this request wasn't aborted
+    if (!controller.signal.aborted) {
       setIsLoading(false);
     }
-  }, [buildQueryParams, products.length]);
+  }, [buildQueryParams]);
 
   // Handle filter changes
   const handleFiltersChange = useCallback((newFilters: FilterState) => {
@@ -371,17 +383,16 @@ export default function ShoppingPage() {
     }
     lastFetchedFiltersRef.current = serialized;
     fetchProducts(1, true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
 
-  // Cleanup on unmount
-  useEffect(() => {
+    // On cleanup (StrictMode unmount), reset the ref so the next mount retries.
+    // Also abort the in-flight fetch so it doesn't set stale state.
     return () => {
+      lastFetchedFiltersRef.current = '';
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
-  }, []);
+  }, [filters, fetchProducts]);
 
   // Get label for filter value
   const getFilterLabel = (type: string, value: string): string => {

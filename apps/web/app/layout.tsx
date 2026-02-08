@@ -94,34 +94,24 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
       <head>
-        {/* Prevent FOUC - hide until styles are ready */}
+        {/* Loader + FOUC prevention — all inline, works before any CSS loads */}
         <style dangerouslySetInnerHTML={{ __html: `
-          html { visibility: hidden; }
-          html.styles-ready { visibility: visible; }
-        `}} />
-        <script dangerouslySetInnerHTML={{ __html: `
-          // Show content immediately when DOM is ready (styles are inlined by Next.js)
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', function() {
-              document.documentElement.classList.add('styles-ready');
-            });
-          } else {
-            document.documentElement.classList.add('styles-ready');
-          }
-        `}} />
+          /* FOUC prevention: body hidden until CSS + JS reveal it */
+          body { visibility: hidden !important; }
+          body.css-ready { visibility: visible !important; }
 
-        {/* ── Rimoucha Loading Screen CSS (inline for instant render) ── */}
-        <style dangerouslySetInnerHTML={{ __html: `
+          /* Loader covers the entire viewport, visible by default */
           #rimoucha-loader {
             position: fixed; inset: 0; z-index: 99999;
             display: flex; align-items: center; justify-content: center; flex-direction: column;
             background: #fff0ed;
-            opacity: 0; pointer-events: none;
+            visibility: visible !important;
             transition: opacity 0.35s ease;
             overflow: hidden;
           }
-          #rimoucha-loader.visible { opacity: 1; pointer-events: auto; }
-          #rimoucha-loader.fade-out { opacity: 0; pointer-events: none; }
+          #rimoucha-loader.fade-out {
+            opacity: 0; pointer-events: none;
+          }
 
           /* ── Wavy text ── */
           .loader-wave {
@@ -187,146 +177,100 @@ export default async function RootLayout({
           }
         `}} />
 
-        {/* Loader logic — JS-created DOM (no hydration), proper lifecycle */}
+        {/* Loader lifecycle — 3s min on landing, waits for CSS sentinel */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
-            var loader = null, shown = false, timer = null, hideTimer = null;
-            var pageReady = false;
+            var shown = true, safetyTimer = null, pollId = null;
+            var cssReady = false, minTimeReady = false;
 
-            /* Delay: 500ms on landing page, 1000ms on other pages */
+            /* Is this the landing page (first visit)? */
             var isLanding = (location.pathname === '/' || location.pathname === '');
-            var DELAY = isLanding ? 500 : 1000;
+            var MIN_SHOW = isLanding ? 3000 : 800;
 
-            /* Daisy SVG — simple 5-petal flower */
-            var daisySVG = '<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">'
-              + '<ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(0 18 18)"/>'
-              + '<ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(72 18 18)"/>'
-              + '<ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(144 18 18)"/>'
-              + '<ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(216 18 18)"/>'
-              + '<ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(288 18 18)"/>'
-              + '<circle cx="18" cy="18" r="4" fill="#ffcc00"/>'
-              + '</svg>';
-
-            /* Positions for daisies — spread around edges, avoid center */
-            var daisyPositions = [
-              {top:'8%',left:'5%',d:0}, {top:'15%',right:'8%',d:0.6},
-              {bottom:'20%',left:'10%',d:1.2}, {bottom:'10%',right:'6%',d:0.4},
-              {top:'40%',left:'3%',d:0.8}, {top:'35%',right:'4%',d:1.6},
-              {bottom:'35%',left:'6%',d:1.0}, {top:'12%',left:'40%',d:1.8},
-              {bottom:'8%',left:'35%',d:0.3}, {bottom:'8%',right:'30%',d:1.4},
-              {top:'10%',right:'35%',d:2.0}
-            ];
-
-            function buildLoader() {
-              var el = document.createElement('div');
-              el.id = 'rimoucha-loader';
-              el.setAttribute('aria-hidden', 'true');
-
-              /* Wavy text — each letter is a separate span */
-              var letters = 'Rimoucha'.split('');
-              var waveDiv = document.createElement('div');
-              waveDiv.className = 'loader-wave';
-              waveDiv.style.fontFamily = 'var(--font-pacifico),Pacifico,cursive';
-              for (var i = 0; i < letters.length; i++) {
-                var s = document.createElement('span');
-                s.textContent = letters[i];
-                waveDiv.appendChild(s);
-              }
-              el.appendChild(waveDiv);
-
-              /* Dots */
-              var dots = document.createElement('div');
-              dots.className = 'loader-dots';
-              dots.innerHTML = '<span></span><span></span><span></span>';
-              el.appendChild(dots);
-
-              /* Daisy flowers */
-              for (var j = 0; j < daisyPositions.length; j++) {
-                var p = daisyPositions[j];
-                var d = document.createElement('div');
-                d.className = 'loader-daisy';
-                d.innerHTML = daisySVG;
-                if (p.top) d.style.top = p.top;
-                if (p.bottom) d.style.bottom = p.bottom;
-                if (p.left) d.style.left = p.left;
-                if (p.right) d.style.right = p.right;
-                d.style.animationDelay = (p.d || 0) + 's';
-                el.appendChild(d);
-              }
-
-              return el;
+            function isCssLoaded() {
+              try {
+                return getComputedStyle(document.documentElement).getPropertyValue('--css-loaded').trim() === '1';
+              } catch(e) { return false; }
             }
 
-            function ensureLoader() {
-              if (loader) return loader;
-              if (!document.body) return null;
-              loader = buildLoader();
-              document.body.appendChild(loader);
-              return loader;
+            function revealPage() {
+              if (document.body) document.body.classList.add('css-ready');
             }
 
-            function showLoader() {
-              /* If page already finished loading, don't show */
-              if (pageReady) { timer = null; return; }
-              var el = ensureLoader();
-              if (!el) {
-                /* body not ready yet — retry in 10ms */
-                timer = setTimeout(showLoader, 10);
-                return;
-              }
-              el.classList.add('visible');
-              el.classList.remove('fade-out');
-              shown = true;
+            function tryHide() {
+              if (!cssReady || !minTimeReady) return;
+              if (!shown) return;
+              if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+              if (pollId) { clearInterval(pollId); pollId = null; }
+              var el = document.getElementById('rimoucha-loader');
+              if (el) el.classList.add('fade-out');
+              shown = false;
+              revealPage();
             }
 
             function hideLoader() {
-              if (timer) { clearTimeout(timer); timer = null; }
-              if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-              if (!shown) return;
-              if (loader) {
-                loader.classList.add('fade-out');
-                loader.classList.remove('visible');
+              cssReady = true;
+              minTimeReady = true;
+              tryHide();
+            }
+
+            function showLoader() {
+              var el = document.getElementById('rimoucha-loader');
+              if (el) {
+                el.classList.remove('fade-out');
+                shown = true;
               }
-              shown = false;
             }
 
-            /* ── Initial page load ── */
-            timer = setTimeout(showLoader, DELAY);
+            /* Minimum display timer */
+            setTimeout(function() {
+              minTimeReady = true;
+              tryHide();
+            }, MIN_SHOW);
 
-            /* Mark page ready — cancels any pending show */
-            function onReady() {
-              pageReady = true;
-              hideLoader();
+            /* Poll every 50ms: is globals.css applied yet? */
+            function waitForCss() {
+              if (isCssLoaded()) {
+                cssReady = true;
+                tryHide();
+                return;
+              }
+              pollId = setInterval(function() {
+                if (isCssLoaded()) {
+                  cssReady = true;
+                  if (pollId) { clearInterval(pollId); pollId = null; }
+                  tryHide();
+                }
+              }, 50);
             }
 
+            /* Start polling once body exists */
             if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', onReady);
+              document.addEventListener('DOMContentLoaded', waitForCss);
             } else {
-              onReady();
+              waitForCss();
             }
-            window.addEventListener('load', onReady);
 
-            /* Safety: max 6s then force hide no matter what */
-            hideTimer = setTimeout(function() { pageReady = true; hideLoader(); }, 6000);
+            /* Safety: max 12s then force hide + reveal */
+            safetyTimer = setTimeout(function() { hideLoader(); }, 12000);
 
             /* API for client-side route changes (useNavigating hook) */
             window.__rimouchaLoader = {
               start: function(customDelay) {
-                pageReady = false;
-                var d = typeof customDelay === 'number' ? customDelay : 1000;
-                if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
-                if (timer) { clearTimeout(timer); timer = null; }
-                timer = setTimeout(showLoader, d);
-                hideTimer = setTimeout(function() { pageReady = true; hideLoader(); }, 5000 + d);
+                if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+                if (pollId) { clearInterval(pollId); pollId = null; }
+                cssReady = true; minTimeReady = false;
+                shown = false;
+                setTimeout(showLoader, typeof customDelay === 'number' ? customDelay : 1000);
+                setTimeout(function() { minTimeReady = true; tryHide(); }, 800);
+                safetyTimer = setTimeout(hideLoader, 6000);
               },
-              stop: function() { pageReady = true; hideLoader(); },
-              /* For testing: show loader for 3 seconds */
+              stop: hideLoader,
               test: function() {
-                pageReady = false;
-                if (timer) clearTimeout(timer);
-                if (hideTimer) clearTimeout(hideTimer);
+                shown = false;
                 showLoader();
-                hideTimer = setTimeout(function() { pageReady = true; hideLoader(); }, 3000);
+                if (safetyTimer) clearTimeout(safetyTimer);
+                safetyTimer = setTimeout(hideLoader, 3000);
               }
             };
           })();
@@ -337,7 +281,43 @@ export default async function RootLayout({
         style={{
           fontFamily: 'var(--font-work-sans), var(--font-family-body)',
         }}
+        suppressHydrationWarning
       >
+        {/* Server-rendered loader — in the HTML from byte 0, visible instantly */}
+        <div id="rimoucha-loader" aria-hidden="true" suppressHydrationWarning>
+          <div className="loader-wave" style={{ fontFamily: 'var(--font-pacifico),Pacifico,cursive' }}>
+            <span>R</span><span>i</span><span>m</span><span>o</span><span>u</span><span>c</span><span>h</span><span>a</span>
+          </div>
+          <div className="loader-dots">
+            <span /><span /><span />
+          </div>
+          {/* Daisy flowers */}
+          <div className="loader-daisy" style={{ top: '8%', left: '5%', animationDelay: '0s' }}>
+            <svg viewBox="0 0 36 36" fill="none"><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(0 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(72 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(144 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(216 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(288 18 18)" /><circle cx="18" cy="18" r="4" fill="#ffcc00" /></svg>
+          </div>
+          <div className="loader-daisy" style={{ top: '15%', right: '8%', animationDelay: '0.6s' }}>
+            <svg viewBox="0 0 36 36" fill="none"><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(0 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(72 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(144 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(216 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(288 18 18)" /><circle cx="18" cy="18" r="4" fill="#ffcc00" /></svg>
+          </div>
+          <div className="loader-daisy" style={{ bottom: '20%', left: '10%', animationDelay: '1.2s' }}>
+            <svg viewBox="0 0 36 36" fill="none"><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(0 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(72 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(144 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(216 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(288 18 18)" /><circle cx="18" cy="18" r="4" fill="#ffcc00" /></svg>
+          </div>
+          <div className="loader-daisy" style={{ bottom: '10%', right: '6%', animationDelay: '0.4s' }}>
+            <svg viewBox="0 0 36 36" fill="none"><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(0 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(72 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(144 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(216 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(288 18 18)" /><circle cx="18" cy="18" r="4" fill="#ffcc00" /></svg>
+          </div>
+          <div className="loader-daisy" style={{ top: '40%', left: '3%', animationDelay: '0.8s' }}>
+            <svg viewBox="0 0 36 36" fill="none"><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(0 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(72 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(144 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(216 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(288 18 18)" /><circle cx="18" cy="18" r="4" fill="#ffcc00" /></svg>
+          </div>
+          <div className="loader-daisy" style={{ top: '35%', right: '4%', animationDelay: '1.6s' }}>
+            <svg viewBox="0 0 36 36" fill="none"><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(0 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(72 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(144 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(216 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(288 18 18)" /><circle cx="18" cy="18" r="4" fill="#ffcc00" /></svg>
+          </div>
+          <div className="loader-daisy" style={{ bottom: '35%', left: '6%', animationDelay: '1s' }}>
+            <svg viewBox="0 0 36 36" fill="none"><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(0 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(72 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(144 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(216 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(288 18 18)" /><circle cx="18" cy="18" r="4" fill="#ffcc00" /></svg>
+          </div>
+          <div className="loader-daisy" style={{ top: '12%', left: '40%', animationDelay: '1.8s' }}>
+            <svg viewBox="0 0 36 36" fill="none"><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(0 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(72 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(144 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(216 18 18)" /><ellipse cx="18" cy="10" rx="4.5" ry="8" fill="#fff" opacity="0.9" transform="rotate(288 18 18)" /><circle cx="18" cy="18" r="4" fill="#ffcc00" /></svg>
+          </div>
+        </div>
+
         <NextIntlClientProvider locale={locale} messages={messages}>
           <CartProvider locale={locale}>
             <LikesProvider>

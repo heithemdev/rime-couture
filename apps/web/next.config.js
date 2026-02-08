@@ -36,6 +36,9 @@ const nextConfig = {
   // Turbopack
   turbopack: {},
 
+  // Allow ngrok dev origins to prevent cross-origin warnings
+  allowedDevOrigins: ['*.ngrok-free.app', '*.ngrok.io'],
+
   // Security headers are handled by middleware.ts -> proxy.ts
   // This prevents "double headers" and allows better control (HSTS, localhost detection)
 };

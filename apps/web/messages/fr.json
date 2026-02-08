@@ -97,49 +97,50 @@
   "trustFeatures": {
     "title": "Pourquoi les Mamans Nous Font Confiance",
     "features": {
-      "safeForKids": {
-        "title": "Sûr pour les Enfants",
-        "description": "Tissus naturels hypoallergéniques uniquement."
+      "premiumMaterials": {
+        "title": "Matériaux Premium",
+        "description": "Uniquement les plus beaux tissus. Doux, durables et délicats pour la peau de votre enfant."
       },
-      "familyMade": {
-        "title": "Fait en Famille",
-        "description": "Artisanat algérien authentique."
+      "looksGreatInPerson": {
+        "title": "Beau en Vrai",
+        "description": "Nos pièces sont aussi sublimes sur vos filles que sur les photos."
       },
-      "carefullyPacked": {
-        "title": "Emballé avec Soin",
-        "description": "Emballage écologique et sécurisé."
+      "handSewn": {
+        "title": "Cousu Main avec Soin",
+        "description": "Chaque point est fait à la main avec une attention aux moindres détails."
       },
-      "fastShipping": {
-        "title": "Livraison Rapide",
-        "description": "Livraison nationale en 3-5 jours."
+      "twentyYears": {
+        "title": "+20 Ans d'Expertise",
+        "description": "Deux décennies d'expérience en couture derrière chaque pièce que nous créons."
       },
-      "madeWithLove": {
-        "title": "Fait avec Amour",
-        "description": "Chaque pièce est cousue main de manière unique."
+      "mothersTouchTitle": {
+        "title": "La Touche d'une Maman",
+        "description": "Chaque pièce est cousue avec le même soin que pour les vêtements de nos propres enfants."
       },
-      "qualityCheck": {
-        "title": "Contrôle Qualité",
-        "description": "Tests rigoureux pour l'usage familial quotidien."
+      "weGetEachOther": {
+        "title": "On se Comprend entre Mamans",
+        "description": "Moi maman, toi maman, on sait exactement ce dont ta famille a besoin."
       }
     }
   },
   "testimonials": {
-    "title": "Familles Heureuses",
+    "title": "Ce Que Disent Les Mamans",
+    "subtitle": "Des vrais mots de vraies mamans",
     "reviews": {
       "sarah": {
-        "name": "Sarah M.",
-        "location": "Alger, Algérie",
-        "text": "La qualité est exceptionnelle ! Ma fille adore sa nouvelle robe et le tissu est si doux. Je recommande vivement !"
+        "name": "ome elkhayre",
+        "location": "Bouira",
+        "text": "c'est juste TOP, je peux rien dire de plus !!"
       },
       "amira": {
         "name": "Amira B.",
-        "location": "Oran, Algérie",
-        "text": "J'ai enfin trouvé une marque qui comprend les besoins des mamans. Les tailles sur mesure sont parfaites !"
+        "location": "Bouira",
+        "text": "merci beaucouuup ma petite fille est allée à la fête de mariage et tout le monde a complimenté sa robe, même moi je m'y attendais pas"
       },
       "fatima": {
         "name": "Fatima K.",
-        "location": "Constantine, Algérie",
-        "text": "Magnifique savoir-faire et livraison rapide. L'ensemble cuisine s'accorde parfaitement avec ma maison !"
+        "location": "Bouira",
+        "text": "c'est exactement comme je l'avais imaginé, j'ai hâte de voir les prochaines robes et de les commander"
       }
     }
   },
@@ -261,7 +262,17 @@
     "writeFirstReview": "Écrire le Premier Avis",
     "youMayAlsoLike": "Vous Aimerez Aussi",
     "viewAll": "Voir Tout",
-    "loadingRelated": "Chargement des produits similaires..."
+    "loadingRelated": "Chargement des produits similaires...",
+    "addedToCart": "Ajouté au Panier !",
+    "editReview": "Modifier Votre Avis",
+    "noImage": "Aucune image disponible",
+    "reviewsCount": "({count} avis)",
+    "tagTypes": {
+      "MATERIAL": "Matériau",
+      "PATTERN": "Motif",
+      "MOOD_SEASON": "Saison",
+      "OCCASION": "Occasion"
+    }
   },
   "cart": {
     "title": "Panier",
