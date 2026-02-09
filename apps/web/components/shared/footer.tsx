@@ -7,6 +7,7 @@ import { locales, LOCALE_LABEL } from '@/i18n/routing';
 import type { Locale } from '@/i18n/routing';
 import SafeLink from '@/components/shared/SafeLink';
 import { Facebook, Instagram, Twitter } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Footer() {
   const t = useTranslations('footer');
@@ -328,7 +329,7 @@ export default function Footer() {
             {/* Brand Column */}
             <div className="footer-brand-column">
               <SafeLink href="/" newTab={false} className="footer-logo-link">
-                <span className="footer-brand-name">Rimoucha</span>
+                <Image src="/assets/Logo.webp" alt="Rimoucha" width={140} height={56} className="footer-brand-logo" style={{ height: '48px', width: 'auto', objectFit: 'contain' }} />
               </SafeLink>
               <p className="footer-brand-story">{t('brandStory')}</p>
               <div className="footer-social-wrapper">
@@ -435,9 +436,7 @@ export default function Footer() {
                 </SafeLink>
               </div>
               <div className="footer-made-with">
-                <span>Made with</span>
-                <span className="footer-heart">♥</span>
-                <span>in Algeria</span>
+                {t('madeWithLove', { heart: '♥' })}
               </div>
             </div>
           </div>

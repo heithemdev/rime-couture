@@ -147,7 +147,7 @@ model User {
   deletedAt DateTime?
 
   // --- Relations ---
-  sessions        Session[] // Added for Auth
+  sessions        Session[] 
   wishlistItems   WishlistItem[]
   carts           Cart[]
   orders          Order[]

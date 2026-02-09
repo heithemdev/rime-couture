@@ -9,6 +9,8 @@ import SafeLink from '@/components/shared/SafeLink';
 import { useCart } from '@/lib/cart-context';
 import { useNavigating } from '@/lib/use-navigating';
 import { Search, ShoppingCart, User, Truck, X, Menu, ChevronDown, Sparkles } from 'lucide-react';
+import AuthModal from '@/components/shared/authModal';
+import type { AuthMode, AuthUser } from '@/components/shared/authModal';
 
 export default function Header() {
   const tc = useTranslations('common');
@@ -25,10 +27,21 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const smartSearchRef = useRef<HTMLTextAreaElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
+
+  /* ---- Check auth status on mount ---- */
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => { if (data.user) setAuthUser(data.user); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let ticking = false;
@@ -864,6 +877,7 @@ export default function Header() {
                 type="button"
                 className="header-action-btn desktop-only"
                 aria-label={tc('myAccount')}
+                onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
               >
                 <User size={22} />
               </button>
@@ -1015,17 +1029,16 @@ export default function Header() {
           
           {/* Mobile Navigation */}
           <nav className="mobile-nav">
-            <SafeLink 
-              href="#account" 
-              newTab={false} 
+            <button 
+              type="button"
               className="mobile-nav-item" 
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => { setIsMobileMenuOpen(false); setAuthMode('login'); setIsAuthModalOpen(true); }}
             >
               <span className="mobile-nav-icon">
                 <User size={20} />
               </span>
               {tc('myAccount')}
-            </SafeLink>
+            </button>
             <SafeLink 
               href="/cart" 
               newTab={false} 
@@ -1068,6 +1081,17 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        mode={authMode}
+        onToggleMode={() => setAuthMode((m: AuthMode) => (m === 'login' ? 'signup' : 'login'))}
+        currentUser={authUser}
+        onAuthSuccess={(user) => { setAuthUser(user); }}
+        onLogout={() => { setAuthUser(null); }}
+      />
     </>
   );
 }

@@ -185,7 +185,7 @@ export default async function RootLayout({
 
             /* Is this the landing page (first visit)? */
             var isLanding = (location.pathname === '/' || location.pathname === '');
-            var MIN_SHOW = isLanding ? 3000 : 800;
+            var MIN_SHOW = isLanding ? 3000 : 0;
 
             function isCssLoaded() {
               try {
