@@ -176,6 +176,8 @@ export async function POST(request: NextRequest) {
           slug: data.slug,
           categoryId: realCategoryId,
           basePriceMinor: data.basePriceMinor || 0,
+          originalPriceMinor: data.originalPriceMinor || null,
+          discountPercent: data.discountPercent || null,
           isActive: data.isActive ?? true,
           status: data.status || 'PUBLISHED',
         },

@@ -38,6 +38,7 @@ export interface ProductCardProps {
   description?: string;
   price: number;
   originalPrice?: number;
+  discountPercent?: number;
   currency?: string;
   imageUrl: string;
   imageAlt?: string;
@@ -47,6 +48,7 @@ export interface ProductCardProps {
   reviewCount?: number;
   likeCount?: number;
   inStock?: boolean;
+  isTopSeller?: boolean;
   // Variant data for cart modal
   sizes?: Size[];
   colors?: Color[];
@@ -63,6 +65,7 @@ export default function ProductCard({
   name,
   price,
   originalPrice,
+  discountPercent: discountPercentProp,
   currency = 'DZD',
   imageUrl,
   imageAlt,
@@ -72,6 +75,7 @@ export default function ProductCard({
   reviewCount,
   likeCount: initialLikeCount = 0,
   inStock = true,
+  isTopSeller = false,
   sizes = [],
   colors = [],
   variants = [],
@@ -144,9 +148,11 @@ export default function ProductCard({
     onQuickView?.(id);
   };
 
-  const discountPercent = originalPrice 
-    ? Math.round(((originalPrice - price) / originalPrice) * 100) 
-    : 0;
+  const discountPercent = discountPercentProp 
+    ? discountPercentProp 
+    : (originalPrice && originalPrice > price 
+      ? Math.round(((originalPrice - price) / originalPrice) * 100) 
+      : 0);
 
   return (
     <>
@@ -205,6 +211,49 @@ export default function ProductCard({
         .product-badge.sale { background: linear-gradient(135deg, #EF4444, #DC2626); }
         .product-badge.new { background: linear-gradient(135deg, var(--color-secondary), #0D9488); }
         .product-badge.bestseller { background: linear-gradient(135deg, var(--color-primary), var(--color-accent)); }
+        
+        .product-discount-sticker {
+          position: absolute;
+          bottom: var(--spacing-md);
+          left: var(--spacing-md);
+          z-index: 10;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 10px;
+          background: linear-gradient(135deg, #EF4444, #DC2626);
+          color: white;
+          font-size: 12px;
+          font-weight: 700;
+          border-radius: var(--border-radius-sm);
+          box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+          animation: discountPulse 2s ease-in-out infinite;
+        }
+        @keyframes discountPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        .product-top-seller {
+          position: absolute;
+          top: var(--spacing-md);
+          left: var(--spacing-md);
+          z-index: 11;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 10px;
+          background: linear-gradient(135deg, #F59E0B, #D97706);
+          color: white;
+          font-size: 11px;
+          font-weight: 700;
+          border-radius: var(--border-radius-sm);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          box-shadow: 0 2px 8px rgba(245,158,11,0.3);
+        }
+        .product-top-seller + .product-badge {
+          top: calc(var(--spacing-md) + 28px);
+        }
         
         .product-actions {
           top: var(--spacing-md);
@@ -417,8 +466,14 @@ export default function ProductCard({
       >
         <SafeLink href={`/product/${id}`} newTab={false} className="product-card-link">
           <div className="product-image-container">
+            {isTopSeller && (
+              <span className="product-top-seller">🔥 Top Seller</span>
+            )}
             {badge && (
               <span className={`product-badge ${badgeType}`}>{badge}</span>
+            )}
+            {discountPercent > 0 && (
+              <span className="product-discount-sticker">Save {discountPercent}%</span>
             )}
             
             <div className="product-actions">

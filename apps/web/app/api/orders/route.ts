@@ -11,6 +11,7 @@ import {
   rateLimitResponse,
   checkForBot,
 } from '@/lib/api-security';
+import { sendOrderReceiptEmail } from '@/lib/email';
 
 // Retry helper for database operations
 async function withRetry<T>(
@@ -457,6 +458,48 @@ export async function POST(request: NextRequest) {
             stock: { decrement: item.quantity },
           },
         }));
+      }
+    }
+    
+    // ========== SEND ORDER RECEIPT EMAIL (fire & forget) ==========
+    
+    if (order.customerEmail || fingerprint) {
+      // Try to find user email from fingerprint → session → user
+      let recipientEmail = order.customerEmail;
+      if (!recipientEmail && fingerprint) {
+        try {
+          // Look up user by fingerprint from their ProductLike records
+          const likeRecord = await prisma.productLike.findFirst({
+            where: { fingerprint, userId: { not: null } },
+            include: { user: { select: { email: true, emailNotifications: true } } },
+          });
+          if (likeRecord?.user?.emailNotifications && likeRecord.user.email) {
+            recipientEmail = likeRecord.user.email;
+          }
+        } catch { /* ignore */ }
+      }
+      
+      if (recipientEmail) {
+        sendOrderReceiptEmail(recipientEmail, {
+          orderNumber: order.orderNumber,
+          customerName: customerName.trim(),
+          items: validatedItems.map(item => ({
+            productName: item.productName,
+            productSlug: item.productSlug,
+            productImageUrl: item.productImageUrl,
+            quantity: item.quantity,
+            unitPrice: item.unitPriceMinor / 100,
+            lineTotal: item.lineTotalMinor / 100,
+            sizeLabel: item.sizeLabel,
+            colorLabel: item.colorLabel,
+          })),
+          subtotal: subtotalMinor / 100,
+          shipping: shippingMinor / 100,
+          total: totalMinor / 100,
+          wilayaName,
+          commune,
+          address: deliveryType === 'HOME' ? address?.trim() : undefined,
+        }).catch(err => console.error('Failed to send order receipt email:', err));
       }
     }
     

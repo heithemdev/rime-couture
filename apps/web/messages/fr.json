@@ -438,5 +438,15 @@
     "trackingInfo": "Informations de Suivi",
     "estimatedDelivery": "Livraison Estimée",
     "backToOrders": "Retour aux Commandes"
+  },
+  "thankYou": {
+    "title": "Merci ! 🎉",
+    "subtitle": "Votre commande a été passée avec succès",
+    "message": "Nous préparons votre commande avec amour et soin. Vous recevrez bientôt une confirmation avec tous les détails.",
+    "handmade": "Fait Main",
+    "shipped": "Livraison Rapide",
+    "withLove": "Fait avec Amour",
+    "viewOrders": "Suivre Ma Commande",
+    "continueShopping": "Continuer les Achats"
   }
 }

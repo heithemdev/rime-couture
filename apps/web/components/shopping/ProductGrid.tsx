@@ -12,6 +12,7 @@ export interface Product {
   slug: string;
   price: number;
   compareAtPrice?: number | null;
+  discountPercent?: number | null;
   description?: string | null;
   images: Array<{ id: string; url: string; alt?: string | null; isPrimary: boolean }>;
   category?: {
@@ -23,6 +24,7 @@ export interface Product {
   reviewCount?: number;
   likeCount?: number;
   inStock?: boolean;
+  isTopSeller?: boolean;
   sizes?: Array<{ id: string; code: string; label: string }>;
   colors?: Array<{ id: string; code: string; hex?: string | null; label: string }>;
   variants?: Array<{
@@ -108,7 +110,8 @@ export default function ProductGrid({
       name: product.name,
       slug: product.slug,
       price: product.price,
-      compareAtPrice: product.compareAtPrice || undefined,
+      originalPrice: product.compareAtPrice || undefined,
+      discountPercent: product.discountPercent || undefined,
       imageUrl: primaryImage?.url || '/assets/placeholder.png',
       imageAlt: primaryImage?.alt || product.name,
       badges: product.badges || [],
@@ -116,6 +119,7 @@ export default function ProductGrid({
       reviewCount: product.reviewCount,
       likeCount: product.likeCount,
       inStock: product.inStock ?? true,
+      isTopSeller: product.isTopSeller ?? false,
       sizes: product.sizes || [],
       colors: product.colors || [],
       variants: transformedVariants,

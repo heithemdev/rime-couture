@@ -13,7 +13,6 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
-  CheckCircle2,
   ChevronDown,
   Clock,
   Home,
@@ -38,6 +37,7 @@ import {
 } from '@/lib/algeria/wilayas';
 import { getBaladiyasForWilaya, type Baladiya } from '@/lib/algeria/baladiya';
 import { useFingerprint } from '@/lib/cart-context';
+import ThankYouModal from '@/components/shared/ThankYouModal';
 
 export interface SelectedVariant {
   id: string;
@@ -120,6 +120,7 @@ export default function ProductCheckoutModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasCompleted, setHasCompleted] = useState(false);
+  const [completedOrderNumber, setCompletedOrderNumber] = useState<string | null>(null);
 
   const phoneDigits = useMemo(() => normalizePhone(phone), [phone]);
 
@@ -185,6 +186,7 @@ export default function ProductCheckoutModal({
       setSubmitError(null);
       setIsSubmitting(false);
       setHasCompleted(false);
+      setCompletedOrderNumber(null);
       setIsWilayaDropdownOpen(false);
       setIsBaladiyaDropdownOpen(false);
     }
@@ -304,6 +306,7 @@ export default function ProductCheckoutModal({
         return;
       }
 
+      setCompletedOrderNumber(data?.order?.orderNumber || null);
       setHasCompleted(true);
     } catch {
       setSubmitError('Unexpected error while creating your order. Please try again.');
@@ -924,6 +927,16 @@ export default function ProductCheckoutModal({
         }
       `}</style>
 
+      {hasCompleted && (
+        <ThankYouModal
+          isOpen={hasCompleted}
+          onClose={onClose}
+          orderNumber={completedOrderNumber ?? undefined}
+          onViewOrders={handleViewOrders}
+        />
+      )}
+
+      {!hasCompleted && (
       <div className="checkout-overlay" onClick={onClose}>
         <div className="checkout-modal" onClick={(e) => e.stopPropagation()}>
           <div className="checkout-header">
@@ -942,25 +955,6 @@ export default function ProductCheckoutModal({
             </button>
           </div>
 
-          {hasCompleted ? (
-            <div className="success-screen">
-              <div className="success-icon">
-                <CheckCircle2 size={36} />
-              </div>
-              <h3 className="success-title">{t('orderPlaced')}</h3>
-              <p className="success-message">
-                {t('orderConfirmation')}
-              </p>
-              <div className="success-buttons">
-                <button className="success-primary-btn" onClick={handleViewOrders}>
-                  {t('viewMyOrders')}
-                </button>
-                <button className="success-secondary-btn" onClick={onClose}>
-                  {t('continueShoppingBtn')}
-                </button>
-              </div>
-            </div>
-          ) : (
             <div className="checkout-body">
               {/* Order Summary */}
               <div className="order-summary">
@@ -1280,9 +1274,9 @@ export default function ProductCheckoutModal({
                 </button>
               </form>
             </div>
-          )}
         </div>
       </div>
+      )}
     </>
   );
 }

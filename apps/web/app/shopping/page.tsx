@@ -59,6 +59,7 @@ interface APIProduct {
   description: string;
   price: number;
   originalPrice?: number;
+  discountPercent?: number;
   currency: string;
   imageUrl: string;
   rating: number;
@@ -67,6 +68,7 @@ interface APIProduct {
   salesCount: number;
   inStock: boolean;
   isFeatured: boolean;
+  isTopSeller?: boolean;
   category: string;
   categorySlug: string;
   colors: Array<{ id: string; code: string; hex: string | null; label: string }>;
@@ -89,6 +91,7 @@ function transformProduct(apiProduct: APIProduct): Product {
     slug: apiProduct.slug,
     price: apiProduct.price,
     compareAtPrice: apiProduct.originalPrice || null,
+    discountPercent: apiProduct.discountPercent || null,
     description: apiProduct.description || null,
     images: apiProduct.imageUrl ? [
       {
@@ -110,6 +113,7 @@ function transformProduct(apiProduct: APIProduct): Product {
     reviewCount: apiProduct.reviewCount,
     likeCount: apiProduct.likeCount,
     inStock: apiProduct.inStock,
+    isTopSeller: apiProduct.isTopSeller ?? false,
     sizes: apiProduct.sizes,
     colors: apiProduct.colors,
     variants: apiProduct.variants,

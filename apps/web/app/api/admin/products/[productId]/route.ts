@@ -214,6 +214,8 @@ export async function GET(
       categoryId: product.categoryId,
       categorySlug: product.category?.slug || null,
       basePriceMinor: product.basePriceMinor,
+      originalPriceMinor: product.originalPriceMinor,
+      discountPercent: product.discountPercent,
       isActive: product.isActive,
       status: product.status,
       translations: product.translations.map((t) => ({
@@ -334,6 +336,8 @@ export async function PUT(
           slug: data.slug,
           categoryId: realCategoryId,
           basePriceMinor: data.basePriceMinor,
+          originalPriceMinor: data.originalPriceMinor ?? null,
+          discountPercent: data.discountPercent ?? null,
           isActive: data.isActive,
           status: data.status,
         },

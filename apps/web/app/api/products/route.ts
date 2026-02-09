@@ -70,6 +70,7 @@ export interface ProductResponse {
   description: string;
   price: number;
   originalPrice?: number;
+  discountPercent?: number;
   currency: string;
   imageUrl: string;
   rating: number;
@@ -78,6 +79,7 @@ export interface ProductResponse {
   salesCount: number;
   inStock: boolean;
   isFeatured: boolean;
+  isTopSeller?: boolean;
   category: string;
   categorySlug: string;
   colors: {
@@ -379,6 +381,15 @@ export async function GET(request: NextRequest) {
       return response;
     }
     
+    // Get top 10 seller IDs for badge computation
+    const topSellers = await prisma.product.findMany({
+      where: { isActive: true, deletedAt: null, status: 'PUBLISHED', salesCount: { gt: 0 } },
+      orderBy: { salesCount: 'desc' },
+      take: 10,
+      select: { id: true },
+    });
+    const topSellerIds = new Set(topSellers.map(p => p.id));
+    
     // Format products
     const formattedProducts: ProductResponse[] = products.map((product: typeof products[number]) => {
       // Get translation for current locale
@@ -442,6 +453,8 @@ export async function GET(request: NextRequest) {
         name: translation?.name || product.slug,
         description: translation?.description || '',
         price: Math.round(product.basePriceMinor / 100),
+        originalPrice: product.originalPriceMinor ? Math.round(product.originalPriceMinor / 100) : undefined,
+        discountPercent: product.discountPercent ?? undefined,
         currency: product.currency,
         imageUrl: thumbMedia?.url || '',
         rating: product.avgRating,
@@ -450,6 +463,7 @@ export async function GET(request: NextRequest) {
         salesCount: product.salesCount,
         inStock: totalStock > 0,
         isFeatured: product.isFeatured,
+        isTopSeller: topSellerIds.has(product.id),
         category: catTranslation?.name || product.category?.slug || '',
         categorySlug: product.category?.slug || '',
         colors: Array.from(colorsMap.values()),

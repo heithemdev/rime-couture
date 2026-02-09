@@ -438,5 +438,15 @@
     "trackingInfo": "Tracking Information",
     "estimatedDelivery": "Estimated Delivery",
     "backToOrders": "Back to Orders"
+  },
+  "thankYou": {
+    "title": "Thank You! 🎉",
+    "subtitle": "Your order has been placed successfully",
+    "message": "We're preparing your order with love and care. You'll receive a confirmation soon with all the details.",
+    "handmade": "Handcrafted",
+    "shipped": "Fast Shipping",
+    "withLove": "Made with Love",
+    "viewOrders": "Track My Order",
+    "continueShopping": "Continue Shopping"
   }
 }

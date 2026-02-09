@@ -139,15 +139,16 @@ model User {
   displayName  String?
   passwordHash String?
 
-  preferredLocale Locale    @default(EN)
-  emailVerifiedAt DateTime?
+  preferredLocale    Locale    @default(EN)
+  emailVerifiedAt    DateTime?
+  emailNotifications Boolean   @default(true)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   // --- Relations ---
-  sessions        Session[] 
+  sessions        Session[]
   wishlistItems   WishlistItem[]
   carts           Cart[]
   orders          Order[]
@@ -366,17 +367,19 @@ model MediaAsset {
  * ============================================================================
  */
 model Product {
-  id             String        @id @default(uuid()) @db.Uuid
-  slug           String        @unique
-  categoryId     String        @db.Uuid
-  status         ProductStatus @default(DRAFT)
-  currency       Currency      @default(DZD)
-  basePriceMinor Int
-  isCustomizable Boolean       @default(false)
-  isMadeToOrder  Boolean       @default(false)
-  leadTimeDays   Int?
-  isFeatured     Boolean       @default(false)
-  featuredOrder  Int?          @default(0)
+  id                 String        @id @default(uuid()) @db.Uuid
+  slug               String        @unique
+  categoryId         String        @db.Uuid
+  status             ProductStatus @default(DRAFT)
+  currency           Currency      @default(DZD)
+  basePriceMinor     Int
+  originalPriceMinor Int? // Before-discount price (null = no discount)
+  discountPercent    Int? // Calculated discount percentage
+  isCustomizable     Boolean       @default(false)
+  isMadeToOrder      Boolean       @default(false)
+  leadTimeDays       Int?
+  isFeatured         Boolean       @default(false)
+  featuredOrder      Int?          @default(0)
 
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
@@ -405,6 +408,7 @@ model Product {
   @@index([createdAt])
   @@index([deletedAt])
   @@index([isFeatured, featuredOrder])
+  @@index([salesCount])
 }
 
 model ProductTranslation {
