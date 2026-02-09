@@ -147,6 +147,7 @@ const translations = {
     deleteConfirm: 'Are you sure you want to permanently delete this product?',
     deleteSuccess: 'Product deleted successfully',
     deleting: 'Deleting...',
+    logout: 'Logout',
   },
   ar: {
     dashboard: 'لوحة تحكم المسؤول',
@@ -191,6 +192,7 @@ const translations = {
     deleteConfirm: 'هل أنت متأكد أنك تريد حذف هذا المنتج نهائياً؟',
     deleteSuccess: 'تم حذف المنتج بنجاح',
     deleting: 'جاري الحذف...',
+    logout: 'تسجيل الخروج',
   },
   fr: {
     dashboard: 'Tableau de Bord Admin',
@@ -235,6 +237,7 @@ const translations = {
     deleteConfirm: 'Êtes-vous sûr de vouloir supprimer définitivement ce produit ?',
     deleteSuccess: 'Produit supprimé avec succès',
     deleting: 'Suppression...',
+    logout: 'Déconnexion',
   },
 };
 
@@ -392,6 +395,13 @@ const Icons = {
       <path d="m6 9 6 6 6-6"/>
     </svg>
   ),
+  LogOut: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  ),
 };
 
 // ============================================================================
@@ -493,8 +503,8 @@ function LineChartImproved({
         </div>
       </div>
 
-      <div style={{ position: 'relative', width: '100%', height, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-        <svg viewBox={`0 0 ${chartWidth} ${height}`} style={{ width: '100%', height: '100%', minWidth: '480px' }} preserveAspectRatio="xMidYMid meet">
+      <div style={{ position: 'relative', width: '100%', height }}>
+        <svg viewBox={`0 0 ${chartWidth} ${height}`} style={{ width: '100%', height: '100%' }} preserveAspectRatio="xMidYMid meet">
           {/* Y-axis labels */}
           {yTicks.map((tick, i) => {
             const y = chartPadding.top + (i / (yTicks.length - 1)) * chartHeight;
@@ -1127,7 +1137,20 @@ export default function AdminDashboard() {
   const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
   const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false);
   const [deleteModalProductId, setDeleteModalProductId] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const timeDropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleLogout = useCallback(async () => {
+    setIsLoggingOut(true);
+    try {
+      await fetch('/api/auth/admin/logout', { method: 'POST' });
+    } catch {
+      // ignore
+    } finally {
+      // Full page reload to ensure cookie is cleared before navigation
+      window.location.href = '/admin/login';
+    }
+  }, []);
   
   // Map next-intl locale to our translations
   const lang: Lang = (locale === 'ar' || locale === 'fr') ? locale : 'en';
@@ -1402,6 +1425,14 @@ export default function AdminDashboard() {
               }}>
                 <Icons.Plus /> {t.addProduct}
               </Link>
+
+              {/* Logout */}
+              <button onClick={handleLogout} disabled={isLoggingOut}
+                style={{ width: '40px', height: '40px', border: `1px solid ${TOKENS.colors.error}`, borderRadius: TOKENS.radius.md, backgroundColor: 'transparent', cursor: isLoggingOut ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: TOKENS.colors.error }}
+                title={t.logout}
+              >
+                <Icons.LogOut />
+              </button>
             </div>
           </div>
         </div>

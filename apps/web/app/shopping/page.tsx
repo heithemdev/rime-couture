@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
 import { SlidersHorizontal, X, ChevronDown, Clock, TrendingUp, ArrowUpDown, Star } from 'lucide-react';
 import Header from '@/components/shared/header';
@@ -120,6 +120,7 @@ export default function ShoppingPage() {
   const t = useTranslations('shopping');
   const tFilters = useTranslations('shopping.filters');
   const tSort = useTranslations('shopping.sort');
+  const locale = useLocale();
   const searchParams = useSearchParams();
   
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -220,6 +221,7 @@ export default function ShoppingPage() {
     const params = new URLSearchParams();
     params.set('page', pageNum.toString());
     params.set('limit', PRODUCTS_PER_PAGE.toString());
+    params.set('locale', locale.toUpperCase());
     
     if (filters.searchQuery) {
       params.set('search', filters.searchQuery);
@@ -253,7 +255,7 @@ export default function ShoppingPage() {
     }
     
     return params.toString();
-  }, [filters]);
+  }, [filters, locale]);
 
   // Fetch products - with caching for better navigation experience
   // NOTE: products.length removed from deps to prevent infinite re-creation.

@@ -245,7 +245,7 @@ export default function AdminProductPage({
                 if (v.colorId && v.colorCode) {
                   frontendColorId =
                     COLOR_CODE_TO_FRONTEND[v.colorCode] || v.colorId;
-                  dbColorIdToFrontendId.set(v.colorId, frontendColorId);
+                  dbColorIdToFrontendId.set(v.colorId, frontendColorId!);
                 }
                 let frontendSizeId: string | null = null;
                 if (v.sizeId && v.sizeCode) {

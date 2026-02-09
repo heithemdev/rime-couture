@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, Locale, Prisma } from '@repo/db';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,6 +15,9 @@ export const runtime = 'nodejs';
 // GET - Fetch all orders for admin
 export async function GET(request: NextRequest) {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const search = searchParams.get('search');
@@ -167,6 +171,9 @@ export async function GET(request: NextRequest) {
 // PATCH - Update order status
 export async function PATCH(request: NextRequest) {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
+
     const body = await request.json();
     const { orderId, status, trackingCode } = body;
 

@@ -6,9 +6,12 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@repo/db';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 export async function GET() {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
     const sizes = await prisma.size.findMany({
       select: {
         id: true,

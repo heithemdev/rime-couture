@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, Locale } from '@repo/db';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,6 +15,9 @@ export const runtime = 'nodejs';
 // GET - Fetch all tags grouped by type
 export async function GET() {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
+
     const tags = await prisma.tag.findMany({
       where: { isActive: true },
       include: {
@@ -45,6 +49,9 @@ export async function GET() {
 // POST - Create a new tag
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
+
     const body = await request.json();
     const { type, slug, labels } = body;
 

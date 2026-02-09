@@ -398,6 +398,7 @@
     "profileEmail": "Email",
     "profilePhone": "Phone",
     "profileNotification": "You will be notified for every new product and special offer. Thanks for signing up!",
+    "adminBadge": "You are Admin",
     "logOut": "Log out",
     "loggingOut": "Logging out..."
   },

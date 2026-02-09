@@ -17,6 +17,7 @@ import {
   COLOR_HEX_MAP,
   SIZE_CODE_MAP,
 } from '@/lib/constants';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -147,6 +148,9 @@ export async function GET(
   { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
+
     const { productId } = await params;
 
     const product = await prisma.product.findUnique({
@@ -259,6 +263,9 @@ export async function PUT(
   { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
+
     const { productId } = await params;
     
     // Parse form data (for file uploads)
@@ -556,6 +563,9 @@ export async function DELETE(
   { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
+
     const { productId } = await params;
 
     // Verify product exists

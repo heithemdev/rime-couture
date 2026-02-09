@@ -272,6 +272,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           categoryId: product.category.id,
           limit: '8',
           exclude: product.id,
+          locale: locale.toUpperCase(),
         });
         const res = await fetch(`/api/products?${params}`, {
           signal: controller.signal,
@@ -336,7 +337,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
 
     fetchRelatedProducts();
     return () => controller.abort();
-  }, [product.id, product.category.id]);
+  }, [product.id, product.category.id, locale]);
 
   // --------------------------------------------------------------------------
   // HANDLERS - LIKE

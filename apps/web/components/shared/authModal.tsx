@@ -442,15 +442,20 @@ export default function AuthModal({
   const handleLogout = useCallback(async () => {
     setIsLoading(true);
     try {
-      await apiPost('/api/auth/logout', {});
+      const isAdmin = currentUser?.role === 'ADMIN';
+      const logoutUrl = isAdmin ? '/api/auth/admin/logout' : '/api/auth/logout';
+      await apiPost(logoutUrl, {});
       onLogout?.();
       onClose();
+      if (isAdmin) {
+        window.location.href = '/admin/login';
+      }
     } catch {
       setError('Logout failed');
     } finally {
       setIsLoading(false);
     }
-  }, [onLogout, onClose]);
+  }, [onLogout, onClose, currentUser?.role]);
 
   /* ================================================================ */
   /*  Don't render when closed                                         */
@@ -491,6 +496,9 @@ export default function AuthModal({
             <h2 id="auth-title" className="auth-title">
               {t('profileGreeting', { name: currentUser?.displayName || 'User' })}
             </h2>
+            {currentUser?.role === 'ADMIN' && (
+              <span className="auth-admin-badge">{t('adminBadge')}</span>
+            )}
           </div>
 
           <div className="auth-profile-card">
@@ -512,10 +520,12 @@ export default function AuthModal({
             )}
           </div>
 
-          <div className="auth-notification-box">
-            <Bell size={20} className="auth-notification-icon" />
-            <p className="auth-notification-text">{t('profileNotification')}</p>
-          </div>
+          {currentUser?.role !== 'ADMIN' && (
+            <div className="auth-notification-box">
+              <Bell size={20} className="auth-notification-icon" />
+              <p className="auth-notification-text">{t('profileNotification')}</p>
+            </div>
+          )}
 
           {error && <div className="auth-error">{error}</div>}
 
@@ -1027,6 +1037,18 @@ export default function AuthModal({
           background: linear-gradient(135deg, #FF6B9D 0%, #FFB347 100%);
           display: flex; align-items: center; justify-content: center;
           color: #fff;
+        }
+        .auth-admin-badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 4px 14px;
+          border-radius: 20px;
+          background: linear-gradient(135deg, #be185d, #9f1239);
+          color: #fff;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 1px;
+          text-transform: uppercase;
         }
         .auth-profile-card {
           display: flex; flex-direction: column; gap: 0;

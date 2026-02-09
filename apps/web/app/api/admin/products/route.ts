@@ -19,6 +19,7 @@ import {
   COLOR_HEX_MAP,
   SIZE_CODE_MAP,
 } from '@/lib/constants';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -72,7 +73,7 @@ async function resolveColorId(tx: Prisma.TransactionClient, frontendId: string, 
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(frontendId)) return frontendId;
   const code = COLOR_CODE_MAP[frontendId] || frontendId;
   const resolvedHex = hex || COLOR_HEX_MAP[frontendId] || '#888888';
-  let color = await tx.color.findUnique({ where: { code }, select: { id: true, hex: true } });
+  const color = await tx.color.findUnique({ where: { code }, select: { id: true, hex: true } });
   if (color) {
     // Ensure hex is always up to date
     if (!color.hex || color.hex === '#888888' || color.hex !== resolvedHex) {
@@ -141,6 +142,9 @@ async function resolveOrCreateTag(tx: Prisma.TransactionClient, slug: string, ty
 
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
+
     const contentType = request.headers.get('content-type') || '';
     const formData = contentType.includes('multipart/form-data') ? await request.formData() : null;
     const dataStr = formData ? (formData.get('data') as string) : null;
@@ -312,6 +316,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
+
     const products = await prisma.product.findMany({
       where: { deletedAt: null },
       include: {

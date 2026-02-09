@@ -6,12 +6,15 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@repo/db';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET() {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
     const categories = await prisma.category.findMany({
       select: {
         id: true,

@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, Locale } from '@repo/db';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,6 +16,9 @@ export async function PATCH(
   { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
+    const guard = await requireAdmin();
+    if (guard.response) return guard.response;
+
     const { productId } = await params;
     
     if (!productId) {

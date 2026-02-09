@@ -398,6 +398,7 @@
     "profileEmail": "Email",
     "profilePhone": "Téléphone",
     "profileNotification": "Vous serez notifié(e) pour chaque nouveau produit et offre spéciale. Merci pour votre inscription !",
+    "adminBadge": "Vous êtes Admin",
     "logOut": "Se déconnecter",
     "loggingOut": "Déconnexion..."
   },
