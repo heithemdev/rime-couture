@@ -90,6 +90,8 @@ interface ProductFormData {
   categoryId: string;
   subcategoryId: string;
   basePriceMinor: number;
+  originalPriceMinor: number | null;
+  discountPercent: number | null;
   isActive: boolean;
   translations: Translation[];
   variants: VariantItem[];
@@ -132,6 +134,7 @@ export default function AdminProductPage({
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editMode, setEditMode] = useState(isNewProduct);
+  const [hasDiscount, setHasDiscount] = useState(false);
 
   // Snapshot for cancel
   const [snapshot, setSnapshot] = useState<ProductFormData | null>(null);
@@ -171,6 +174,8 @@ export default function AdminProductPage({
     categoryId: '',
     subcategoryId: '',
     basePriceMinor: 0,
+    originalPriceMinor: null,
+    discountPercent: null,
     isActive: true,
     translations: [
       { locale: 'EN', name: '', description: '' },
@@ -316,6 +321,8 @@ export default function AdminProductPage({
           categoryId: frontendCategoryId,
           subcategoryId: product.subcategoryId || '',
           basePriceMinor: product.basePriceMinor || 0,
+          originalPriceMinor: product.originalPriceMinor || null,
+          discountPercent: product.discountPercent || null,
           isActive: product.isActive ?? true,
           translations: mappedTranslations,
           variants: mappedVariants,
@@ -337,6 +344,7 @@ export default function AdminProductPage({
 
         setFormData(loaded);
         setSnapshot(structuredClone(loaded));
+        setHasDiscount(!!(product.originalPriceMinor && product.discountPercent));
 
         if (colorIds.length > 0) {
           setActiveColorTab(colorIds[0]!);
@@ -401,6 +409,7 @@ export default function AdminProductPage({
   );
 
   const priceDA = Math.round(formData.basePriceMinor / 100);
+  const originalPriceDA = formData.originalPriceMinor ? Math.round(formData.originalPriceMinor / 100) : 0;
 
   // Media filtered by active color tab (for gallery)
   const filteredMedia = useMemo(() => {
@@ -1379,6 +1388,84 @@ export default function AdminProductPage({
           font-size: var(--font-size-xl);
           font-weight: var(--font-weight-bold);
           color: var(--color-on-surface-secondary);
+        }
+
+        /* Discount */
+        .discount-section {
+          margin-bottom: var(--spacing-lg);
+          padding: var(--spacing-md);
+          background: var(--color-surface-variant, rgba(0,0,0,0.03));
+          border-radius: var(--border-radius-md);
+        }
+        .discount-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          cursor: pointer;
+        }
+        .discount-toggle-label {
+          font-size: var(--font-size-sm);
+          font-weight: var(--font-weight-semibold);
+          color: var(--color-on-surface);
+        }
+        .toggle-switch {
+          position: relative;
+          width: 44px;
+          height: 24px;
+          background: var(--color-border);
+          border: none;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: background 0.2s;
+          padding: 0;
+        }
+        .toggle-switch.active {
+          background: var(--color-primary);
+        }
+        .toggle-knob {
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 20px;
+          height: 20px;
+          background: white;
+          border-radius: 50%;
+          transition: transform 0.2s;
+        }
+        .toggle-switch.active .toggle-knob {
+          transform: translateX(20px);
+        }
+        .discount-fields {
+          margin-top: var(--spacing-md);
+        }
+        .discount-original-input {
+          font-size: var(--font-size-lg) !important;
+          color: var(--color-on-surface) !important;
+        }
+        .discount-percent-display {
+          font-size: var(--font-size-sm);
+          color: var(--color-success, #16a34a);
+          margin-top: var(--spacing-xs);
+        }
+        .discount-warning {
+          font-size: var(--font-size-sm);
+          color: var(--color-error, #dc2626);
+          margin-top: var(--spacing-xs);
+        }
+        .panel-price-original {
+          text-decoration: line-through;
+          color: var(--color-on-surface-secondary);
+          font-size: var(--font-size-xl);
+          font-weight: normal;
+        }
+        .panel-discount-badge {
+          font-size: var(--font-size-sm);
+          background: var(--color-error, #dc2626);
+          color: white;
+          padding: 2px 8px;
+          border-radius: var(--border-radius-sm);
+          margin-inline-start: var(--spacing-sm);
+          font-weight: var(--font-weight-semibold);
         }
 
         /* Variant sections */
@@ -2473,7 +2560,80 @@ export default function AdminProductPage({
                   <span className="price-currency">DA</span>
                 </div>
               ) : (
-                <div className="panel-price">{formatPrice(priceDA)}</div>
+                <div className="panel-price">
+                  {hasDiscount && formData.originalPriceMinor ? (
+                    <>
+                      <span className="panel-price-original">{formatPrice(originalPriceDA)}</span>
+                      {' '}
+                      {formatPrice(priceDA)}
+                      <span className="panel-discount-badge">-{formData.discountPercent}%</span>
+                    </>
+                  ) : (
+                    formatPrice(priceDA)
+                  )}
+                </div>
+              )}
+
+              {/* Discount Toggle */}
+              {editMode && (
+                <div className="discount-section">
+                  <label className="discount-toggle">
+                    <span className="discount-toggle-label">Has Discount</span>
+                    <button
+                      type="button"
+                      className={`toggle-switch ${hasDiscount ? 'active' : ''}`}
+                      onClick={() => {
+                        const next = !hasDiscount;
+                        setHasDiscount(next);
+                        if (!next) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            originalPriceMinor: null,
+                            discountPercent: null,
+                          }));
+                        }
+                      }}
+                    >
+                      <span className="toggle-knob" />
+                    </button>
+                  </label>
+                  {hasDiscount && (
+                    <div className="discount-fields">
+                      <div className="panel-price-input-wrap">
+                        <input
+                          type="number"
+                          className="panel-price-input discount-original-input"
+                          placeholder="Original price"
+                          min="0"
+                          value={originalPriceDA || ''}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value);
+                            const origMinor = Math.round(Math.max(0, val || 0) * 100);
+                            const disc = origMinor > 0 && formData.basePriceMinor < origMinor
+                              ? Math.round(((origMinor - formData.basePriceMinor) / origMinor) * 100)
+                              : 0;
+                            setFormData((prev) => ({
+                              ...prev,
+                              originalPriceMinor: origMinor,
+                              discountPercent: disc,
+                            }));
+                          }}
+                        />
+                        <span className="price-currency">DA</span>
+                      </div>
+                      {formData.discountPercent != null && formData.discountPercent > 0 && (
+                        <div className="discount-percent-display">
+                          Discount: <strong>-{formData.discountPercent}%</strong>
+                        </div>
+                      )}
+                      {formData.originalPriceMinor != null && formData.originalPriceMinor > 0 && formData.basePriceMinor >= formData.originalPriceMinor && (
+                        <div className="discount-warning">
+                          ⚠ Sale price must be less than original price
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 

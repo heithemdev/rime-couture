@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { ShoppingCart, Heart, Eye, Star, Loader2 } from 'lucide-react';
+import { ShoppingCart, Heart, Eye, Star, Loader2, Percent } from 'lucide-react';
 import SafeLink from '@/components/shared/SafeLink';
 import AddToCartModal from '@/components/product/AddToCartModal';
 import ImageQuickViewModal from '@/components/shared/ImageQuickViewModal';
@@ -458,6 +458,39 @@ export default function ProductCard({
         .spin-icon {
           animation: spinIcon 0.8s linear infinite;
         }
+        .product-discount-badge-unique {
+          position: absolute;
+          top: 0;
+          right: 0;
+          z-index: 20;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 18px 8px 12px;
+          background: linear-gradient(135deg, var(--color-accent), var(--color-primary));
+          color: #fff;
+          font-size: 15px;
+          font-weight: 800;
+          border-bottom-left-radius: 22px;
+          border-top-right-radius: 12px;
+          box-shadow: 0 4px 18px 0 rgba(0,0,0,0.10);
+          letter-spacing: 0.5px;
+          text-shadow: 0 1px 8px rgba(0,0,0,0.10);
+          border-top: 2.5px solid var(--color-surface);
+          border-right: 2.5px solid var(--color-surface);
+          animation: popBadge 1.2s cubic-bezier(.68,-0.55,.27,1.55);
+        }
+        .product-discount-badge-unique .discount-value {
+          font-size: 15px;
+          font-weight: 900;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        @keyframes popBadge {
+          0% { transform: scale(0.7) rotate(-8deg); opacity: 0; }
+          60% { transform: scale(1.15) rotate(2deg); opacity: 1; }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
       `}</style>
 
       <div 
@@ -473,7 +506,10 @@ export default function ProductCard({
               <span className={`product-badge ${badgeType}`}>{badge}</span>
             )}
             {discountPercent > 0 && (
-              <span className="product-discount-sticker">Save {discountPercent}%</span>
+              <span className="product-discount-badge-unique">
+                <Percent size={16} style={{ marginRight: 2 }} />
+                <span className="discount-value">Save {discountPercent}%</span>
+              </span>
             )}
             
             <div className="product-actions">

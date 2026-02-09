@@ -398,7 +398,11 @@
     "profileEmail": "Email",
     "profilePhone": "Téléphone",
     "profileNotification": "Vous serez notifié(e) pour chaque nouveau produit et offre spéciale. Merci pour votre inscription !",
+    "emailNotifications": "Notifications par email",
+    "emailNotificationsOn": "Vous recevrez les emails de nouveaux produits et offres",
+    "emailNotificationsOff": "Les notifications par email sont désactivées",
     "adminBadge": "Vous êtes Admin",
+    "seeFavorites": "Voir les Favoris",
     "logOut": "Se déconnecter",
     "loggingOut": "Déconnexion..."
   },
@@ -437,7 +441,19 @@
     "status_DELIVERED": "Livré",
     "trackingInfo": "Informations de Suivi",
     "estimatedDelivery": "Livraison Estimée",
-    "backToOrders": "Retour aux Commandes"
+    "backToOrders": "Retour aux Commandes",
+    "signInRequired": "Connectez-vous pour voir vos commandes",
+    "signInToTrack": "Veuillez vous connecter ou créer un compte pour suivre vos commandes et consulter votre historique.",
+    "signInBtn": "Se Connecter"
+  },
+  "signupPrompt": {
+    "title": "Rejoignez Rimoucha ! \uD83C\uDF38",
+    "subtitle": "Inscrivez-vous pour des offres exclusives, nouveautés et réductions spéciales !",
+    "bubble1": "Nouveautés chaque semaine !",
+    "bubble2": "Réductions membres exclusives",
+    "bubble3": "Suivez vos commandes facilement",
+    "signupBtn": "S'inscrire Maintenant",
+    "maybeLater": "Peut-être Plus Tard"
   },
   "thankYou": {
     "title": "Merci ! 🎉",
@@ -448,5 +464,17 @@
     "withLove": "Fait avec Amour",
     "viewOrders": "Suivre Ma Commande",
     "continueShopping": "Continuer les Achats"
+  },
+  "favorites": {
+    "title": "Mes Favoris",
+    "signInRequired": "Connectez-vous pour voir vos favoris",
+    "signInToSee": "Veuillez vous connecter ou créer un compte pour voir et gérer vos produits favoris.",
+    "signInBtn": "Se Connecter",
+    "emptyTitle": "Aucun favori",
+    "emptyText": "Commencez à parcourir et appuyez sur l'icône cœur pour sauvegarder les produits que vous aimez.",
+    "startShopping": "Commencer les Achats",
+    "breadcrumbHome": "Accueil",
+    "itemCount": "{count} {count, plural, one {article} other {articles}}",
+    "loadMore": "Voir Plus"
   }
 }

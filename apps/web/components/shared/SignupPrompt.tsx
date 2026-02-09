@@ -23,7 +23,7 @@ export default function SignupPrompt({ onSignup }: SignupPromptProps) {
   useEffect(() => {
     // Check if user already dismissed or is signed in
     const dismissed = sessionStorage.getItem('rc_signup_dismissed');
-    const hasSession = document.cookie.includes('rc_session=');
+    const hasSession = document.cookie.includes('session=');
     if (dismissed || hasSession) return;
 
     const timer = setTimeout(() => {

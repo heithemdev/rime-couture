@@ -1,7 +1,7 @@
 /**
  * Orders Page
  * Displays user's order history with status tracking
- * Uses fingerprint-based identification (no auth required)
+ * Requires authentication to view orders
  */
 
 'use client';
@@ -22,6 +22,7 @@ import {
   ShoppingBag,
   AlertCircle,
   Phone,
+  LogIn,
 } from 'lucide-react';
 import Header from '@/components/shared/header';
 import Footer from '@/components/shared/footer';
@@ -124,6 +125,15 @@ export default function OrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  // Check authentication status
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => setIsAuthenticated(!!data.user))
+      .catch(() => setIsAuthenticated(false));
+  }, []);
 
   // Get translated status label
   const getTranslatedStatus = (status: string) => {
@@ -757,7 +767,25 @@ export default function OrdersPage() {
           </header>
 
           {/* Content */}
-          {isLoading ? (
+          {isAuthenticated === false ? (
+            <div className="empty-state">
+              <div className="state-icon" style={{ background: 'linear-gradient(135deg, rgba(255,107,157,0.1), rgba(255,179,71,0.1))' }}>
+                <LogIn size={32} style={{ color: '#FF6B9D' }} />
+              </div>
+              <h2 className="state-title">{t('signInRequired')}</h2>
+              <p className="state-text">{t('signInToTrack')}</p>
+              <button
+                className="state-cta"
+                onClick={() => {
+                  // Trigger header auth modal via custom event
+                  window.dispatchEvent(new CustomEvent('open-auth-modal', { detail: { mode: 'login' } }));
+                }}
+              >
+                <LogIn size={18} />
+                {t('signInBtn')}
+              </button>
+            </div>
+          ) : isAuthenticated === null || isLoading ? (
             <div className="loading-state">
               <div className="loading-spinner" />
             </div>

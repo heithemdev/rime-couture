@@ -86,15 +86,6 @@ export default function proxy(req: NextRequest): NextResponse {
     }
   }
 
-  // If admin is already logged in and visits /admin/login, redirect to /admin
-  if (pathname === ADMIN_LOGIN_PATH) {
-    const adminToken = req.cookies.get(ADMIN_COOKIE_NAME)?.value;
-    if (adminToken) {
-      const dashboardUrl = new URL('/admin', req.url);
-      return NextResponse.redirect(dashboardUrl);
-    }
-  }
-
   // ── Security headers ──────────────────────────────────────────────────
   // Continue to the actual page/API route
   const response = NextResponse.next({

@@ -242,6 +242,8 @@ export async function GET(
         max: Math.round(maxPrice / 100),
         currency: product.currency,
       },
+      originalPrice: product.originalPriceMinor ? Math.round(product.originalPriceMinor / 100) : null,
+      discountPercent: product.discountPercent ?? null,
       flags: {
         isCustomizable: product.isCustomizable,
         isMadeToOrder: product.isMadeToOrder,

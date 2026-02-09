@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Eye, EyeOff, Mail, Lock, Phone, User as UserIcon, ArrowLeft, Loader2, LogOut, Bell } from 'lucide-react';
+import { X, Eye, EyeOff, Mail, Lock, Phone, User as UserIcon, ArrowLeft, Loader2, LogOut, Bell, Heart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -203,6 +204,7 @@ export default function AuthModal({
   currentUser,
 }: AuthModalProps) {
   const t = useTranslations('auth');
+  const router = useRouter();
 
   /* ---- view state ---- */
   const [view, setView] = useState<ViewState>(mode);
@@ -226,6 +228,10 @@ export default function AuthModal({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string | null>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  /* ---- email notifications ---- */
+  const [emailNotifs, setEmailNotifs] = useState(true);
+  const [notifLoading, setNotifLoading] = useState(false);
 
   /* ---- stash signup data for OTP verification ---- */
   const signupDataRef = useRef<{ name: string; email: string; phone: string; password: string } | null>(null);
@@ -252,6 +258,16 @@ export default function AuthModal({
       resetAll();
     }
   }, [mode, currentUser]);
+
+  /* ---- fetch email notification pref when profile opens ---- */
+  useEffect(() => {
+    if (view === 'profile' && currentUser) {
+      fetch('/api/auth/notifications')
+        .then(r => r.json())
+        .then(d => { if (typeof d.emailNotifications === 'boolean') setEmailNotifs(d.emailNotifications); })
+        .catch(() => {});
+    }
+  }, [view, currentUser]);
 
   function resetAll() {
     setName(''); setEmail(''); setPhone('');
@@ -457,6 +473,21 @@ export default function AuthModal({
     }
   }, [onLogout, onClose, currentUser?.role]);
 
+  /** TOGGLE EMAIL NOTIFICATIONS */
+  const handleToggleNotifs = useCallback(async () => {
+    setNotifLoading(true);
+    try {
+      const res = await fetch('/api/auth/notifications', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailNotifications: !emailNotifs }),
+      });
+      if (res.ok) setEmailNotifs(!emailNotifs);
+    } catch { /* silent */ } finally {
+      setNotifLoading(false);
+    }
+  }, [emailNotifs]);
+
   /* ================================================================ */
   /*  Don't render when closed                                         */
   /* ================================================================ */
@@ -523,8 +554,32 @@ export default function AuthModal({
           {currentUser?.role !== 'ADMIN' && (
             <div className="auth-notification-box">
               <Bell size={20} className="auth-notification-icon" />
-              <p className="auth-notification-text">{t('profileNotification')}</p>
+              <div className="auth-notification-content">
+                <span className="auth-notification-label">{t('emailNotifications')}</span>
+                <span className="auth-notification-status">
+                  {emailNotifs ? t('emailNotificationsOn') : t('emailNotificationsOff')}
+                </span>
+              </div>
+              <button
+                type="button"
+                className={`auth-notif-toggle${emailNotifs ? ' active' : ''}`}
+                onClick={handleToggleNotifs}
+                disabled={notifLoading}
+                aria-label={t('emailNotifications')}
+              >
+                <span className="auth-notif-toggle-knob" />
+              </button>
             </div>
+          )}
+
+          {currentUser?.role !== 'ADMIN' && (
+            <button
+              type="button"
+              className="auth-favorites-btn"
+              onClick={() => { onClose(); router.push('/favorites'); }}
+            >
+              <Heart size={18} />{t('seeFavorites')}
+            </button>
           )}
 
           {error && <div className="auth-error">{error}</div>}
@@ -1081,7 +1136,7 @@ export default function AuthModal({
           word-break: break-all;
         }
         .auth-notification-box {
-          display: flex; align-items: flex-start; gap: 12px;
+          display: flex; align-items: center; gap: 12px;
           padding: 14px 16px;
           border-radius: 12px;
           background: color-mix(in oklab, #2dafaa 8%, transparent);
@@ -1090,13 +1145,66 @@ export default function AuthModal({
         .auth-notification-icon {
           color: #2dafaa;
           flex-shrink: 0;
-          margin-top: 2px;
         }
-        .auth-notification-text {
-          margin: 0;
+        .auth-notification-content {
+          flex: 1; display: flex; flex-direction: column; gap: 2px;
+        }
+        .auth-notification-label {
           font-size: var(--font-size-sm);
+          font-weight: var(--font-weight-medium);
           color: var(--color-on-surface);
-          line-height: 1.5;
+        }
+        .auth-notification-status {
+          font-size: 12px;
+          color: var(--color-on-surface-variant, #777);
+        }
+        .auth-notif-toggle {
+          position: relative;
+          width: 44px; height: 24px;
+          border-radius: 12px;
+          border: none;
+          background: #ccc;
+          cursor: pointer;
+          transition: background 200ms;
+          flex-shrink: 0;
+          padding: 0;
+        }
+        .auth-notif-toggle.active {
+          background: #2dafaa;
+        }
+        .auth-notif-toggle:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .auth-notif-toggle-knob {
+          position: absolute;
+          top: 2px; left: 2px;
+          width: 20px; height: 20px;
+          border-radius: 50%;
+          background: #fff;
+          transition: transform 200ms;
+          box-shadow: 0 1px 3px rgba(0,0,0,.2);
+        }
+        .auth-notif-toggle.active .auth-notif-toggle-knob {
+          transform: translateX(20px);
+        }
+        .auth-favorites-btn {
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          width: 100%; height: 46px;
+          border: 1.5px solid #FF6B9D;
+          border-radius: 10px;
+          background: transparent;
+          color: #FF6B9D;
+          font-family: var(--font-family-heading);
+          font-size: var(--font-size-base);
+          font-weight: var(--font-weight-medium);
+          cursor: pointer;
+          transition: background 150ms, color 150ms;
+          margin-bottom: 8px;
+        }
+        .auth-favorites-btn:hover {
+          background: #FF6B9D;
+          color: #fff;
         }
         .auth-logout-btn {
           display: flex; align-items: center; justify-content: center; gap: 8px;

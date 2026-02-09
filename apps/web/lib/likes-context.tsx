@@ -32,10 +32,12 @@ interface LikesContextValue {
   getLikeData: (productId: string) => LikeData | null;
   // Register a product to be fetched in next batch
   registerProduct: (productId: string) => void;
-  // Toggle like on a product
-  toggleLike: (productId: string) => Promise<void>;
+  // Toggle like on a product (returns false if auth required)
+  toggleLike: (productId: string) => Promise<boolean>;
   // Check if a like action is in progress
   isLiking: (productId: string) => boolean;
+  // Whether user is authenticated (can like)
+  isAuthenticated: boolean;
 }
 
 // ============================================================================
@@ -77,6 +79,17 @@ export function LikesProvider({ children }: LikesProviderProps) {
   
   // Track if we've done initial fetch
   const hasFetchedRef = useRef(false);
+
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check auth on mount
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => setIsAuthenticated(!!data.user))
+      .catch(() => setIsAuthenticated(false));
+  }, []);
 
   // Batch fetch likes for registered products
   const fetchBatchLikes = useCallback(async () => {
@@ -132,9 +145,15 @@ export function LikesProvider({ children }: LikesProviderProps) {
     return likesData[productId] || null;
   }, [likesData]);
 
-  // Toggle like on a product
-  const toggleLike = useCallback(async (productId: string) => {
-    if (!fingerprint) return;
+  // Toggle like on a product - returns false if auth required
+  const toggleLike = useCallback(async (productId: string): Promise<boolean> => {
+    if (!fingerprint) return false;
+    
+    // Require authentication
+    if (!isAuthenticated) {
+      window.dispatchEvent(new CustomEvent('open-auth-modal', { detail: { mode: 'signup' } }));
+      return false;
+    }
     
     // Mark as liking
     setLikingProducts(prev => new Set(prev).add(productId));
@@ -172,6 +191,7 @@ export function LikesProvider({ children }: LikesProviderProps) {
           isLiked: data.liked,
         },
       }));
+      return true;
     } catch (err) {
       console.error('Toggle like error:', err);
       // Revert optimistic update
@@ -181,6 +201,7 @@ export function LikesProvider({ children }: LikesProviderProps) {
           [productId]: current,
         }));
       }
+      return false;
     } finally {
       setLikingProducts(prev => {
         const next = new Set(prev);
@@ -188,7 +209,7 @@ export function LikesProvider({ children }: LikesProviderProps) {
         return next;
       });
     }
-  }, [fingerprint, likesData]);
+  }, [fingerprint, likesData, isAuthenticated]);
 
   // Check if product is being liked
   const isLiking = useCallback((productId: string): boolean => {
@@ -217,7 +238,8 @@ export function LikesProvider({ children }: LikesProviderProps) {
     registerProduct,
     toggleLike,
     isLiking,
-  }), [getLikeData, registerProduct, toggleLike, isLiking]);
+    isAuthenticated,
+  }), [getLikeData, registerProduct, toggleLike, isLiking, isAuthenticated]);
 
   return (
     <LikesContext.Provider value={value}>

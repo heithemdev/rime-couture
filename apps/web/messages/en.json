@@ -398,7 +398,11 @@
     "profileEmail": "Email",
     "profilePhone": "Phone",
     "profileNotification": "You will be notified for every new product and special offer. Thanks for signing up!",
+    "emailNotifications": "Email Notifications",
+    "emailNotificationsOn": "You'll receive new product & offer emails",
+    "emailNotificationsOff": "Email notifications are turned off",
     "adminBadge": "You are Admin",
+    "seeFavorites": "See Favorites",
     "logOut": "Log out",
     "loggingOut": "Logging out..."
   },
@@ -437,7 +441,19 @@
     "status_DELIVERED": "Delivered",
     "trackingInfo": "Tracking Information",
     "estimatedDelivery": "Estimated Delivery",
-    "backToOrders": "Back to Orders"
+    "backToOrders": "Back to Orders",
+    "signInRequired": "Sign in to view your orders",
+    "signInToTrack": "Please sign in or create an account to track your orders and see your order history.",
+    "signInBtn": "Sign In"
+  },
+  "signupPrompt": {
+    "title": "Join Rimoucha! \uD83C\uDF38",
+    "subtitle": "Sign up to get exclusive offers, new arrivals and special discounts!",
+    "bubble1": "New arrivals every week!",
+    "bubble2": "Exclusive member discounts",
+    "bubble3": "Track your orders easily",
+    "signupBtn": "Sign Up Now",
+    "maybeLater": "Maybe Later"
   },
   "thankYou": {
     "title": "Thank You! 🎉",
@@ -448,5 +464,17 @@
     "withLove": "Made with Love",
     "viewOrders": "Track My Order",
     "continueShopping": "Continue Shopping"
+  },
+  "favorites": {
+    "title": "My Favorites",
+    "signInRequired": "Sign in to see your favorites",
+    "signInToSee": "Please sign in or create an account to view and manage your favorite products.",
+    "signInBtn": "Sign In",
+    "emptyTitle": "No favorites yet",
+    "emptyText": "Start browsing and tap the heart icon to save products you love.",
+    "startShopping": "Start Shopping",
+    "breadcrumbHome": "Home",
+    "itemCount": "{count} {count, plural, one {item} other {items}}",
+    "loadMore": "Load More"
   }
 }

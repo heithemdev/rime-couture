@@ -23,6 +23,7 @@ import {
   RotateCcw,
   Sparkles,
   Tag,
+  Percent,
   Ruler,
   Palette,
   Package,
@@ -109,6 +110,8 @@ interface Product {
     max: number;
     currency: string;
   };
+  originalPrice?: number | null;
+  discountPercent?: number | null;
   flags: {
     isCustomizable: boolean;
     isMadeToOrder: boolean;
@@ -860,6 +863,38 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           font-size: var(--font-size-3xl); font-weight: var(--font-weight-bold);
           color: var(--color-primary); margin-bottom: var(--spacing-sm);
         }
+        .panel-price-block {
+          margin-bottom: var(--spacing-sm);
+        }
+        .panel-discount-banner {
+          display: inline-flex; align-items: center; gap: 6px;
+          background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+          color: white; padding: 5px 14px; border-radius: 20px;
+          font-size: 13px; font-weight: 700; letter-spacing: 0.5px;
+          margin-bottom: var(--spacing-sm);
+          animation: discountShine 3s ease-in-out infinite;
+          box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
+        }
+        @keyframes discountShine {
+          0%, 100% { box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3); }
+          50% { box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5); }
+        }
+        .panel-price-row {
+          display: flex; align-items: baseline; gap: var(--spacing-sm);
+        }
+        .panel-price-block .panel-price {
+          margin-bottom: 0;
+        }
+        .panel-price-was {
+          font-size: var(--font-size-lg); color: var(--color-on-surface-secondary);
+          text-decoration: line-through; font-weight: var(--font-weight-medium);
+        }
+        .panel-savings {
+          display: inline-flex; align-items: center; gap: 4px;
+          font-size: var(--font-size-sm); color: #16a34a; font-weight: 600;
+          margin-top: 4px; margin-bottom: var(--spacing-sm);
+          padding: 3px 10px; background: #f0fdf4; border-radius: 6px;
+        }
         .panel-price-range {
           font-size: var(--font-size-sm); color: var(--color-on-surface-secondary); margin-bottom: var(--spacing-lg);
         }
@@ -1605,7 +1640,24 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 </span>
               </div>
               
-              <div className="panel-price">{formatPrice(currentPrice)}</div>
+              {/* Price with discount display */}
+              {product.originalPrice && product.discountPercent && product.discountPercent > 0 ? (
+                <div className="panel-price-block">
+                  <div className="panel-discount-banner">
+                    <Percent size={14} />
+                    <span>{product.discountPercent}% OFF</span>
+                  </div>
+                  <div className="panel-price-row">
+                    <div className="panel-price">{formatPrice(currentPrice)}</div>
+                    <div className="panel-price-was">{formatPrice(product.originalPrice)}</div>
+                  </div>
+                  <div className="panel-savings">
+                    You save {formatPrice(product.originalPrice - currentPrice)}
+                  </div>
+                </div>
+              ) : (
+                <div className="panel-price">{formatPrice(currentPrice)}</div>
+              )}
               {product.price.min !== product.price.max && (
                 <div className="panel-price-range">
                   {t('priceRange')}: {formatPrice(product.price.min)} - {formatPrice(product.price.max)}

@@ -11,6 +11,7 @@ import { useNavigating } from '@/lib/use-navigating';
 import { Search, ShoppingCart, User, Truck, X, Menu, ChevronDown, Sparkles } from 'lucide-react';
 import AuthModal from '@/components/shared/authModal';
 import type { AuthMode, AuthUser } from '@/components/shared/authModal';
+import SignupPrompt from '@/components/shared/SignupPrompt';
 
 export default function Header() {
   const tc = useTranslations('common');
@@ -41,6 +42,17 @@ export default function Header() {
       .then(res => res.json())
       .then(data => { if (data.user) setAuthUser(data.user); })
       .catch(() => {});
+  }, []);
+
+  /* ---- Listen for auth modal events from other pages ---- */
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setAuthMode(detail?.mode === 'signup' ? 'signup' : 'login');
+      setIsAuthModalOpen(true);
+    };
+    window.addEventListener('open-auth-modal', handler);
+    return () => window.removeEventListener('open-auth-modal', handler);
   }, []);
 
   useEffect(() => {
@@ -1081,6 +1093,11 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {/* Signup Prompt (30s popup for first-time visitors) */}
+      {!authUser && (
+        <SignupPrompt onSignup={() => { setAuthMode('signup'); setIsAuthModalOpen(true); }} />
+      )}
 
       {/* Auth Modal */}
       <AuthModal
