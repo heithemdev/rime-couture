@@ -8,7 +8,18 @@ import type { Locale } from '@/i18n/routing';
 import SafeLink from '@/components/shared/SafeLink';
 import { useCart } from '@/lib/cart-context';
 import { useNavigating } from '@/lib/use-navigating';
-import { Search, ShoppingCart, User, Truck, X, Menu, ChevronDown, Sparkles } from 'lucide-react';
+import { 
+  Search, 
+  ShoppingCart, 
+  User, 
+  Truck, 
+  X, 
+  Menu, 
+  ChevronDown, 
+  Sparkles,
+  ShieldCheck, // Added for Admin identity
+  Package      // Added for Admin orders icon alternative
+} from 'lucide-react';
 import AuthModal from '@/components/shared/authModal';
 import type { AuthMode, AuthUser } from '@/components/shared/authModal';
 import SignupPrompt from '@/components/shared/SignupPrompt';
@@ -35,6 +46,9 @@ export default function Header() {
   const smartSearchRef = useRef<HTMLTextAreaElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
+
+  // Check if user is admin
+  const isAdmin = authUser?.role === 'ADMIN';
 
   /* ---- Check auth status on mount ---- */
   useEffect(() => {
@@ -359,6 +373,14 @@ export default function Header() {
         :global(.header-action-btn:hover) {
           color: #FF6B9D;
           background: rgba(255, 107, 157, 0.1);
+        }
+        /* Admin specific style */
+        :global(.header-action-btn.admin-user) {
+          color: #be185d;
+          background: rgba(190, 24, 93, 0.1);
+        }
+        :global(.header-action-btn.admin-user:hover) {
+          background: rgba(190, 24, 93, 0.2);
         }
 
         /* NEW: Wrapper to fix icon positioning */
@@ -770,6 +792,14 @@ export default function Header() {
           align-items: center;
           justify-content: center;
         }
+        .mobile-nav-item.admin-item {
+          color: #be185d;
+          background: rgba(190, 24, 93, 0.05);
+        }
+        .mobile-nav-item.admin-item .mobile-nav-icon {
+          color: #be185d;
+          background: rgba(190, 24, 93, 0.1);
+        }
         
         /* Mobile Footer */
         .mobile-menu-footer {
@@ -887,36 +917,41 @@ export default function Header() {
             <div className="header-actions">
               <button
                 type="button"
-                className="header-action-btn desktop-only"
+                className={`header-action-btn desktop-only ${isAdmin ? 'admin-user' : ''}`}
                 aria-label={tc('myAccount')}
                 onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
+                title={isAdmin ? "Admin Account" : "My Account"}
               >
-                <User size={22} />
+                {isAdmin ? <ShieldCheck size={22} /> : <User size={22} />}
               </button>
               
-              {/* Cart Button Fixed */}
-              <SafeLink
-                href="/cart"
-                newTab={false}
-                className="header-action-btn header-cart-btn"
-                aria-label={tc('shoppingCart')}
-              >
-                {/* Wrapped icon in a relative div so badge positions relative to ICON, not button */}
-                <div className="icon-relative-wrapper">
-                  <ShoppingCart size={22} />
-                  {cartItemCount > 0 && (
-                    <span className="header-cart-badge">{cartItemCount > 99 ? '99+' : cartItemCount}</span>
-                  )}
-                </div>
-              </SafeLink>
+              {/* Cart Button Fixed - Hidden for Admin */}
+              {!isAdmin && (
+                <SafeLink
+                  href="/cart"
+                  newTab={false}
+                  className="header-action-btn header-cart-btn"
+                  aria-label={tc('shoppingCart')}
+                >
+                  {/* Wrapped icon in a relative div so badge positions relative to ICON, not button */}
+                  <div className="icon-relative-wrapper">
+                    <ShoppingCart size={22} />
+                    {cartItemCount > 0 && (
+                      <span className="header-cart-badge">{cartItemCount > 99 ? '99+' : cartItemCount}</span>
+                    )}
+                  </div>
+                </SafeLink>
+              )}
 
+              {/* Orders Button - Redirects to Admin dashboard if admin */}
               <SafeLink
-                href="/orders"
+                href={isAdmin ? "/admin/orders" : "/orders"}
                 newTab={false}
-                className="header-action-btn desktop-only"
-                aria-label={tc('myOrders')}
+                className={`header-action-btn desktop-only ${isAdmin ? 'admin-user' : ''}`}
+                aria-label={isAdmin ? "Admin Orders" : tc('myOrders')}
+                title={isAdmin ? "Manage Orders" : tc('myOrders')}
               >
-                <Truck size={22} />
+                {isAdmin ? <Package size={22} /> : <Truck size={22} />}
               </SafeLink>
               
               <div className="header-lang-switcher" ref={langRef}>
@@ -1043,35 +1078,40 @@ export default function Header() {
           <nav className="mobile-nav">
             <button 
               type="button"
-              className="mobile-nav-item" 
+              className={`mobile-nav-item ${isAdmin ? 'admin-item' : ''}`} 
               onClick={() => { setIsMobileMenuOpen(false); setAuthMode('login'); setIsAuthModalOpen(true); }}
             >
               <span className="mobile-nav-icon">
-                <User size={20} />
+                {isAdmin ? <ShieldCheck size={20} /> : <User size={20} />}
               </span>
-              {tc('myAccount')}
+              {isAdmin ? "Admin Account" : tc('myAccount')}
             </button>
+            
+            {/* Mobile Cart - Hidden for Admin */}
+            {!isAdmin && (
+              <SafeLink 
+                href="/cart" 
+                newTab={false} 
+                className="mobile-nav-item" 
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <span className="mobile-nav-icon">
+                  <ShoppingCart size={20} />
+                </span>
+                {tc('shoppingCart')} ({cartItemCount})
+              </SafeLink>
+            )}
+
             <SafeLink 
-              href="/cart" 
+              href={isAdmin ? "/admin/orders" : "/orders"}
               newTab={false} 
-              className="mobile-nav-item" 
+              className={`mobile-nav-item ${isAdmin ? 'admin-item' : ''}`}
               onClick={() => setIsMobileMenuOpen(false)}
             >
               <span className="mobile-nav-icon">
-                <ShoppingCart size={20} />
+                {isAdmin ? <Package size={20} /> : <Truck size={20} />}
               </span>
-              {tc('shoppingCart')}
-            </SafeLink>
-            <SafeLink 
-              href="/orders" 
-              newTab={false} 
-              className="mobile-nav-item" 
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <span className="mobile-nav-icon">
-                <Truck size={20} />
-              </span>
-              {tc('myOrders')}
+              {isAdmin ? "Manage Orders" : tc('myOrders')}
             </SafeLink>
           </nav>
         </div>

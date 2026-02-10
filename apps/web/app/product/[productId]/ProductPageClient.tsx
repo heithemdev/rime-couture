@@ -1,4 +1,3 @@
-//apps/web/app/product/[productId]/ProductPageClient.tsx
 /**
  * Product Page Client Component
  * Interactive product page with smart variant filtering and accurate stock logic
@@ -38,6 +37,7 @@ import {
   Edit3,
   Trash2,
   X,
+  Lock,
 } from 'lucide-react';
 import ProductCheckoutModal, { type SelectedVariant } from '@/components/product/ProductCheckoutModal';
 import ReviewModal from '@/components/product/ReviewModal';
@@ -184,6 +184,11 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   // Review & Like state
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
+  const [hasPurchased, setHasPurchased] = useState(false); 
+  
+  // NEW: Pop up window state instead of toast
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+
   const [userReview, setUserReview] = useState<Review | null>(null);
   const [editingReview, setEditingReview] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -253,18 +258,19 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
       })
       .catch(console.error);
 
-    // Check review status
+    // Check review status AND purchase status
     fetch(`/api/reviews?productId=${product.id}&fingerprint=${fingerprint}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.hasReviewed !== undefined) setHasReviewed(data.hasReviewed);
         if (data.userReview) setUserReview(data.userReview);
+        if (data.hasPurchased !== undefined) setHasPurchased(data.hasPurchased);
       })
       .catch(console.error);
   }, [product.id, fingerprint]);
 
   // --------------------------------------------------------------------------
-  // FETCH RELATED PRODUCTS (with abort + cache to prevent duplicate calls)
+  // FETCH RELATED PRODUCTS
   // --------------------------------------------------------------------------
   useEffect(() => {
     const controller = new AbortController();
@@ -284,33 +290,34 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         const data = await res.json();
         
         if (data.products && Array.isArray(data.products)) {
-          // Transform API response to RelatedProduct format
+          // Transform API response
           const related = data.products.map((p: {
             id: string;
             slug: string;
             name: string;
             price: number;
-            imageUrl: string;
+            originalPrice?: number;
+            imageUrl?: string;
             rating?: number;
             reviewCount?: number;
             likeCount?: number;
             inStock: boolean;
-            sizes: Size[];
-            colors: Color[];
-            variants: Array<{
+            sizes?: Size[];
+            colors?: Color[];
+            variants?: Array<{
               id: string;
               variantKey: string;
               sku: string;
-              price: number | null;
+              price: number;
               stock: number;
-              sizeId: string | null;
-              colorId: string | null;
+              sizeId?: string;
+              colorId?: string;
             }>;
           }) => ({
             id: p.id,
             slug: p.slug,
             name: p.name,
-            price: p.price, // Already in DA from the listing API
+            price: p.price, 
             originalPrice: undefined,
             imageUrl: p.imageUrl || '/assets/placeholder.jpg',
             rating: p.rating,
@@ -319,11 +326,19 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
             inStock: p.inStock,
             sizes: p.sizes || [],
             colors: p.colors || [],
-            variants: (p.variants || []).map((v) => ({
+            variants: (p.variants || []).map((v: {
+              id: string;
+              variantKey: string;
+              sku: string;
+              price: number;
+              stock: number;
+              sizeId?: string;
+              colorId?: string;
+            }) => ({
               id: v.id,
               variantKey: v.variantKey,
               sku: v.sku,
-              price: v.price, // Already in DA from the listing API
+              price: v.price, 
               stock: v.stock,
               size: (p.sizes || []).find((s: Size) => s.id === v.sizeId) || null,
               color: (p.colors || []).find((c: Color) => c.id === v.colorId) || null,
@@ -380,14 +395,12 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
       .then((res) => res.json())
       .then((data) => {
         if (data.reviews && Array.isArray(data.reviews)) {
-          // Transform the reviews to match our interface (dates come as ISO strings)
           const transformedReviews = data.reviews.map((r: Review & { createdAt: string | Date }) => ({
             ...r,
             createdAt: typeof r.createdAt === 'string' ? r.createdAt : new Date(r.createdAt).toISOString(),
           }));
           setReviews(transformedReviews);
           setReviewCount(transformedReviews.length);
-          // Calculate new avg
           if (transformedReviews.length > 0) {
             const total = transformedReviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0);
             setAvgRating(total / transformedReviews.length);
@@ -406,8 +419,21 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
 
   // Open review modal for new review
   const handleWriteReview = useCallback(() => {
+    // Check if the user has purchased the item
+    if (!hasPurchased) {
+      setShowPurchaseModal(true); // Open the cute modal
+      return;
+    }
+
     setEditingReview(false);
     setShowReviewModal(true);
+  }, [hasPurchased]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (cartSuccessTimerRef.current) clearTimeout(cartSuccessTimerRef.current);
+    };
   }, []);
 
   // --------------------------------------------------------------------------
@@ -417,8 +443,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   const images = useMemo(() => product.media.filter((m) => m.kind === 'IMAGE'), [product.media]);
   const videos = useMemo(() => product.media.filter((m) => m.kind === 'VIDEO'), [product.media]);
 
-  // Filter media by selected color — show color-specific media + generic (no color) media
-  // When no color is selected, show all media
   const allMedia = useMemo(() => {
     const all = [...images, ...videos];
     if (!selectedColorId) return all;
@@ -430,19 +454,15 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
 
   const currentMedia = allMedia[selectedImageIndex];
 
-  // 1. Get all variants that actually have stock
+  // Stock logic
   const inStockVariants = useMemo(() => {
     return product.variants.filter((v) => v.stock > 0);
   }, [product.variants]);
 
-  // 2. Determine Available SIZES based on selected COLOR
-  // If a color is picked, only show sizes available in that color.
   const availableSizeIds = useMemo(() => {
     if (!selectedColorId) {
-      // If no color selected, show all sizes that exist in any in-stock variant
       return new Set(inStockVariants.map((v) => v.size?.id).filter(Boolean));
     }
-    // Filter variants by the selected color
     return new Set(
       inStockVariants
         .filter((v) => v.color?.id === selectedColorId)
@@ -451,14 +471,10 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
     );
   }, [selectedColorId, inStockVariants]);
 
-  // 3. Determine Available COLORS based on selected SIZE
-  // If a size is picked, only show colors available in that size.
   const availableColorIds = useMemo(() => {
     if (!selectedSizeId) {
-      // If no size selected, show all colors that exist in any in-stock variant
       return new Set(inStockVariants.map((v) => v.color?.id).filter(Boolean));
     }
-    // Filter variants by the selected size
     return new Set(
       inStockVariants
         .filter((v) => v.size?.id === selectedSizeId)
@@ -467,13 +483,10 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
     );
   }, [selectedSizeId, inStockVariants]);
 
-  // 4. Find the Exact Variant matching current selections
   const selectedVariant = useMemo(() => {
     if ((product.sizes.length > 0 && !selectedSizeId) || (product.colors.length > 0 && !selectedColorId)) {
       return null;
     }
-
-    // Handle products that might have only size or only color
     return product.variants.find((v) => {
       const sizeMatch = product.sizes.length === 0 || v.size?.id === selectedSizeId;
       const colorMatch = product.colors.length === 0 || v.color?.id === selectedColorId;
@@ -481,12 +494,8 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
     });
   }, [product.variants, product.sizes.length, product.colors.length, selectedSizeId, selectedColorId]);
 
-  // 5. Current Price & Stock Logic
   const currentPrice = selectedVariant?.price ?? product.price.base;
   
-  // If variant is fully selected, we check its specific stock.
-  // If not fully selected, we generally consider it "in stock" if there are options,
-  // but button is disabled until selection is complete.
   const isSelectionComplete = 
     (product.sizes.length === 0 || !!selectedSizeId) && 
     (product.colors.length === 0 || !!selectedColorId);
@@ -494,7 +503,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   const canOrder = isSelectionComplete && selectedVariant && selectedVariant.stock > 0;
 
   // --------------------------------------------------------------------------
-  // HANDLERS - ADD TO CART
+  // HANDLERS - ADD TO CART & UI
   // --------------------------------------------------------------------------
   const handleAddToCart = useCallback(async () => {
     if (!canOrder || !selectedVariant || isAddingToCart) return;
@@ -503,7 +512,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
     try {
       const success = await addToCart(product.id, selectedVariant.id, quantity);
       if (success) {
-        // Clear any previous timer
         if (cartSuccessTimerRef.current) clearTimeout(cartSuccessTimerRef.current);
         setShowCartSuccess(true);
         cartSuccessTimerRef.current = setTimeout(() => setShowCartSuccess(false), 2500);
@@ -515,30 +523,13 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
     }
   }, [canOrder, selectedVariant, isAddingToCart, addToCart, product.id, quantity]);
 
-  // Cleanup success timer on unmount
-  useEffect(() => {
-    return () => {
-      if (cartSuccessTimerRef.current) clearTimeout(cartSuccessTimerRef.current);
-    };
-  }, []);
-
-  // --------------------------------------------------------------------------
-  // HANDLERS (Strict Reset Logic)
-  // --------------------------------------------------------------------------
-
   const handleSizeClick = (sizeId: string) => {
     if (selectedSizeId === sizeId) {
-      setSelectedSizeId(null); // Deselect
+      setSelectedSizeId(null);
       return;
     }
-
-    // 1. Set Size
     setSelectedSizeId(sizeId);
-    
-    // 2. RESET QUANTITY TO 1 (Requested Requirement)
     setQuantity(1);
-
-    // 3. Smart Filter: If current color is not available in new size, deselect color
     if (selectedColorId) {
       const isCombinationValid = inStockVariants.some(
         (v) => v.size?.id === sizeId && v.color?.id === selectedColorId
@@ -551,21 +542,13 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
 
   const handleColorClick = (colorId: string) => {
     if (selectedColorId === colorId) {
-      setSelectedColorId(null); // Deselect
-      setSelectedImageIndex(0); // Reset gallery to first image
+      setSelectedColorId(null);
+      setSelectedImageIndex(0);
       return;
     }
-
-    // 1. Set Color
     setSelectedColorId(colorId);
-
-    // 2. RESET QUANTITY TO 1 (Requested Requirement)
     setQuantity(1);
-
-    // 3. Reset gallery to first image for the new color
     setSelectedImageIndex(0);
-
-    // 4. Smart Filter: If current size is not available in new color, deselect size
     if (selectedSizeId) {
       const isCombinationValid = inStockVariants.some(
         (v) => v.color?.id === colorId && v.size?.id === selectedSizeId
@@ -598,7 +581,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         await navigator.clipboard.writeText(window.location.href);
       }
     } catch (err) {
-      // User cancelled the share dialog — ignore
       if (err instanceof Error && err.name !== 'AbortError') {
         console.error('Share failed:', err);
       }
@@ -616,7 +598,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
       });
       
       if (res.ok) {
-        // Redirect to admin page after deletion
         window.location.href = '/admin';
       } else {
         const data = await res.json();
@@ -642,7 +623,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
       }
     : null;
 
-  // Render Stars Helper
   const renderStars = (rating: number, size = 16) => (
     <div className="stars">
       {[1, 2, 3, 4, 5].map((star) => (
@@ -665,7 +645,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           padding: var(--spacing-xl);
         }
         
-        /* Breadcrumb */
         .breadcrumb {
           display: flex;
           align-items: center;
@@ -686,7 +665,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           color: var(--color-border);
         }
         
-        /* Main Layout */
         .product-layout {
           display: grid;
           grid-template-columns: 1fr 420px;
@@ -762,7 +740,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         .gallery-thumb:hover { transform: scale(1.05); }
         .gallery-thumb img, .gallery-thumb video { width: 100%; height: 100%; object-fit: cover; }
         
-        /* Featured Badge */
         .featured-badge {
           position: absolute; top: var(--spacing-md); left: var(--spacing-md);
           background: linear-gradient(135deg, var(--color-accent) 0%, #FFB800 100%);
@@ -772,7 +749,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           gap: var(--spacing-xs); z-index: 5;
         }
         
-        /* Product Info Panel */
         .product-panel {
           position: sticky; top: calc(var(--spacing-xl) + 80px);
           background: var(--color-surface); border-radius: var(--border-radius-xl);
@@ -781,7 +757,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         }
         @media (max-width: 1024px) { .product-panel { position: static; } }
         
-        /* Admin Actions */
         .admin-actions {
           display: flex; gap: var(--spacing-sm); margin-bottom: var(--spacing-lg);
           padding-bottom: var(--spacing-lg); border-bottom: 2px dashed var(--color-border);
@@ -804,40 +779,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         .admin-delete-btn:hover {
           background: #fef2f2; border-color: #dc2626;
         }
-        
-        /* Admin Delete Modal */
-        .admin-delete-modal {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-          display: flex; align-items: center; justify-content: center; z-index: 1000; padding: var(--spacing-md);
-        }
-        .admin-delete-modal-content {
-          background: white; border-radius: var(--border-radius-xl); padding: var(--spacing-xl);
-          max-width: 400px; width: 100%; text-align: center;
-        }
-        .admin-delete-modal-content h3 {
-          font-size: var(--font-size-xl); margin-bottom: var(--spacing-md);
-        }
-        .admin-delete-modal-content p {
-          color: var(--color-on-surface-secondary); margin-bottom: var(--spacing-lg);
-        }
-        .admin-delete-modal-actions {
-          display: flex; gap: var(--spacing-md); justify-content: center;
-        }
-        .admin-delete-modal-actions button {
-          padding: var(--spacing-sm) var(--spacing-lg); border-radius: var(--border-radius-md);
-          font-weight: var(--font-weight-semibold); cursor: pointer; transition: all 0.2s;
-        }
-        .admin-cancel-btn {
-          background: transparent; color: var(--color-on-surface-secondary);
-          border: 2px solid var(--color-border);
-        }
-        .admin-cancel-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
-        .admin-confirm-delete-btn {
-          background: #dc2626; color: white; border: none;
-          display: inline-flex; align-items: center; gap: var(--spacing-xs);
-        }
-        .admin-confirm-delete-btn:hover { background: #b91c1c; }
-        .admin-confirm-delete-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         
         .panel-header { margin-bottom: var(--spacing-lg); }
         .panel-category {
@@ -900,7 +841,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           font-size: var(--font-size-sm); color: var(--color-on-surface-secondary); margin-bottom: var(--spacing-lg);
         }
         
-        /* Variant Selection */
         .variant-section {
           margin-bottom: var(--spacing-lg); padding-bottom: var(--spacing-lg); border-bottom: 1px solid var(--color-border);
         }
@@ -943,7 +883,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           color: white; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
         }
         
-        /* Quantity */
         .quantity-section {
           display: flex; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-xl);
         }
@@ -967,7 +906,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           border-right: 1px solid var(--color-border); padding: var(--spacing-sm) 0;
         }
         
-        /* Action Buttons */
         .action-buttons { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); }
         .order-btn {
           flex: 1; height: 56px; background: linear-gradient(135deg, var(--color-primary) 0%, #ff6b9d 100%);
@@ -987,7 +925,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         .icon-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
         .icon-btn.wishlisted { background: var(--color-primary); border-color: var(--color-primary); color: white; }
         
-        /* Cart Button */
         .cart-btn {
           width: 56px; height: 56px; border: 2px solid var(--color-secondary);
           background: var(--color-secondary); border-radius: var(--border-radius-control);
@@ -1000,7 +937,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         }
         .cart-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        /* Cart Success Toast */
         .cart-success-toast {
           display: flex; align-items: center; gap: var(--spacing-md);
           padding: var(--spacing-md) var(--spacing-lg);
@@ -1010,6 +946,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           animation: toast-slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
           overflow: hidden;
           position: relative;
+          z-index: 100;
         }
         .cart-success-toast::after {
           content: '';
@@ -1033,8 +970,8 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           line-height: 1.2;
         }
         .cart-success-detail {
-          font-size: 12px; opacity: 0.85;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          font-size: 12px; opacity: 0.95;
+          white-space: normal;
         }
         .cart-success-close {
           background: rgba(255,255,255,0.2); border: none; color: white;
@@ -1057,7 +994,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           to { width: 0%; }
         }
 
-        /* Like Button */
         .like-btn {
           min-width: 80px; height: 56px; padding: 0 var(--spacing-lg);
           border: 2px solid var(--color-border); background: var(--color-surface);
@@ -1076,7 +1012,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         @keyframes spin { to { transform: rotate(360deg); } }
         .spin { animation: spin 0.8s linear infinite; }
         
-        /* Trust Features - Always Horizontal */
         .trust-features {
           display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm);
           padding-top: var(--spacing-lg); border-top: 1px solid var(--color-border);
@@ -1092,7 +1027,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         }
         .trust-text { font-size: var(--font-size-xs); color: var(--color-on-surface-secondary); line-height: 1.3; }
 
-        /* Shipping Estimate */
         .shipping-estimate {
           margin-top: var(--spacing-lg); padding: var(--spacing-md); background: var(--color-surface-elevated);
           border-radius: var(--border-radius-lg); border: 1px dashed var(--color-border);
@@ -1106,7 +1040,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         .shipping-estimate-range { font-size: var(--font-size-xs); color: var(--color-on-surface-secondary); padding-left: 40px; display: flex; align-items: center; gap: var(--spacing-xs); }
         .shipping-estimate-price { color: var(--color-secondary); font-weight: var(--font-weight-medium); }
         
-        /* Details & Reviews CSS ... (Same as original but omitted for brevity) */
         .details-section { margin-top: var(--spacing-3xl); }
         .section-title { font-size: var(--font-size-xl); font-weight: var(--font-weight-heading); color: var(--color-on-surface); margin-bottom: var(--spacing-lg); display: flex; align-items: center; gap: var(--spacing-sm); }
         .section-title svg { color: var(--color-primary); }
@@ -1138,7 +1071,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         .no-reviews { text-align: center; padding: var(--spacing-3xl); background: var(--color-surface-elevated); border-radius: var(--border-radius-lg); }
         .no-reviews-icon { width: 64px; height: 64px; background: var(--color-border); border-radius: var(--border-radius-full); display: flex; align-items: center; justify-content: center; margin: 0 auto var(--spacing-lg); color: var(--color-on-surface-secondary); }
         
-        /* Add Review Button */
         .add-review-btn {
           display: flex; align-items: center; gap: var(--spacing-sm);
           padding: var(--spacing-md) var(--spacing-xl);
@@ -1170,7 +1102,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           .add-review-btn { width: 100%; justify-content: center; }
         }
         
-        /* Related Products Section */
         .related-products-section {
           margin-top: var(--spacing-3xl);
           padding-top: var(--spacing-3xl);
@@ -1227,258 +1158,83 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           color: var(--color-on-surface-secondary);
           font-size: var(--font-size-sm);
         }
-        .spin {
-          animation: spin 1s linear infinite;
+        
+        /* CUTE MODAL STYLES */
+        .cute-modal-overlay {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+          display: flex; align-items: center; justify-content: center;
+          z-index: 2000; padding: var(--spacing-lg);
+          backdrop-filter: blur(2px);
+          animation: fadeIn 0.3s ease-out;
         }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
+        .cute-modal-content {
+          background: white;
+          padding: 32px;
+          border-radius: 24px;
+          max-width: 380px;
+          width: 100%;
+          text-align: center;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+          transform: scale(0.95);
+          animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .cute-modal-icon-wrapper {
+          width: 80px; height: 80px;
+          border-radius: 50%;
+          background: var(--color-surface-elevated);
+          display: flex; align-items: center; justify-content: center;
+          margin-bottom: 20px;
+          color: var(--color-primary);
+          box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .cute-modal-title {
+          font-size: 24px;
+          font-weight: 800;
+          color: var(--color-on-surface);
+          margin-bottom: 12px;
+        }
+        .cute-modal-message {
+          font-size: 16px;
+          color: var(--color-on-surface-secondary);
+          line-height: 1.5;
+          margin-bottom: 24px;
+        }
+        .cute-modal-btn {
+          width: 100%;
+          padding: 14px;
+          border-radius: 16px;
+          border: none;
+          background: linear-gradient(135deg, var(--color-primary) 0%, #ff6b9d 100%);
+          color: white;
+          font-weight: 700;
+          font-size: 16px;
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+          box-shadow: 0 4px 15px rgba(255, 77, 129, 0.3);
+        }
+        .cute-modal-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(255, 77, 129, 0.4);
         }
         
-        /* ================================================================
-           MOBILE RESPONSIVE STYLES
-           ================================================================ */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        
+        /* ... mobile styles ... */
         @media (max-width: 768px) {
-          .product-page {
-            padding: var(--spacing-md);
-          }
-          
-          .breadcrumb {
-            font-size: var(--font-size-xs);
-            flex-wrap: wrap;
-            gap: var(--spacing-xs);
-            margin-bottom: var(--spacing-md);
-          }
-          
-          .product-layout {
-            gap: var(--spacing-lg);
-          }
-          
-          .gallery-main {
-            aspect-ratio: 1 / 1;
-            border-radius: var(--border-radius-lg);
-          }
-          
-          .gallery-nav {
-            width: 40px;
-            height: 40px;
-          }
-          .gallery-nav.prev { left: var(--spacing-sm); }
-          .gallery-nav.next { right: var(--spacing-sm); }
-          
-          .gallery-thumbnails {
-            gap: var(--spacing-xs);
-            padding: var(--spacing-xs) 0;
-          }
-          
-          .gallery-thumb {
-            width: 60px;
-            height: 60px;
-          }
-          
-          .product-panel {
-            padding: var(--spacing-md);
-            border-radius: var(--border-radius-lg);
-          }
-          
-          .panel-name {
-            font-size: var(--font-size-xl);
-          }
-          
-          .panel-price {
-            font-size: var(--font-size-2xl);
-          }
-          
-          .variant-section {
-            margin-bottom: var(--spacing-md);
-            padding-bottom: var(--spacing-md);
-          }
-          
-          .size-options,
-          .color-options {
-            gap: var(--spacing-xs);
-          }
-          
-          .size-btn {
-            min-width: 44px;
-            height: 44px;
-            font-size: var(--font-size-xs);
-          }
-          
-          .color-btn {
-            width: 40px;
-            height: 40px;
-          }
-          
-          .quantity-section {
-            flex-wrap: wrap;
-            gap: var(--spacing-sm);
-            margin-bottom: var(--spacing-md);
-          }
-          
-          .quantity-btn {
-            width: 40px;
-            height: 40px;
-          }
-          
-          .action-buttons {
-            flex-wrap: wrap;
-            gap: var(--spacing-sm);
-          }
-          
-          .order-btn {
-            flex: 1 1 100%;
-            height: 52px;
-            order: 1;
-          }
-          
-          .cart-btn,
-          .like-btn,
-          .icon-btn {
-            width: 52px;
-            height: 52px;
-            flex-shrink: 0;
-            order: 2;
-          }
-          
-          .like-btn {
-            min-width: auto;
-            padding: 0;
-          }
-          
-          .like-count {
-            display: none;
-          }
-          
-          .trust-features {
-            gap: var(--spacing-xs);
-          }
-          
-          .trust-item {
-            flex-direction: row;
-            justify-content: center;
-            gap: var(--spacing-xs);
-          }
-          
-          .trust-icon {
-            width: 32px;
-            height: 32px;
-          }
-          
-          .trust-text {
-            font-size: 10px;
-          }
-          
-          .shipping-estimate {
-            margin-top: var(--spacing-md);
-            padding: var(--spacing-sm);
-          }
-          
-          .shipping-estimate-header {
-            gap: var(--spacing-xs);
-          }
-          
-          .shipping-estimate-icon {
-            width: 28px;
-            height: 28px;
-          }
-          
-          .shipping-estimate-range {
-            padding-left: 36px;
-            font-size: var(--font-size-xs);
-          }
-          
-          .details-section {
-            margin-top: var(--spacing-xl);
-          }
-          
-          .section-title {
-            font-size: var(--font-size-lg);
-          }
-          
-          .description-box {
-            padding: var(--spacing-md);
-            font-size: var(--font-size-sm);
-          }
-          
-          .tags-grid {
-            grid-template-columns: 1fr;
-            gap: var(--spacing-sm);
-          }
-          
-          .tag-group {
-            padding: var(--spacing-sm);
-          }
-          
-          .reviews-section {
-            margin-top: var(--spacing-xl);
-            padding-top: var(--spacing-xl);
-          }
-          
-          .reviews-summary {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: var(--spacing-sm);
-          }
-          
-          .reviews-avg {
-            font-size: var(--font-size-3xl);
-          }
-          
-          .review-card {
-            padding: var(--spacing-md);
-          }
-          
-          .review-header {
-            flex-direction: column;
-            gap: var(--spacing-sm);
-          }
-          
-          .review-avatar {
-            width: 40px;
-            height: 40px;
-          }
-        }
-        
-        @media (max-width: 480px) {
-          .product-page {
-            padding: var(--spacing-sm);
-          }
-          
-          .panel-category {
-            font-size: 10px;
-            padding: 2px var(--spacing-sm);
-          }
-          
-          .panel-name {
-            font-size: var(--font-size-lg);
-            line-height: 1.3;
-          }
-          
-          .panel-price {
-            font-size: var(--font-size-xl);
-          }
-          
-          .panel-rating {
-            flex-wrap: wrap;
-            gap: var(--spacing-xs);
-          }
-          
-          .action-buttons {
-            gap: var(--spacing-xs);
-          }
-          
-          .order-btn {
-            height: 48px;
-            font-size: var(--font-size-sm);
-          }
-          
-          .cart-btn,
-          .like-btn,
-          .icon-btn {
-            width: 48px;
-            height: 48px;
-          }
+           .product-page { padding: var(--spacing-md); }
+           .product-layout { gap: var(--spacing-lg); }
+           .gallery-main { aspect-ratio: 1 / 1; border-radius: var(--border-radius-lg); }
+           .product-panel { padding: var(--spacing-md); border-radius: var(--border-radius-lg); }
+           .quantity-section { flex-wrap: wrap; }
+           .action-buttons { flex-wrap: wrap; }
+           .order-btn { flex: 1 1 100%; order: 1; }
+           .cart-btn, .like-btn, .icon-btn { width: 52px; height: 52px; flex-shrink: 0; order: 2; }
+           .reviews-header { flex-direction: column; gap: var(--spacing-sm); }
+           .cute-modal-content { padding: 24px; }
         }
       `}</style>
 
@@ -1674,7 +1430,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 </div>
                 <div className="size-options">
                   {product.sizes.map((size) => {
-                    // Check if this size is available given the current color selection
                     const isAvailable = availableSizeIds.has(size.id);
                     return (
                       <button
@@ -1704,7 +1459,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 </div>
                 <div className="color-options">
                   {product.colors.map((color) => {
-                    // Check if this color is available given the current size selection
                     const isAvailable = availableColorIds.has(color.id);
                     return (
                       <button
@@ -1738,14 +1492,12 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 <button
                   className="quantity-btn"
                   onClick={() => setQuantity(quantity + 1)}
-                  // Disable if quantity reaches stock limit, or if no variant is fully selected yet
                   disabled={!selectedVariant || quantity >= selectedVariant.stock}
                 >
                   +
                 </button>
               </div>
               
-              {/* Detailed Stock Status Display */}
               {isSelectionComplete && selectedVariant ? (
                 <span style={{ fontSize: 'var(--font-size-xs)', color: selectedVariant.stock < 10 ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
                   {selectedVariant.stock} {t('unitsAvailable')}
@@ -1772,7 +1524,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                     : t('outOfStock')}
               </button>
               
-              {/* Add to Cart Button */}
               <button
                 className="cart-btn"
                 onClick={handleAddToCart}
@@ -1785,7 +1536,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 )}
               </button>
               
-              {/* Like Button with Count */}
               <button
                 className={`like-btn ${isLiked ? 'liked' : ''}`}
                 onClick={handleLikeToggle}
@@ -1827,7 +1577,6 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
               <div className="trust-item"><div className="trust-icon"><RotateCcw size={20} /></div><div className="trust-text">{t('easyReturns')}</div></div>
             </div>
 
-            {/* Shipping Estimate */}
             <div className="shipping-estimate">
               <div className="shipping-estimate-header">
                 <div className="shipping-estimate-icon"><Truck size={16} /></div>
@@ -2016,6 +1765,24 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 {isDeleting ? 'Deleting...' : 'Delete Product'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUTE PURCHASE REQUIRED POP-UP MODAL */}
+      {showPurchaseModal && (
+        <div className="cute-modal-overlay" onClick={() => setShowPurchaseModal(false)}>
+          <div className="cute-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="cute-modal-icon-wrapper">
+              <Lock size={32} />
+            </div>
+            <h3 className="cute-modal-title">Purchase Required</h3>
+            <p className="cute-modal-message">
+              We also want your review, cutie 🥰 but that is after you complete your purchase.
+            </p>
+            <button className="cute-modal-btn" onClick={() => setShowPurchaseModal(false)}>
+              Okay, got it!
+            </button>
           </div>
         </div>
       )}

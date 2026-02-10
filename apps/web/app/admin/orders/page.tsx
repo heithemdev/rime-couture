@@ -1,3 +1,4 @@
+//apps/web/app/admin/orders/page.tsx
 /**
  * RIME COUTURE - Admin Orders Management Page
  * ============================================

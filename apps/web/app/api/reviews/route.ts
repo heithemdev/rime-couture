@@ -1,5 +1,3 @@
-//apps/web/app/api/reviews/route.ts
-
 /**
  * Reviews API Route
  * POST: Create a new review (one per fingerprint per product)
@@ -132,6 +130,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
+    // ========== PURCHASE VERIFICATION ==========
+    // Check if the user (via fingerprint/sessionId) has actually purchased this product
+    const purchaseRecord = await withRetry(() => prisma.order.findFirst({
+      where: {
+        sessionId: fingerprint, // Orders store the fingerprint in sessionId
+        items: {
+          some: {
+            productId: productId
+          }
+        },
+        // Ensure order isn't deleted
+        deletedAt: null,
+      }
+    }));
+
+    if (!purchaseRecord) {
+      return NextResponse.json(
+        { error: "We also want your review, cutie 🥰 but that's after you complete your purchase." },
+        { status: 403 }
+      );
+    }
+    // ===========================================
+
     // Check if user already reviewed this product (by fingerprint)
     const existingReview = await withRetry(() => prisma.review.findUnique({
       where: {
@@ -242,7 +263,10 @@ export async function GET(request: NextRequest) {
     // Check if user has already reviewed
     let hasReviewed = false;
     let userReview = null;
+    let hasPurchased = false; // Flag for frontend to disable/enable review button
+
     if (fingerprint) {
+      // 1. Check for existing review
       const existingReview = await withRetry(() => prisma.review.findUnique({
         where: {
           productId_fingerprint: {
@@ -261,12 +285,27 @@ export async function GET(request: NextRequest) {
       }));
       hasReviewed = !!existingReview;
       userReview = existingReview;
+
+      // 2. Check for purchase
+      const purchaseCount = await withRetry(() => prisma.order.count({
+        where: {
+          sessionId: fingerprint,
+          items: {
+            some: {
+              productId: productId
+            }
+          },
+          deletedAt: null
+        }
+      }));
+      hasPurchased = purchaseCount > 0;
     }
 
     return NextResponse.json({
       reviews,
       hasReviewed,
       userReview,
+      hasPurchased, // Return this status to the client
     });
 
   } catch (error) {
