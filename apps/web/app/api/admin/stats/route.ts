@@ -1,3 +1,4 @@
+//apps/web/app/api/admin/stats/route.ts
 /**
  * Admin Statistics API Route
  * Fetches aggregated data for the admin dashboard

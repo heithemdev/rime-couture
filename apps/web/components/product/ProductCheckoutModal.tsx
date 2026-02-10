@@ -5,6 +5,7 @@
  * - Delivery type (HOME / CENTER)
  * - Live price calculation
  * - Algerian phone validation
+ * - Email collection for receipt
  */
 
 'use client';
@@ -27,6 +28,7 @@ import {
   Truck,
   User,
   X,
+  Mail, // Added mail icon
 } from 'lucide-react';
 import {
   WILAYAS_SORTED,
@@ -106,6 +108,7 @@ export default function ProductCheckoutModal({
   // Form state
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState(''); // NEW: Email state
   const [selectedWilayaId, setSelectedWilayaId] = useState<number | null>(null);
   const [selectedBaladiyaCode, setSelectedBaladiyaCode] = useState<string | null>(null);
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('HOME');
@@ -176,6 +179,7 @@ export default function ProductCheckoutModal({
     if (!isOpen) {
       setFullName('');
       setPhone('');
+      setEmail('');
       setSelectedWilayaId(null);
       setSelectedBaladiyaCode(null);
       setDeliveryType('HOME');
@@ -254,6 +258,7 @@ export default function ProductCheckoutModal({
       const orderData: Record<string, unknown> = {
         customerName: fullName.trim(),
         phone: phoneDigits,
+        email: email.trim() || undefined, // Send email if provided
         wilayaCode: String(selectedWilaya.id),
         wilayaName: selectedWilaya.name,
         commune: selectedBaladiya?.name ?? selectedWilaya.name,
@@ -326,6 +331,7 @@ export default function ProductCheckoutModal({
   return (
     <>
       <style jsx>{`
+        /* ... existing styles ... */
         .checkout-overlay {
           position: fixed;
           inset: 0;
@@ -840,91 +846,6 @@ export default function ProductCheckoutModal({
           font-size: var(--font-size-sm);
           margin-bottom: var(--spacing-md);
         }
-        
-        /* Success */
-        .success-screen {
-          text-align: center;
-          padding: var(--spacing-2xl) var(--spacing-xl);
-        }
-        .success-icon {
-          width: 72px;
-          height: 72px;
-          background: linear-gradient(135deg, var(--color-secondary) 0%, #0D9488 100%);
-          border-radius: var(--border-radius-full);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto var(--spacing-lg);
-          color: white;
-        }
-        .success-title {
-          font-size: var(--font-size-xl);
-          font-weight: var(--font-weight-heading);
-          color: var(--color-on-surface);
-          margin-bottom: var(--spacing-sm);
-        }
-        .success-message {
-          font-size: var(--font-size-sm);
-          color: var(--color-on-surface-secondary);
-          margin-bottom: var(--spacing-xl);
-          line-height: 1.6;
-        }
-        .success-close-btn {
-          background: var(--color-secondary);
-          color: white;
-          border: none;
-          padding: var(--spacing-md) var(--spacing-2xl);
-          font-size: var(--font-size-sm);
-          font-weight: var(--font-weight-medium);
-          font-family: var(--font-family-body);
-          border-radius: var(--border-radius-md);
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .success-close-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(45, 175, 170, 0.3);
-        }
-        .success-buttons {
-          display: flex;
-          flex-direction: column;
-          gap: var(--spacing-sm);
-          width: 100%;
-          max-width: 280px;
-        }
-        .success-primary-btn {
-          background: linear-gradient(135deg, var(--color-primary) 0%, #ff6b9d 100%);
-          color: white;
-          border: none;
-          padding: var(--spacing-md) var(--spacing-2xl);
-          font-size: var(--font-size-sm);
-          font-weight: var(--font-weight-bold);
-          font-family: var(--font-family-body);
-          border-radius: var(--border-radius-md);
-          cursor: pointer;
-          transition: all 0.2s ease;
-          box-shadow: 0 4px 15px rgba(255, 77, 129, 0.3);
-        }
-        .success-primary-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(255, 77, 129, 0.4);
-        }
-        .success-secondary-btn {
-          background: transparent;
-          color: var(--color-on-surface-secondary);
-          border: 1px solid var(--color-border);
-          padding: var(--spacing-sm) var(--spacing-xl);
-          font-size: var(--font-size-sm);
-          font-weight: var(--font-weight-medium);
-          font-family: var(--font-family-body);
-          border-radius: var(--border-radius-md);
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .success-secondary-btn:hover {
-          border-color: var(--color-primary);
-          color: var(--color-primary);
-        }
       `}</style>
 
       {hasCompleted && (
@@ -1056,6 +977,22 @@ export default function ProductCheckoutModal({
                       required
                     />
                     {phoneError && <div className="form-error">{phoneError}</div>}
+                  </div>
+
+                  {/* NEW EMAIL INPUT */}
+                  <div className="form-group">
+                    <label className="form-label">
+                      <Mail className="form-label-icon" />
+                      Email
+                      <span className="form-hint">(Optional, for receipt)</span>
+                    </label>
+                    <input
+                      type="email"
+                      className="form-input"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="your.email@example.com"
+                    />
                   </div>
                 </div>
 

@@ -1,3 +1,4 @@
+//apps/web/lib/email.ts
 /**
  * Email service using nodemailer + Gmail SMTP
  * Sends OTP codes, order receipts, product notifications, shipping updates
@@ -15,6 +16,7 @@ const transporter = nodemailer.createTransport({
 });
 
 const MAIL_FROM = process.env.MAIL_FROM || 'Rimoucha <noreply@rimoucha.com>';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://rimoucha.com';
 
 /**
  * Send a 5-digit OTP code via email
@@ -73,8 +75,6 @@ export async function sendOtpEmail(
 // ============================================================================
 // SHARED EMAIL WRAPPER
 // ============================================================================
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://rimoucha.com';
 
 function emailWrapper(title: string, body: string): string {
   return `<!DOCTYPE html>

@@ -18,6 +18,7 @@ import {
   SIZE_CODE_MAP,
 } from '@/lib/constants';
 import { requireAdmin } from '@/lib/auth/require-admin';
+import { broadcastProductNotification } from '@/lib/notifications'; // IMPORTED
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -283,10 +284,10 @@ export async function PUT(
 
     const data = JSON.parse(dataStr);
 
-    // Verify product exists
+    // Verify product exists and get OLD state for discount comparison
     const existing = await prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true },
+      select: { id: true, discountPercent: true },
     });
 
     if (!existing) {
@@ -547,6 +548,21 @@ export async function PUT(
 
       return product;
     });
+
+    // ---------------------------------------------------------
+    // SEND NOTIFICATION (Async)
+    // ---------------------------------------------------------
+    if (updatedProduct.isActive && updatedProduct.discountPercent && updatedProduct.discountPercent > 0) {
+      const oldDiscount = existing?.discountPercent || 0;
+      const newDiscount = updatedProduct.discountPercent;
+
+      // Trigger if discount was added or increased
+      if (newDiscount > oldDiscount) {
+        broadcastProductNotification(updatedProduct.id, 'DISCOUNT').catch(err => 
+          console.error('Failed to send discount emails:', err)
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,

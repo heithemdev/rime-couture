@@ -1,8 +1,8 @@
-//apps/web/app/api/orders/route.ts
 /**
  * Orders API Route
  * Secure, rate-limited order creation for checkout
  * Supports fingerprint-based user identification
+ * Includes Email Notification Trigger
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -70,6 +70,7 @@ interface OrderInput {
   // Customer info
   customerName: string;
   phone: string;
+  email?: string;
   wilayaCode: string;
   wilayaName: string;
   commune: string;
@@ -90,7 +91,9 @@ interface OrderInput {
   fingerprint?: string;
 }
 
-// GET - Fetch orders by fingerprint
+// ============================================================================
+// GET - Fetch orders by fingerprint (RESTORED)
+// ============================================================================
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -169,11 +172,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// ============================================================================
+// POST - Create new order
+// ============================================================================
 export async function POST(request: NextRequest) {
   try {
     // ========== SECURITY CHECKS ==========
     
-    // Rate limiting (10 orders per minute per IP - stricter for orders)
     const rateLimit = checkRateLimit(request, {
       windowMs: 60000,
       maxRequests: 10,
@@ -184,7 +189,6 @@ export async function POST(request: NextRequest) {
       return rateLimitResponse(rateLimit.resetAt);
     }
     
-    // Bot detection
     const botCheck = checkForBot(request);
     if (botCheck.isSuspicious) {
       return NextResponse.json(
@@ -208,6 +212,7 @@ export async function POST(request: NextRequest) {
     const {
       customerName,
       phone,
+      email,
       wilayaCode,
       wilayaName,
       commune,
@@ -316,10 +321,8 @@ export async function POST(request: NextRequest) {
       },
     }));
     
-    // Create a map for quick lookup
     const productMap = new Map(products.map(p => [p.id, p]));
     
-    // Validate each item
     let subtotalMinor = 0;
     const validatedItems: Array<{
       productId: string;
@@ -345,11 +348,10 @@ export async function POST(request: NextRequest) {
       }
       
       let unitPriceMinor = product.basePriceMinor;
-      let stock = 999; // Default high stock for products without variants
+      let stock = 999;
       let sizeLabel: string | null = null;
       let colorLabel: string | null = null;
       
-      // Check variant if specified
       if (item.variantId && product.variants) {
         const variant = (product.variants as Array<{
           id: string;
@@ -366,7 +368,6 @@ export async function POST(request: NextRequest) {
           );
         }
         
-        // Use variant price if available
         if (variant.priceMinor !== null) {
           unitPriceMinor = variant.priceMinor;
         }
@@ -376,7 +377,6 @@ export async function POST(request: NextRequest) {
         colorLabel = variant.color?.label || null;
       }
       
-      // Check stock
       if (stock < item.quantity) {
         return NextResponse.json(
           { success: false, error: `Insufficient stock for ${product.translations[0]?.name || product.slug}` },
@@ -420,13 +420,13 @@ export async function POST(request: NextRequest) {
         
         customerName: customerName.trim(),
         customerPhone: phone,
+        customerEmail: email?.trim() || null,
         addressLine1: deliveryType === 'HOME' ? address!.trim() : `Desk Pickup - ${commune}`,
         wilayaCode: parseInt(wilayaCode, 10),
         wilayaName,
         commune,
         customerNote: notes?.trim() || null,
         
-        // Store fingerprint for user identification
         sessionId: fingerprint || null,
         
         items: {
@@ -462,46 +462,44 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // ========== SEND ORDER RECEIPT EMAIL (fire & forget) ==========
+    // ========== SEND ORDER RECEIPT EMAIL ==========
     
-    if (order.customerEmail || fingerprint) {
-      // Try to find user email from fingerprint → session → user
-      let recipientEmail = order.customerEmail;
-      if (!recipientEmail && fingerprint) {
-        try {
-          // Look up user by fingerprint from their ProductLike records
-          const likeRecord = await prisma.productLike.findFirst({
-            where: { fingerprint, userId: { not: null } },
-            include: { user: { select: { email: true, emailNotifications: true } } },
-          });
-          if (likeRecord?.user?.emailNotifications && likeRecord.user.email) {
-            recipientEmail = likeRecord.user.email;
-          }
-        } catch { /* ignore */ }
-      }
-      
-      if (recipientEmail) {
-        sendOrderReceiptEmail(recipientEmail, {
-          orderNumber: order.orderNumber,
-          customerName: customerName.trim(),
-          items: validatedItems.map(item => ({
-            productName: item.productName,
-            productSlug: item.productSlug,
-            productImageUrl: item.productImageUrl,
-            quantity: item.quantity,
-            unitPrice: item.unitPriceMinor / 100,
-            lineTotal: item.lineTotalMinor / 100,
-            sizeLabel: item.sizeLabel,
-            colorLabel: item.colorLabel,
-          })),
-          subtotal: subtotalMinor / 100,
-          shipping: shippingMinor / 100,
-          total: totalMinor / 100,
-          wilayaName,
-          commune,
-          address: deliveryType === 'HOME' ? address?.trim() : undefined,
-        }).catch(err => console.error('Failed to send order receipt email:', err));
-      }
+    let recipientEmail = order.customerEmail;
+    
+    if (!recipientEmail && fingerprint) {
+      try {
+        const likeRecord = await prisma.productLike.findFirst({
+          where: { fingerprint, userId: { not: null } },
+          include: { user: { select: { email: true, emailNotifications: true } } },
+        });
+        if (likeRecord?.user?.emailNotifications && likeRecord.user.email) {
+          recipientEmail = likeRecord.user.email;
+        }
+      } catch { /* ignore */ }
+    }
+    
+    if (recipientEmail) {
+      // Fire and forget email
+      sendOrderReceiptEmail(recipientEmail, {
+        orderNumber: order.orderNumber,
+        customerName: customerName.trim(),
+        items: validatedItems.map(item => ({
+          productName: item.productName,
+          productSlug: item.productSlug,
+          productImageUrl: item.productImageUrl,
+          quantity: item.quantity,
+          unitPrice: item.unitPriceMinor / 100,
+          lineTotal: item.lineTotalMinor / 100,
+          sizeLabel: item.sizeLabel,
+          colorLabel: item.colorLabel,
+        })),
+        subtotal: subtotalMinor / 100,
+        shipping: shippingMinor / 100,
+        total: totalMinor / 100,
+        wilayaName,
+        commune,
+        address: deliveryType === 'HOME' ? address?.trim() : undefined,
+      }).catch(err => console.error('Failed to send order receipt email:', err));
     }
     
     // ========== RETURN SUCCESS ==========

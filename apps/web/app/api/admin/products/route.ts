@@ -3,9 +3,6 @@
  * ==================================
  * GET: Fetch all products for admin management
  * POST: Create new product
- *
- * Resolves hardcoded frontend IDs (e.g. 'cat-kids-clothes', 'clr-red', 'size-2y')
- * to real database UUIDs by looking up by slug/code.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -20,6 +17,7 @@ import {
   SIZE_CODE_MAP,
 } from '@/lib/constants';
 import { requireAdmin } from '@/lib/auth/require-admin';
+import { broadcastProductNotification } from '@/lib/notifications'; // IMPORTED
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -304,6 +302,15 @@ export async function POST(request: NextRequest) {
 
       return product;
     });
+
+    // ---------------------------------------------------------
+    // SEND NOTIFICATION (Async - do not block response)
+    // ---------------------------------------------------------
+    if (newProduct.isActive) {
+      broadcastProductNotification(newProduct.id, 'NEW').catch(err => 
+        console.error('Failed to send new product emails:', err)
+      );
+    }
 
     return NextResponse.json({ success: true, data: { id: newProduct.id, slug: newProduct.slug } });
   } catch (error) {
