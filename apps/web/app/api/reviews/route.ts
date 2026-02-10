@@ -1,3 +1,5 @@
+//apps/web/app/api/reviews/route.ts
+
 /**
  * Reviews API Route
  * POST: Create a new review (one per fingerprint per product)

@@ -1,3 +1,4 @@
+//apps/web/app/product/[productId]/ProductPageClient.tsx
 /**
  * Product Page Client Component
  * Interactive product page with smart variant filtering and accurate stock logic
