@@ -1,3 +1,4 @@
+//apps/web/app/api/products/route.ts
 /**
  * Products API Route
  * Secure, rate-limited product fetching using Prisma ORM

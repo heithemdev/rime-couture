@@ -1,3 +1,4 @@
+//apps/web/app/api/products/[productId]/route.ts
 /**
  * Single Product API Route
  * Fetches complete product details using Prisma ORM

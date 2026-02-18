@@ -1,3 +1,5 @@
+//apps/web/lib/rate-limit.ts
+
 type Options = {
   uniqueTokenPerInterval?: number; // Max users to track in memory
   interval?: number; // Time window in ms

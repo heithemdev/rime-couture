@@ -1,3 +1,4 @@
+//apps/web/app/admin/page.tsx
 /**
  * RIME COUTURE - Admin Analytics Dashboard
  * =========================================
@@ -972,7 +973,7 @@ function AdminProductTable({
   products, 
   t, 
   onToggleVisibility, 
-  onEdit,
+  onEdit, 
   onDelete,
   isTogglingId,
   isDeletingId,

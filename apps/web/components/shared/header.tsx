@@ -16,7 +16,6 @@ import {
   X, 
   Menu, 
   ChevronDown, 
-  Sparkles,
   ShieldCheck, // Added for Admin identity
   Package      // Added for Admin orders icon alternative
 } from 'lucide-react';
@@ -33,9 +32,7 @@ export default function Header() {
   const cartItemCount = items.length;
   const [isPending, startTransition] = useTransition();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isSmartSearchOpen, setIsSmartSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [smartSearchPrompt, setSmartSearchPrompt] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -43,7 +40,6 @@ export default function Header() {
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const smartSearchRef = useRef<HTMLTextAreaElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
 
@@ -99,12 +95,6 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    if (isSmartSearchOpen && smartSearchRef.current) {
-      smartSearchRef.current.focus();
-    }
-  }, [isSmartSearchOpen]);
-
-  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (langRef.current && !langRef.current.contains(event.target as Node)) {
         setIsLangOpen(false);
@@ -115,12 +105,12 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    const shouldLockScroll = isMobileMenuOpen || isSmartSearchOpen;
+    const shouldLockScroll = isMobileMenuOpen;
     document.body.style.overflow = shouldLockScroll ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isMobileMenuOpen, isSmartSearchOpen]);
+  }, [isMobileMenuOpen]);
 
   const handleLocaleChange = (newLocale: Locale) => {
     startTransition(() => {
@@ -129,7 +119,7 @@ export default function Header() {
     setIsLangOpen(false);
   };
 
-  // Smart search that detects categories and filters
+  // Smart search logic retained for the main search bar to allow category detection
   const buildSmartSearchUrl = (query: string): string => {
     const normalized = query.trim().toLowerCase();
     const params = new URLSearchParams();
@@ -210,14 +200,6 @@ export default function Header() {
     
     const queryString = params.toString();
     return queryString ? `/shopping?${queryString}` : '/shopping';
-  };
-
-  const handleSmartSearchSubmit = () => {
-    if (smartSearchPrompt.trim()) {
-      push(buildSmartSearchUrl(smartSearchPrompt));
-      setIsSmartSearchOpen(false);
-      setSmartSearchPrompt('');
-    }
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -326,26 +308,6 @@ export default function Header() {
         }
         .header-search-input::placeholder {
           color: #999;
-        }
-        .header-smart-search-btn {
-          height: 44px;
-          gap: 6px;
-          color: #fff;
-          border: none;
-          cursor: pointer;
-          display: flex;
-          padding: 0 20px;
-          font-size: 14px;
-          background: linear-gradient(135deg, #FF6B9D 0%, #FFB347 100%);
-          transition: all 0.3s ease;
-          align-items: center;
-          white-space: nowrap;
-          font-weight: 500;
-          border-radius: 22px;
-        }
-        .header-smart-search-btn:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(255, 107, 157, 0.35);
         }
         
         /* Actions */
@@ -493,142 +455,6 @@ export default function Header() {
           justify-content: center;
         }
         
-        /* Smart Search Modal */
-        .smart-search-overlay {
-          inset: 0;
-          display: flex;
-          opacity: 0;
-          z-index: 2000;
-          position: fixed;
-          background: rgba(0, 0, 0, 0.6);
-          transition: opacity 0.3s ease;
-          align-items: flex-start;
-          padding-top: 12vh;
-          justify-content: center;
-          pointer-events: none;
-          backdrop-filter: blur(8px);
-        }
-        .smart-search-overlay.active {
-          opacity: 1;
-          pointer-events: auto;
-        }
-        .smart-search-modal {
-          width: 90%;
-          padding: 28px;
-          max-width: 560px;
-          transform: translateY(-20px) scale(0.95);
-          background: #fff;
-          transition: transform 0.3s ease;
-          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
-          border-radius: 20px;
-        }
-        .smart-search-overlay.active .smart-search-modal {
-          transform: translateY(0) scale(1);
-        }
-        .smart-search-header {
-          display: flex;
-          margin-bottom: 20px;
-          align-items: center;
-          justify-content: space-between;
-        }
-        .smart-search-title {
-          gap: 10px;
-          color: #222;
-          display: flex;
-          font-size: 20px;
-          align-items: center;
-          font-weight: 600;
-        }
-        .smart-search-title-icon {
-          color: #FF6B9D;
-        }
-        .smart-search-close {
-          width: 36px;
-          height: 36px;
-          color: #666;
-          border: none;
-          cursor: pointer;
-          display: flex;
-          background: #f5f5f5;
-          border-radius: 50%;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.2s ease;
-        }
-        .smart-search-close:hover {
-          color: #333;
-          background: #eee;
-        }
-        .smart-search-textarea {
-          width: 100%;
-          border: 2px solid #eee;
-          resize: none;
-          padding: 16px;
-          font-size: 15px;
-          min-height: 120px;
-          transition: border-color 0.3s ease;
-          line-height: 1.6;
-          border-radius: 14px;
-          background: #fafafa;
-        }
-        .smart-search-textarea:focus {
-          outline: none;
-          border-color: #FF6B9D;
-          background: #fff;
-        }
-        .smart-search-textarea::placeholder {
-          color: #999;
-        }
-        .smart-search-hint {
-          color: #888;
-          margin: 12px 0 20px;
-          font-size: 13px;
-        }
-        .smart-search-actions {
-          gap: 12px;
-          display: flex;
-          justify-content: flex-end;
-        }
-        .smart-search-cancel {
-          height: 44px;
-          color: #666;
-          border: 1px solid #ddd;
-          cursor: pointer;
-          padding: 0 24px;
-          font-size: 14px;
-          background: transparent;
-          transition: all 0.2s ease;
-          font-weight: 500;
-          border-radius: 22px;
-        }
-        .smart-search-cancel:hover {
-          border-color: #999;
-          background: #f5f5f5;
-        }
-        .smart-search-submit {
-          height: 44px;
-          gap: 6px;
-          color: #fff;
-          border: none;
-          cursor: pointer;
-          display: flex;
-          padding: 0 24px;
-          font-size: 14px;
-          background: linear-gradient(135deg, #FF6B9D 0%, #FFB347 100%);
-          transition: all 0.3s ease;
-          align-items: center;
-          font-weight: 500;
-          border-radius: 22px;
-        }
-        .smart-search-submit:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(255, 107, 157, 0.35);
-        }
-        .smart-search-submit:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
         /* Mobile Menu - Completely Redesigned */
         .mobile-menu-overlay {
           inset: 0;
@@ -736,26 +562,6 @@ export default function Header() {
         }
         .mobile-search-input::placeholder {
           color: #999;
-        }
-        .mobile-smart-search-btn {
-          width: 100%;
-          height: 48px;
-          gap: 8px;
-          color: #fff;
-          border: none;
-          cursor: pointer;
-          display: flex;
-          margin-top: 12px;
-          font-size: 15px;
-          background: linear-gradient(135deg, #FF6B9D 0%, #FFB347 100%);
-          transition: all 0.3s ease;
-          align-items: center;
-          justify-content: center;
-          font-weight: 500;
-          border-radius: 14px;
-        }
-        .mobile-smart-search-btn:hover {
-          box-shadow: 0 6px 20px rgba(255, 107, 157, 0.35);
         }
         
         /* Mobile Nav */
@@ -904,13 +710,6 @@ export default function Header() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </form>
-              <button
-                className="header-smart-search-btn"
-                onClick={() => setIsSmartSearchOpen(true)}
-              >
-                <Sparkles size={16} />
-                {tc('smartSearch')}
-              </button>
             </div>
 
             {/* Actions */}
@@ -981,55 +780,6 @@ export default function Header() {
         </div>
       </nav>
 
-      {/* Smart Search Modal */}
-      <div 
-        className={`smart-search-overlay ${isSmartSearchOpen ? 'active' : ''}`}
-        onClick={(e) => e.target === e.currentTarget && setIsSmartSearchOpen(false)}
-      >
-        <div className="smart-search-modal">
-          <div className="smart-search-header">
-            <h2 className="smart-search-title">
-              <Sparkles size={22} className="smart-search-title-icon" />
-              {tc('smartSearchTitle')}
-            </h2>
-            <button 
-              className="smart-search-close" 
-              onClick={() => setIsSmartSearchOpen(false)}
-              aria-label={tc('close')}
-            >
-              <X size={20} />
-            </button>
-          </div>
-          <textarea
-            ref={smartSearchRef}
-            className="smart-search-textarea"
-            placeholder={tc('smartSearchPlaceholder')}
-            value={smartSearchPrompt}
-            onChange={(e) => setSmartSearchPrompt(e.target.value)}
-          />
-          <p className="smart-search-hint">{tc('smartSearchHint')}</p>
-          <div className="smart-search-actions">
-            <button 
-              className="smart-search-cancel"
-              onClick={() => {
-                setIsSmartSearchOpen(false);
-                setSmartSearchPrompt('');
-              }}
-            >
-              {tc('cancel')}
-            </button>
-            <button 
-              className="smart-search-submit"
-              onClick={handleSmartSearchSubmit}
-              disabled={!smartSearchPrompt.trim()}
-            >
-              <Sparkles size={16} />
-              {tc('search')}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Mobile Menu */}
       <div 
         className={`mobile-menu-overlay ${isMobileMenuOpen ? 'active' : ''}`}
@@ -1062,16 +812,6 @@ export default function Header() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </form>
-            <button
-              className="mobile-smart-search-btn"
-              onClick={() => {
-                setIsMobileMenuOpen(false);
-                setIsSmartSearchOpen(true);
-              }}
-            >
-              <Sparkles size={18} />
-              {tc('smartSearch')}
-            </button>
           </div>
           
           {/* Mobile Navigation */}

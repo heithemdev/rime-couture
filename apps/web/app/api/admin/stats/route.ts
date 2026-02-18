@@ -50,7 +50,6 @@ export async function GET(request: NextRequest) {
     const months = parseInt(searchParams.get('months') || '12', 10);
     
     // Calculate date range (last N months)
-    // End date is now (current date)
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - months);
     startDate.setDate(1);
@@ -59,7 +58,8 @@ export async function GET(request: NextRequest) {
     // Fetch all required data in parallel
     const [
       orders,
-      products,
+      // REPLACED: Fetching top products via OrderItems aggregation instead of static salesCount
+      topSellingAggregated, 
       analytics,
       categories,
     ] = await withRetry(() => Promise.all([
@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
         where: {
           createdAt: { gte: startDate },
           deletedAt: null,
+          status: { not: 'PENDING' } // Filter out pending orders for accurate stats
         },
         select: {
           id: true,
@@ -89,36 +90,24 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'asc' },
       }),
       
-      // Products with sales data
-      prisma.product.findMany({
+      // NEW: Dynamic aggregation for top selling products
+      prisma.orderItem.groupBy({
+        by: ['productId', 'productName', 'productSlug', 'productImageUrl'],
         where: {
-          deletedAt: null,
-          isActive: true,
+          order: {
+            createdAt: { gte: startDate },
+            status: { not: 'PENDING' },
+            deletedAt: null,
+          }
         },
-        select: {
-          id: true,
-          slug: true,
-          salesCount: true,
-          likeCount: true,
-          reviewCount: true,
-          avgRating: true,
-          basePriceMinor: true,
-          categoryId: true,
-          translations: {
-            where: { locale: 'EN' },
-            select: { name: true },
-          },
-          media: {
-            where: { isThumb: true },
-            take: 1,
-            select: {
-              media: {
-                select: { url: true },
-              },
-            },
-          },
+        _sum: {
+          quantity: true,
+          lineTotalMinor: true,
         },
-        orderBy: { salesCount: 'desc' },
+        orderBy: {
+          _sum: { quantity: 'desc' }
+        },
+        take: 10,
       }),
       
       // Analytics events for clicks
@@ -146,36 +135,70 @@ export async function GET(request: NextRequest) {
       }),
     ]));
 
+    // We also need full product details for the "All Products" table/list if used elsewhere, 
+    // but for the dashboard stats specifically, we use the aggregated data.
+    // If you need the full product list for the table below the charts, we fetch it here separately
+    // to keep the "Top Selling" logic pure.
+    const allProducts = await prisma.product.findMany({
+        where: { deletedAt: null },
+        select: {
+            id: true, slug: true, isActive: true, basePriceMinor: true, categoryId: true,
+            translations: { where: { locale: 'EN' }, select: { name: true } },
+            media: { where: { isThumb: true }, take: 1, select: { media: { select: { url: true } } } }
+        }
+    });
+
     // ========== PROCESS DATA ==========
 
     // 1. Orders & Revenue per month
-    const monthlyData: Record<string, { orders: number; revenue: number }> = {};
+    // FIX: Typed interface to prevent "string | undefined" error
+    interface MonthlyStat { orders: number; revenue: number; year: number; monthName: string; }
+    const monthlyData: Record<string, MonthlyStat> = {};
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    // Initialize all months
+    // Initialize all months to ensure continuity in charts
     for (let i = 0; i < months; i++) {
-      const d = new Date(startDate);
-      d.setMonth(d.getMonth() + i);
-      const key = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
-      monthlyData[key] = { orders: 0, revenue: 0 };
+      const d = new Date(); // Start from today and go back
+      d.setMonth(d.getMonth() - i);
+      const mIndex = d.getMonth();
+      const year = d.getFullYear();
+      const name = monthNames[mIndex] || 'Unknown'; // Fallback for safety
+      const key = `${name}-${year}`; // Unique key
+      
+      monthlyData[key] = { 
+          orders: 0, 
+          revenue: 0, 
+          year: year, 
+          monthName: name 
+      };
     }
     
     for (const order of orders) {
       const d = new Date(order.createdAt);
-      const key = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+      const mIndex = d.getMonth();
+      const year = d.getFullYear();
+      const name = monthNames[mIndex] || 'Unknown';
+      const key = `${name}-${year}`;
+      
+      // If the month is within our initialized range
       if (monthlyData[key]) {
-        monthlyData[key].orders += 1;
-        monthlyData[key].revenue += order.totalMinor / 100;
+        monthlyData[key]!.orders += 1;
+        monthlyData[key]!.revenue += order.totalMinor / 100;
       }
     }
 
-    const ordersPerMonth = Object.entries(monthlyData).map(([month, data]) => ({
-      month,
+    // Convert to array and reverse (so it goes Jan -> Dec, or Oldest -> Newest)
+    const timeline = Object.values(monthlyData).reverse();
+
+    const ordersPerMonth = timeline.map(data => ({
+      month: data.monthName,
+      year: data.year,
       orders: data.orders,
     }));
 
-    const revenuePerMonth = Object.entries(monthlyData).map(([month, data]) => ({
-      month,
+    const revenuePerMonth = timeline.map(data => ({
+      month: data.monthName,
+      year: data.year,
       revenue: Math.round(data.revenue),
     }));
 
@@ -191,26 +214,23 @@ export async function GET(request: NextRequest) {
           revenue: 0,
         };
       }
-      wilayaMap[key].orders += 1;
-      wilayaMap[key].revenue += order.totalMinor / 100;
+      wilayaMap[key]!.orders += 1;
+      wilayaMap[key]!.revenue += order.totalMinor / 100;
     }
     
     const ordersByWilaya = Object.values(wilayaMap)
       .sort((a, b) => b.orders - a.orders)
       .slice(0, 15);
 
-    // 3. Top Selling Products
-    const topSellingProducts = products
-      .filter(p => p.salesCount > 0)
-      .slice(0, 10)
-      .map(p => ({
-        id: p.id,
-        name: p.translations[0]?.name || p.slug,
-        slug: p.slug,
-        salesCount: p.salesCount,
-        revenue: (p.salesCount * p.basePriceMinor) / 100,
-        imageUrl: p.media[0]?.media?.url || null,
-      }));
+    // 3. Top Selling Products (FIXED: Uses Aggregated Data)
+    const topSellingProducts = topSellingAggregated.map(item => ({
+        id: item.productId || 'unknown',
+        name: item.productName,
+        slug: item.productSlug,
+        salesCount: item._sum.quantity || 0,
+        revenue: (item._sum.lineTotalMinor || 0) / 100,
+        imageUrl: item.productImageUrl,
+    })).filter(p => p.id !== 'unknown');
 
     // 4. Most Clicked Products
     const clicksMap: Record<string, number> = {};
@@ -220,7 +240,8 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    const mostClickedProducts = products
+    // Map clicks to actual product details using the allProducts fetch
+    const mostClickedProducts = allProducts
       .map(p => ({
         id: p.id,
         name: p.translations[0]?.name || p.slug,
@@ -232,7 +253,7 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.clicks - a.clicks)
       .slice(0, 10);
 
-    // 5. Category Performance (revenue and units sold)
+    // 5. Category Performance
     const categoryMap: Record<string, { name: string; revenue: number; unitsSold: number }> = {};
     
     // Initialize categories
@@ -245,16 +266,18 @@ export async function GET(request: NextRequest) {
     }
     
     // Calculate from order items
+    // Note: To be 100% accurate we need the product->category relation. 
+    // We use a helper map from the allProducts fetch.
+    const productCategoryMap = new Map<string, string>();
+    allProducts.forEach(p => productCategoryMap.set(p.id, p.categoryId));
+
     for (const order of orders) {
       for (const item of order.items) {
         if (item.productId) {
-          const product = products.find(p => p.id === item.productId);
-          if (product && categoryMap[product.categoryId]) {
-            const cat = categoryMap[product.categoryId];
-            if (cat) {
-              cat.revenue += item.lineTotalMinor / 100;
-              cat.unitsSold += item.quantity;
-            }
+          const catId = productCategoryMap.get(item.productId);
+          if (catId && categoryMap[catId]) {
+             categoryMap[catId]!.revenue += item.lineTotalMinor / 100;
+             categoryMap[catId]!.unitsSold += item.quantity;
           }
         }
       }
@@ -268,7 +291,7 @@ export async function GET(request: NextRequest) {
     const totalRevenue = orders.reduce((sum, o) => sum + o.totalMinor / 100, 0);
     const totalOrders = orders.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-    const totalProducts = products.length;
+    const totalProducts = allProducts.length;
     const totalClicks = analytics.length;
 
     // Order status breakdown
