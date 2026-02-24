@@ -92,6 +92,7 @@ interface Review {
   title?: string;
   comment?: string;
   reviewerName: string;
+  avatarUrl?: string | null;
   createdAt: string;
 }
 
@@ -1061,7 +1062,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         .review-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--border-radius-lg); padding: var(--spacing-xl); }
         .review-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: var(--spacing-md); }
         .review-author { display: flex; align-items: center; gap: var(--spacing-md); }
-        .review-avatar { width: 48px; height: 48px; background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%); border-radius: var(--border-radius-full); display: flex; align-items: center; justify-content: center; color: white; }
+        .review-avatar { width: 48px; height: 48px; background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%); border-radius: var(--border-radius-full); display: flex; align-items: center; justify-content: center; color: white; overflow: hidden; flex-shrink: 0; }
         .review-author-info h4 { font-weight: var(--font-weight-medium); color: var(--color-on-surface); margin-bottom: var(--spacing-xs); }
         .review-date { font-size: var(--font-size-xs); color: var(--color-on-surface-secondary); }
         .review-rating { display: flex; align-items: center; gap: 2px; }
@@ -1636,7 +1637,20 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 <div key={review.id} className="review-card">
                   <div className="review-header">
                     <div className="review-author">
-                      <div className="review-avatar"><User size={24} /></div>
+                      <div className="review-avatar">
+                        {review.avatarUrl ? (
+                          <img
+                            src={review.avatarUrl}
+                            alt={review.reviewerName}
+                            width={48}
+                            height={48}
+                            referrerPolicy="no-referrer"
+                            style={{ borderRadius: '50%', objectFit: 'cover', width: '100%', height: '100%' }}
+                          />
+                        ) : (
+                          <User size={24} />
+                        )}
+                      </div>
                       <div className="review-author-info">
                         <h4>{review.reviewerName}</h4>
                         <span className="review-date">{formatDate(review.createdAt, locale)}</span>

@@ -84,6 +84,7 @@ export async function validateSession(): Promise<{
     email: string;
     displayName: string | null;
     phone: string | null;
+    avatarUrl: string | null;
   };
   session: {
     expiresAt: Date;
@@ -108,6 +109,7 @@ export async function validateSession(): Promise<{
             email: true,
             displayName: true,
             phone: true,
+            avatarUrl: true,
             deletedAt: true,
           },
         },
@@ -133,6 +135,7 @@ export async function validateSession(): Promise<{
         email: session.user.email,
         displayName: session.user.displayName,
         phone: session.user.phone,
+        avatarUrl: session.user.avatarUrl,
       },
       session: {
         expiresAt: session.expiresAt,

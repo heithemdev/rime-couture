@@ -125,7 +125,7 @@ export default function OrderingSteps() {
         }
       `}</style>
 
-      <section className="steps-section" ref={sectionRef}>
+      <section className="steps-section" id="ordering-steps" ref={sectionRef}>
         <div className="steps-container">
           <div className="steps-header">
             <h2 className="steps-title">{t('title')}</h2>

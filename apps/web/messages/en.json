@@ -153,20 +153,20 @@
   },
   "footer": {
     "brandStory": "A family-owned Algerian brand crafting memories through hand-sewn kids' dresses and cozy home textiles. Every stitch tells a story of love, tradition, and handmade quality.",
-    "shopTitle": "Shop",
-    "shop": {
-      "newArrivals": "New Arrivals",
-      "bestSellers": "Best Sellers",
-      "kidsDresses": "Kids Dresses",
-      "homeTextiles": "Home Textiles"
+    "pagesTitle": "Pages",
+    "pages": {
+      "home": "Home",
+      "shop": "Shop",
+      "orders": "My Orders",
+      "favorites": "Favorites"
     },
     "aboutTitle": "About",
     "about": {
       "ourStory": "Our Story",
       "howItsMade": "How It's Made",
-      "faq": "FAQ",
-      "contactUs": "Contact Us"
+      "whyMothersTrust": "Why Mothers Trust Us"
     },
+    "followUs": "Follow Us",
     "allRightsReserved": "All rights reserved.",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service",
@@ -343,6 +343,7 @@
     "welcomeBack": "Welcome back!",
     "signInSubtitle": "Sign in to track orders and save your favorites",
     "continueWithGoogle": "Continue with Google",
+    "redirecting": "Redirecting...",
     "or": "or",
     "emailPlaceholder": "Email address",
     "passwordPlaceholder": "Password",

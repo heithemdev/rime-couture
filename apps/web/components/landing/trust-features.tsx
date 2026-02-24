@@ -114,7 +114,7 @@ export default function TrustFeatures() {
         }
       `}</style>
 
-      <section className="tf-section" ref={sectionRef}>
+      <section className="tf-section" id="trust-features" ref={sectionRef}>
         <div className="tf-container">
           <div className="tf-header">
             <h2 className="tf-title">{t('title')}</h2>

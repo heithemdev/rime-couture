@@ -163,14 +163,14 @@ export default function ProductCheckoutModal({
     ? cartItems.reduce((sum, item) => sum + item.lineTotal, 0)
     : unitPrice * quantity;
   const shippingPrice = selectedWilaya
-    ? deliveryType === 'HOME'
-      ? selectedWilaya.homeDeliveryPrice
-      : selectedWilaya.centerDeliveryPrice
+    ? (deliveryType === 'CENTER' && selectedWilaya.hasStopDesk)
+      ? selectedWilaya.centerDeliveryPrice
+      : selectedWilaya.homeDeliveryPrice
     : 0;
   const deliveryDays = selectedWilaya
-    ? deliveryType === 'HOME'
-      ? selectedWilaya.homeDeliveryDays
-      : selectedWilaya.centerDeliveryDays
+    ? (deliveryType === 'CENTER' && selectedWilaya.hasStopDesk)
+      ? selectedWilaya.centerDeliveryDays
+      : selectedWilaya.homeDeliveryDays
     : 0;
   const total = subtotal + shippingPrice;
 
@@ -196,10 +196,17 @@ export default function ProductCheckoutModal({
     }
   }, [isOpen]);
 
-  // Reset baladiya when wilaya changes
+  // Reset baladiya and delivery type when wilaya changes
   useEffect(() => {
     setSelectedBaladiyaCode(null);
     setIsBaladiyaDropdownOpen(false);
+    // If the selected wilaya has no stop desk, force HOME delivery
+    if (selectedWilayaId) {
+      const w = getWilayaById(selectedWilayaId);
+      if (w && !w.hasStopDesk) {
+        setDeliveryType('HOME');
+      }
+    }
   }, [selectedWilayaId]);
 
   // Form validation
@@ -262,7 +269,7 @@ export default function ProductCheckoutModal({
         wilayaCode: String(selectedWilaya.id),
         wilayaName: selectedWilaya.name,
         commune: selectedBaladiya?.name ?? selectedWilaya.name,
-        deliveryType,
+        deliveryType: deliveryType === 'CENTER' ? 'DESK' : 'HOME',
         shippingPrice: shippingPrice,
         // Include fingerprint for user identification
         fingerprint: fingerprint || undefined,
@@ -1056,9 +1063,9 @@ export default function ProductCheckoutModal({
                                 </div>
                                 <span className="dropdown-option-price">
                                   {formatPriceDA(
-                                    deliveryType === 'HOME'
-                                      ? w.homeDeliveryPrice
-                                      : w.centerDeliveryPrice
+                                    (deliveryType === 'CENTER' && w.hasStopDesk)
+                                      ? w.centerDeliveryPrice
+                                      : w.homeDeliveryPrice
                                   )}
                                 </span>
                               </div>
@@ -1114,7 +1121,7 @@ export default function ProductCheckoutModal({
                   {selectedWilaya && (
                     <div className="form-group">
                       <label className="form-label">{t('deliveryType')}</label>
-                      <div className="delivery-options">
+                      <div className="delivery-options" style={!selectedWilaya.hasStopDesk ? { gridTemplateColumns: '1fr' } : undefined}>
                         <div
                           className={`delivery-option ${deliveryType === 'HOME' ? 'selected' : ''}`}
                           onClick={() => setDeliveryType('HOME')}
@@ -1136,6 +1143,7 @@ export default function ProductCheckoutModal({
                           </div>
                         </div>
 
+                        {selectedWilaya.hasStopDesk && (
                         <div
                           className={`delivery-option ${deliveryType === 'CENTER' ? 'selected' : ''}`}
                           onClick={() => setDeliveryType('CENTER')}
@@ -1156,6 +1164,7 @@ export default function ProductCheckoutModal({
                             </span>
                           </div>
                         </div>
+                        )}
                       </div>
                     </div>
                   )}

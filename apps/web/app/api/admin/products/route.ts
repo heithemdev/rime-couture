@@ -7,8 +7,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, Prisma, Locale } from '@repo/db';
-import { mkdir, writeFile } from 'fs/promises';
-import path from 'path';
 import crypto from 'crypto';
 import {
   CATEGORY_SLUG_MAP,
@@ -18,6 +16,7 @@ import {
 } from '@/lib/constants';
 import { requireAdmin } from '@/lib/auth/require-admin';
 import { broadcastProductNotification } from '@/lib/notifications'; // IMPORTED
+import { uploadToCloudinary } from '@/lib/cloudinary';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,17 +26,13 @@ export const runtime = 'nodejs';
 // ============================================================================
 
 async function saveUploadedFile(file: File): Promise<{ url: string; mimeType: string; bytes: number; kind: 'IMAGE' | 'VIDEO' }> {
-  const mimeType = file.type || 'application/octet-stream';
-  const kind: 'IMAGE' | 'VIDEO' = mimeType.startsWith('video/') ? 'VIDEO' : 'IMAGE';
-  const extFromName = path.extname(file.name || '');
-  const ext = extFromName || (kind === 'VIDEO' ? '.mp4' : '.jpg');
-  const filename = `${crypto.randomUUID()}${ext}`;
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-  await mkdir(uploadDir, { recursive: true });
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const fullPath = path.join(uploadDir, filename);
-  await writeFile(fullPath, bytes);
-  return { url: `/uploads/${filename}`, mimeType, bytes: bytes.length, kind };
+  const result = await uploadToCloudinary(file, { folder: 'rimoucha/products' });
+  return {
+    url: result.url,
+    mimeType: result.mimeType,
+    bytes: result.bytes,
+    kind: result.kind,
+  };
 }
 
 function generateSku(productId: string, index: number) {
@@ -165,6 +160,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'A product with this slug already exists' }, { status: 409 });
     }
 
+    // ── Upload files to Cloudinary BEFORE the transaction ──
+    // (Cloudinary uploads are slow network calls that would expire the DB transaction)
+    const uploadedMedia: Array<{
+      index: number;
+      saved: { url: string; mimeType: string; bytes: number; kind: 'IMAGE' | 'VIDEO' };
+      originalName: string;
+      colorId: string | null;
+      position: number;
+      isThumb: boolean;
+    }> = [];
+
+    if (formData && Array.isArray(data.media) && data.media.length > 0) {
+      for (let i = 0; i < data.media.length; i++) {
+        const m = data.media[i];
+        const uploadKey = m.uploadKey as string | undefined;
+        if (!uploadKey) continue;
+        const file = formData.get(uploadKey);
+        if (!(file instanceof File)) continue;
+
+        const saved = await saveUploadedFile(file);
+        uploadedMedia.push({
+          index: i,
+          saved,
+          originalName: file.name,
+          colorId: typeof m.colorId === 'string' && m.colorId.length > 0 ? m.colorId : null,
+          position: typeof m.position === 'number' ? m.position : i,
+          isThumb: Boolean(m.isThumb),
+        });
+      }
+    }
+
     const newProduct = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Resolve category
       const realCategoryId = await resolveCategoryId(tx, data.categoryId);
@@ -233,27 +259,20 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Media uploads
-      if (formData && Array.isArray(data.media) && data.media.length > 0) {
-        for (let i = 0; i < data.media.length; i++) {
-          const m = data.media[i];
-          const uploadKey = m.uploadKey as string | undefined;
-          if (!uploadKey) continue;
-          const file = formData.get(uploadKey);
-          if (!(file instanceof File)) continue;
-
-          const saved = await saveUploadedFile(file);
+      // Media — use pre-uploaded Cloudinary results (uploaded before transaction)
+      if (uploadedMedia.length > 0) {
+        for (const um of uploadedMedia) {
           const asset = await tx.mediaAsset.create({
-            data: { kind: saved.kind, url: saved.url, mimeType: saved.mimeType, bytes: saved.bytes, provider: 'LOCAL', meta: { originalName: file.name } },
+            data: { kind: um.saved.kind, url: um.saved.url, mimeType: um.saved.mimeType, bytes: um.saved.bytes, provider: 'CLOUDINARY', meta: { originalName: um.originalName } },
           });
 
           let mediaColorId: string | null = null;
-          if (typeof m.colorId === 'string' && m.colorId.length > 0) {
-            mediaColorId = colorIdMap.get(m.colorId) || await resolveColorId(tx, m.colorId);
+          if (um.colorId) {
+            mediaColorId = colorIdMap.get(um.colorId) || await resolveColorId(tx, um.colorId);
           }
 
           await tx.productMedia.create({
-            data: { productId: product.id, mediaId: asset.id, colorId: mediaColorId, position: typeof m.position === 'number' ? m.position : i, isThumb: Boolean(m.isThumb) },
+            data: { productId: product.id, mediaId: asset.id, colorId: mediaColorId, position: um.position, isThumb: um.isThumb },
           });
         }
 

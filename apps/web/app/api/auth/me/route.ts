@@ -22,6 +22,8 @@ export async function GET() {
           displayName: session.user.displayName,
           role: session.user.role,
           phone: session.user.phone,
+          avatarUrl: session.user.avatarUrl,
+          isAdminSession: false,
         },
       });
     }
@@ -37,6 +39,7 @@ export async function GET() {
           displayName: adminSession.admin.displayName || 'Fatiha',
           role: 'ADMIN',
           phone: null,
+          isAdminSession: true,
         },
       });
     }

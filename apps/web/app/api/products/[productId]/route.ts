@@ -142,6 +142,7 @@ export async function GET(
             user: {
               select: {
                 displayName: true,
+                avatarUrl: true,
               },
             },
           },
@@ -311,6 +312,7 @@ export async function GET(
         title: r.title,
         comment: r.comment,
         reviewerName: r.reviewerName || r.user?.displayName || 'Anonymous',
+        avatarUrl: r.user?.avatarUrl || null,
         createdAt: r.createdAt,
       })),
     };

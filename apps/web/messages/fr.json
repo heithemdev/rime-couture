@@ -153,20 +153,20 @@
   },
   "footer": {
     "brandStory": "Une marque familiale algérienne créant des souvenirs à travers des robes d'enfants cousues main et des textiles de maison douillets. Chaque point raconte une histoire d'amour, de tradition et de qualité artisanale.",
-    "shopTitle": "Boutique",
-    "shop": {
-      "newArrivals": "Nouveautés",
-      "bestSellers": "Meilleures Ventes",
-      "kidsDresses": "Robes Enfants",
-      "homeTextiles": "Textiles Maison"
+    "pagesTitle": "Pages",
+    "pages": {
+      "home": "Accueil",
+      "shop": "Boutique",
+      "orders": "Mes Commandes",
+      "favorites": "Favoris"
     },
     "aboutTitle": "À Propos",
     "about": {
       "ourStory": "Notre Histoire",
       "howItsMade": "Comment C'est Fait",
-      "faq": "FAQ",
-      "contactUs": "Nous Contacter"
+      "whyMothersTrust": "Pourquoi Les Mamans Nous Font Confiance"
     },
+    "followUs": "Suivez-nous",
     "allRightsReserved": "Tous droits réservés.",
     "privacyPolicy": "Politique de Confidentialité",
     "termsOfService": "Conditions d'Utilisation",
@@ -343,6 +343,7 @@
     "welcomeBack": "Bon retour !",
     "signInSubtitle": "Connectez-vous pour suivre vos commandes et sauvegarder vos favoris",
     "continueWithGoogle": "Continuer avec Google",
+    "redirecting": "Redirection...",
     "or": "ou",
     "emailPlaceholder": "Adresse email",
     "passwordPlaceholder": "Mot de passe",

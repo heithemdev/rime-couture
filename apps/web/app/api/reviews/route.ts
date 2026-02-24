@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@repo/db';
+import { validateSession } from '@/lib/auth/session';
 
 // Retry helper for database operations
 async function withRetry<T>(
@@ -131,19 +132,27 @@ export async function POST(request: NextRequest) {
     }
 
     // ========== PURCHASE VERIFICATION ==========
-    // Check if the user (via fingerprint/sessionId) has actually purchased this product
-    const purchaseRecord = await withRetry(() => prisma.order.findFirst({
+    // Check if the user (via fingerprint OR userId) has actually purchased this product
+    const session = await validateSession();
+    const userId = session?.user?.id || null;
+
+    const purchaseWhere: Parameters<typeof prisma.order.findFirst>[0] = {
       where: {
-        sessionId: fingerprint, // Orders store the fingerprint in sessionId
         items: {
           some: {
             productId: productId
           }
         },
-        // Ensure order isn't deleted
         deletedAt: null,
+        // Match by userId (logged-in) OR by fingerprint (guest)
+        OR: [
+          ...(userId ? [{ userId }] : []),
+          { sessionId: fingerprint },
+        ],
       }
-    }));
+    };
+
+    const purchaseRecord = await withRetry(() => prisma.order.findFirst(purchaseWhere));
 
     if (!purchaseRecord) {
       return NextResponse.json(
@@ -151,6 +160,9 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Link review to user if logged in
+    const reviewUserId = userId || null;
     // ===========================================
 
     // Check if user already reviewed this product (by fingerprint)
@@ -179,6 +191,7 @@ export async function POST(request: NextRequest) {
         comment: comment ? sanitizeText(comment, 2000) : null,
         reviewerName: reviewerName ? sanitizeText(reviewerName, 50) : 'Anonymous',
         fingerprint,
+        userId: reviewUserId,
       },
     }));
 
@@ -257,7 +270,23 @@ export async function GET(request: NextRequest) {
         comment: true,
         reviewerName: true,
         createdAt: true,
+        user: {
+          select: {
+            avatarUrl: true,
+          },
+        },
       },
+    }));
+
+    // Transform to include avatarUrl at top level
+    const reviewsWithAvatars = reviews.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      title: r.title,
+      comment: r.comment,
+      reviewerName: r.reviewerName,
+      avatarUrl: r.user?.avatarUrl || null,
+      createdAt: r.createdAt,
     }));
 
     // Check if user has already reviewed
@@ -286,23 +315,29 @@ export async function GET(request: NextRequest) {
       hasReviewed = !!existingReview;
       userReview = existingReview;
 
-      // 2. Check for purchase
+      // 2. Check for purchase (by fingerprint OR userId)
+      const currentSession = await validateSession();
+      const currentUserId = currentSession?.user?.id || null;
+
       const purchaseCount = await withRetry(() => prisma.order.count({
         where: {
-          sessionId: fingerprint,
           items: {
             some: {
               productId: productId
             }
           },
-          deletedAt: null
+          deletedAt: null,
+          OR: [
+            ...(currentUserId ? [{ userId: currentUserId }] : []),
+            { sessionId: fingerprint },
+          ],
         }
       }));
       hasPurchased = purchaseCount > 0;
     }
 
     return NextResponse.json({
-      reviews,
+      reviews: reviewsWithAvatars,
       hasReviewed,
       userReview,
       hasPurchased, // Return this status to the client

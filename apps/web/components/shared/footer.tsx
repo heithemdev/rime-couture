@@ -6,8 +6,45 @@ import { setUserLocale } from '@/i18n/actions';
 import { locales, LOCALE_LABEL } from '@/i18n/routing';
 import type { Locale } from '@/i18n/routing';
 import SafeLink from '@/components/shared/SafeLink';
-import { Facebook, Instagram, Twitter } from 'lucide-react';
 import Image from 'next/image';
+
+/* ── Real coloured social SVG icons ──────────────────────────────── */
+function InstagramIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <radialGradient id="ig" cx="30%" cy="107%" r="150%">
+          <stop offset="0%" stopColor="#fdf497" />
+          <stop offset="5%" stopColor="#fdf497" />
+          <stop offset="45%" stopColor="#fd5949" />
+          <stop offset="60%" stopColor="#d6249f" />
+          <stop offset="90%" stopColor="#285AEB" />
+        </radialGradient>
+      </defs>
+      <rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#ig)" strokeWidth="2" />
+      <circle cx="12" cy="12" r="5" stroke="url(#ig)" strokeWidth="2" />
+      <circle cx="17.5" cy="6.5" r="1.5" fill="url(#ig)" />
+    </svg>
+  );
+}
+
+function TikTokIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" stroke="#25F4EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" stroke="#FE2C55" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6" transform="translate(0.5, 0.5)" />
+      <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.15" transform="translate(-0.3, -0.3)" />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3V2z" fill="#1877F2" />
+    </svg>
+  );
+}
 
 export default function Footer() {
   const t = useTranslations('footer');
@@ -16,18 +53,23 @@ export default function Footer() {
   const [isPending, startTransition] = useTransition();
   const currentYear = new Date().getFullYear();
 
-  const shopLinks = [
-    { href: '#new', label: t('shop.newArrivals') },
-    { href: '#bestsellers', label: t('shop.bestSellers') },
-    { href: '#dresses', label: t('shop.kidsDresses') },
-    { href: '#home', label: t('shop.homeTextiles') },
+  const pageLinks = [
+    { href: '/', label: t('pages.home') },
+    { href: '/shopping', label: t('pages.shop') },
+    { href: '/orders', label: t('pages.orders') },
+    { href: '/favorites', label: t('pages.favorites') },
   ];
 
   const aboutLinks = [
-    { href: '#story', label: t('about.ourStory') },
-    { href: '#process', label: t('about.howItsMade') },
-    { href: '#faq', label: t('about.faq') },
-    { href: '#contact', label: t('about.contactUs') },
+    { href: '/#hero', label: t('about.ourStory') },
+    { href: '/#ordering-steps', label: t('about.howItsMade') },
+    { href: '/#trust-features', label: t('about.whyMothersTrust') },
+  ];
+
+  const socials = [
+    { href: '', icon: <InstagramIcon />, label: 'Instagram' },
+    { href: '', icon: <TikTokIcon />, label: 'TikTok' },
+    { href: '', icon: <FacebookIcon />, label: 'Facebook' },
   ];
 
   const handleLocaleChange = (newLocale: Locale) => {
@@ -39,405 +81,462 @@ export default function Footer() {
   return (
     <>
       <style jsx>{`
-        .footer-root {
+        /* ── Keyframes ────────────────────────────────── */
+        @keyframes footerGradientShift {
+          0%   { background-position: 0% 50%; }
+          50%  { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes footerFloat {
+          0%, 100% { transform: translateY(0); }
+          50%      { transform: translateY(-8px); }
+        }
+        @keyframes footerShimmer {
+          0%   { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes footerOrb {
+          0%   { transform: translate(0, 0) scale(1); }
+          33%  { transform: translate(30px, -20px) scale(1.1); }
+          66%  { transform: translate(-20px, 15px) scale(0.9); }
+          100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes heartBeat {
+          0%, 100% { transform: scale(1); }
+          14%      { transform: scale(1.3); }
+          28%      { transform: scale(1); }
+          42%      { transform: scale(1.3); }
+          56%      { transform: scale(1); }
+        }
+        @keyframes underlineDraw {
+          from { width: 0; }
+          to   { width: 32px; }
+        }
+
+        /* ── Root ─────────────────────────────────────── */
+        .ft {
+          position: relative;
           overflow: hidden;
-          position: relative;
-          border-top: var(--divider-value);
-          padding-top: var(--spacing-4xl);
-          padding-bottom: var(--spacing-xl);
-          background-color: var(--color-surface-elevated);
-          font-family: var(--font-work-sans), 'Work Sans', sans-serif;
-        }
-        .footer-root::before {
-          top: -10%;
-          right: -5%;
-          width: 300px;
-          height: 300px;
-          content: '';
-          z-index: 0;
-          position: absolute;
-          background: radial-gradient(
-            circle,
-            color-mix(in srgb, #FF6B9D 10%, transparent) 0%,
-            transparent 70%
+          background: linear-gradient(135deg,
+            var(--color-surface-elevated) 0%,
+            color-mix(in srgb, var(--color-surface-elevated) 92%, #FF6B9D) 50%,
+            var(--color-surface-elevated) 100%
           );
-          border-radius: var(--border-radius-full);
+          background-size: 200% 200%;
+          animation: footerGradientShift 12s ease infinite;
+          border-top: 2px solid transparent;
+          border-image: linear-gradient(90deg, transparent, #FF6B9D, transparent) 1;
         }
-        .footer-container {
-          margin: 0 auto;
-          padding: 0 var(--spacing-xl);
-          z-index: 1;
+
+        /* ── Animated orbs ────────────────────────────── */
+        .ft-orb {
+          position: absolute;
+          border-radius: 50%;
+          pointer-events: none;
+          filter: blur(60px);
+          z-index: 0;
+        }
+        .ft-orb--1 {
+          top: -60px; right: -40px;
+          width: 240px; height: 240px;
+          background: radial-gradient(circle, color-mix(in srgb, #FF6B9D 18%, transparent), transparent 70%);
+          animation: footerOrb 10s ease-in-out infinite;
+        }
+        .ft-orb--2 {
+          bottom: -40px; left: 10%;
+          width: 180px; height: 180px;
+          background: radial-gradient(circle, color-mix(in srgb, #FF6B9D 12%, transparent), transparent 70%);
+          animation: footerOrb 14s ease-in-out infinite reverse;
+        }
+        .ft-orb--3 {
+          top: 40%; left: 55%;
+          width: 140px; height: 140px;
+          background: radial-gradient(circle, color-mix(in srgb, #FFC0D0 14%, transparent), transparent 70%);
+          animation: footerOrb 18s ease-in-out infinite;
+        }
+
+        /* ── Container ────────────────────────────────── */
+        .ft-wrap {
           position: relative;
+          z-index: 1;
           max-width: var(--content-max-width);
+          margin: 0 auto;
+          padding: var(--spacing-4xl) var(--spacing-xl) var(--spacing-xl);
         }
-        .footer-main-grid {
-          gap: var(--spacing-4xl);
-          display: flex;
-          margin-bottom: var(--spacing-4xl);
+
+        /* ── Top shimmer line ─────────────────────────── */
+        .ft-shimmer {
+          position: absolute;
+          top: 0; left: 0; right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, transparent 0%, #FF6B9D 50%, transparent 100%);
+          background-size: 200% 100%;
+          animation: footerShimmer 3s linear infinite;
         }
-        .footer-brand-column {
-          gap: var(--spacing-xl);
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-        }
-        .footer-links-column {
+
+        /* ── Main grid ────────────────────────────────── */
+        .ft-grid {
+          display: grid;
+          grid-template-columns: 1.3fr 1fr 1fr 1fr;
           gap: var(--spacing-3xl);
-          flex: 1;
+          margin-bottom: var(--spacing-3xl);
+        }
+
+        /* ── Brand column ─────────────────────────────── */
+        .ft-brand {
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
+          gap: var(--spacing-lg);
         }
-        .footer-logo-link {
+        .ft-logo {
           display: inline-block;
           text-decoration: none;
+          animation: footerFloat 5s ease-in-out infinite;
         }
-        .footer-brand-name {
-          color: #FF6B9D;
-          font-size: 1.75rem;
-          font-family: 'Pacifico', 'Dancing Script', 'Satisfy', cursive, var(--font-family-heading);
-          font-weight: 400;
-          letter-spacing: 1px;
-        }
-        .footer-brand-story {
+        .ft-story {
           color: var(--color-on-surface-secondary);
-          max-width: 400px;
+          font-size: var(--font-size-sm);
           line-height: 1.8;
-          font-size: var(--font-size-base);
-          font-family: var(--font-family-body);
+          max-width: 320px;
         }
-        .footer-social-wrapper {
-          gap: var(--spacing-md);
-          display: flex;
-        }
-        .footer-social-icon {
-          color: #FF6B9D;
-          width: 44px;
-          border: 2px solid #FF6B9D;
-          height: 44px;
-          display: flex;
-          background: transparent;
-          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          align-items: center;
-          border-radius: var(--border-radius-full);
-          justify-content: center;
-        }
-        .footer-social-icon:hover {
-          color: var(--color-surface);
-          transform: translateY(-5px) rotate(8deg);
-          background: #FF6B9D;
-          box-shadow: 0 10px 20px color-mix(in srgb, #FF6B9D 30%, transparent);
-        }
-        .footer-social-icon :global(svg) {
-          width: 20px;
-          height: 20px;
-          stroke-width: 2.5;
-        }
-        .footer-nav-groups {
-          gap: var(--spacing-4xl);
-          display: flex;
-        }
-        .footer-nav-group {
-          flex: 1;
-        }
-        .footer-group-title {
+
+        /* ── Nav columns ──────────────────────────────── */
+        .ft-col-title {
           color: var(--color-on-surface);
-          display: inline-block;
-          position: relative;
-          font-size: var(--font-size-lg);
-          margin-bottom: var(--spacing-xl);
+          font-size: var(--font-size-base);
           font-family: var(--font-family-heading);
           font-weight: var(--font-weight-heading);
+          margin-bottom: var(--spacing-lg);
+          position: relative;
+          display: inline-block;
         }
-        .footer-group-title::after {
-          left: 0;
-          width: 30px;
-          bottom: -4px;
-          height: 2px;
+        .ft-col-title::after {
           content: '';
           position: absolute;
+          left: 0; bottom: -4px;
+          height: 2px;
+          width: 32px;
           background: #FF6B9D;
-          border-radius: var(--border-radius-full);
+          border-radius: 2px;
+          animation: underlineDraw 1.2s ease forwards;
         }
-        .footer-link-list {
-          gap: var(--spacing-md);
-          margin: 0;
-          display: flex;
-          padding: 0;
+        :global([dir='rtl']) .ft-col-title::after {
+          left: auto;
+          right: 0;
+        }
+
+        .ft-links {
           list-style: none;
+          margin: 0;
+          padding: 0;
+          display: flex;
           flex-direction: column;
+          gap: var(--spacing-sm);
         }
-        .footer-nav-link {
+        .ft-link {
           color: var(--color-on-surface-secondary);
-          display: inline-block;
-          font-size: var(--font-size-base);
-          transition: all 0.3s ease;
+          font-size: var(--font-size-sm);
           text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 0;
+          transition: color 0.3s ease, transform 0.3s ease;
+          position: relative;
         }
-        .footer-nav-link:hover {
+        .ft-link::before {
+          content: '';
+          width: 0;
+          height: 2px;
+          background: #FF6B9D;
+          border-radius: 2px;
+          transition: width 0.3s ease;
+          flex-shrink: 0;
+        }
+        .ft-link:hover {
           color: #FF6B9D;
-          transform: translateX(5px);
+          transform: translateX(4px);
         }
-        .footer-utility-area {
-          border-top: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
-          padding-top: var(--spacing-xl);
+        .ft-link:hover::before {
+          width: 12px;
         }
-        .footer-lang-switcher {
-          gap: var(--spacing-xl);
+        :global([dir='rtl']) .ft-link:hover {
+          transform: translateX(-4px);
+        }
+
+        /* ── Social column ────────────────────────────── */
+        .ft-socials {
+          display: flex;
+          flex-direction: column;
+          gap: var(--spacing-md);
+        }
+        .ft-social-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 16px;
+          background: var(--color-surface);
+          border: 1.5px solid var(--color-border);
+          border-radius: var(--border-radius-lg);
+          color: var(--color-on-surface-secondary);
+          font-size: var(--font-size-sm);
+          font-family: var(--font-family-body);
+          font-weight: var(--font-weight-medium);
+          text-decoration: none;
+          cursor: pointer;
+          transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          position: relative;
+          overflow: hidden;
+        }
+        .ft-social-btn:hover {
+          transform: translateY(-3px) scale(1.02);
+          border-color: transparent;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+          color: var(--color-on-surface);
+        }
+        .ft-social-btn :global(svg) {
+          flex-shrink: 0;
+          position: relative;
+          z-index: 1;
+        }
+        .ft-social-btn span {
+          position: relative;
+          z-index: 1;
+        }
+
+        /* ── Language ─────────────────────────────────── */
+        .ft-lang-area {
+          border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+          padding-top: var(--spacing-lg);
+          margin-bottom: var(--spacing-lg);
           display: flex;
           align-items: center;
+          gap: var(--spacing-lg);
         }
-        .footer-lang-label {
+        .ft-lang-label {
+          display: flex;
+          align-items: center;
           gap: var(--spacing-sm);
           color: var(--color-on-surface);
-          display: flex;
-          align-items: center;
           font-weight: var(--font-weight-medium);
+          font-size: var(--font-size-sm);
         }
-        .footer-lang-label :global(svg) {
+        .ft-lang-label :global(svg) {
           color: #FF6B9D;
         }
-        .footer-lang-options {
-          gap: var(--spacing-xs);
-          border: 1px solid var(--color-border);
+        .ft-lang-pills {
           display: flex;
-          padding: 4px;
-          background: var(--color-surface);
+          gap: 4px;
+          border: 1px solid var(--color-border);
+          padding: 3px;
           border-radius: var(--border-radius-full);
+          background: var(--color-surface);
         }
-        .footer-lang-btn {
-          color: var(--color-on-surface-secondary);
+        .ft-lang-pill {
           border: none;
           cursor: pointer;
           padding: var(--spacing-xs) var(--spacing-md);
           font-size: var(--font-size-xs);
-          background: transparent;
-          transition: all 0.3s ease;
           font-family: var(--font-family-body);
           font-weight: var(--font-weight-medium);
           border-radius: var(--border-radius-full);
+          background: transparent;
+          color: var(--color-on-surface-secondary);
+          transition: all 0.3s ease;
         }
-        .footer-lang-btn:hover {
+        .ft-lang-pill:hover {
           color: #FF6B9D;
         }
-        .footer-lang-btn.active {
-          color: var(--color-on-primary);
+        .ft-lang-pill.active {
           background: #FF6B9D;
+          color: #fff;
         }
-        .footer-bottom-bar {
-          gap: var(--spacing-xl);
+
+        /* ── Bottom bar ───────────────────────────────── */
+        .ft-bottom {
           display: flex;
-          border-top: 1px solid var(--color-border);
           align-items: center;
-          padding-top: var(--spacing-xl);
           justify-content: space-between;
+          border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+          padding-top: var(--spacing-lg);
+          flex-wrap: wrap;
+          gap: var(--spacing-md);
         }
-        .footer-copyright {
-          color: var(--color-on-surface-secondary);
-          margin: 0;
-          font-size: var(--font-size-sm);
-        }
-        .footer-legal {
-          gap: var(--spacing-2xl);
-          display: flex;
-          align-items: center;
-        }
-        .footer-legal-links {
-          gap: var(--spacing-lg);
-          display: flex;
-        }
-        .footer-legal-link {
+        .ft-copy {
           color: var(--color-on-surface-secondary);
           font-size: var(--font-size-xs);
-          transition: color 0.3s ease;
-          text-decoration: none;
+          margin: 0;
         }
-        .footer-legal-link:hover {
+        .ft-legal {
+          display: flex;
+          align-items: center;
+          gap: var(--spacing-lg);
+        }
+        .ft-legal-link {
+          color: var(--color-on-surface-secondary);
+          font-size: var(--font-size-xs);
+          text-decoration: none;
+          transition: color 0.3s ease;
+        }
+        .ft-legal-link:hover {
           color: #FF6B9D;
         }
-        .footer-made-with {
+        .ft-heart {
+          display: inline-flex;
+          align-items: center;
           gap: var(--spacing-xs);
           color: var(--color-on-surface-secondary);
-          display: flex;
-          align-items: center;
           font-size: var(--font-size-xs);
         }
-        .footer-heart {
+        .ft-heart-icon {
           color: #FF6B9D;
+          display: inline-block;
+          animation: heartBeat 2.5s ease infinite;
         }
+
+        /* ── Responsive ───────────────────────────────── */
         @media (max-width: 991px) {
-          .footer-main-grid {
-            gap: var(--spacing-3xl);
-            flex-direction: column;
-          }
-          .footer-brand-column {
-            text-align: center;
-            align-items: center;
-          }
-          .footer-links-column {
-            align-items: center;
-          }
-          .footer-brand-story {
-            max-width: 100%;
-          }
-          .footer-nav-groups {
-            width: 100%;
-            justify-content: space-around;
-          }
-          .footer-nav-group {
-            text-align: center;
-          }
-        }
-        @media (max-width: 767px) {
-          .footer-bottom-bar {
-            text-align: center;
-            flex-direction: column;
-          }
-          .footer-legal {
-            gap: var(--spacing-md);
-            flex-direction: column;
-          }
-          .footer-nav-groups {
+          .ft-grid {
+            grid-template-columns: 1fr 1fr;
             gap: var(--spacing-2xl);
-            flex-direction: column;
           }
-        }
-        @media (max-width: 479px) {
-          .footer-root {
-            padding-top: var(--spacing-3xl);
+          .ft-brand {
+            grid-column: 1 / -1;
+            align-items: center;
+            text-align: center;
           }
-          .footer-lang-options {
-            flex-wrap: wrap;
-            justify-content: center;
+          .ft-story { max-width: 100%; }
+        }
+        @media (max-width: 640px) {
+          .ft-grid {
+            grid-template-columns: 1fr;
+            text-align: center;
           }
+          .ft-brand { align-items: center; }
+          .ft-col-title::after { left: 50%; transform: translateX(-50%); }
+          :global([dir='rtl']) .ft-col-title::after { right: 50%; left: auto; transform: translateX(50%); }
+          .ft-link { justify-content: center; }
+          .ft-link:hover { transform: translateX(0); }
+          .ft-link::before { display: none; }
+          .ft-socials { align-items: center; }
+          .ft-social-btn { justify-content: center; width: 100%; max-width: 240px; }
+          .ft-lang-area { flex-direction: column; }
+          .ft-bottom { flex-direction: column; text-align: center; }
+          .ft-legal { flex-direction: column; gap: var(--spacing-sm); }
         }
-        :global([dir='rtl']) .footer-root {
-          text-align: right;
-        }
-        :global([dir='rtl']) .footer-nav-link:hover {
-          transform: translateX(-5px);
-        }
-        :global([dir='rtl']) .footer-group-title::after {
-          left: auto;
-          right: 0;
-        }
+
+        :global([dir='rtl']) .ft-link:hover::before { width: 12px; }
       `}</style>
 
-      <footer className="footer-root">
-        <div className="footer-container">
-          <div className="footer-main-grid">
-            {/* Brand Column */}
-            <div className="footer-brand-column">
-              <SafeLink href="/" newTab={false} className="footer-logo-link">
-                <Image src="/assets/Logo.webp" alt="Rimoucha" width={140} height={56} className="footer-brand-logo" style={{ height: '48px', width: 'auto', objectFit: 'contain' }} />
+      <footer className="ft">
+        <div className="ft-shimmer" />
+        <div className="ft-orb ft-orb--1" />
+        <div className="ft-orb ft-orb--2" />
+        <div className="ft-orb ft-orb--3" />
+
+        <div className="ft-wrap">
+          {/* ── Main 4-column grid ──────────────────────── */}
+          <div className="ft-grid">
+            {/* Brand */}
+            <div className="ft-brand">
+              <SafeLink href="/" newTab={false} className="ft-logo">
+                <Image
+                  src="/assets/Logo.webp"
+                  alt="Rimoucha"
+                  width={140}
+                  height={56}
+                  style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
+                />
               </SafeLink>
-              <p className="footer-brand-story">{t('brandStory')}</p>
-              <div className="footer-social-wrapper">
-                <SafeLink
-                  href="https://facebook.com"
-                  newTab={true}
-                  aria-label="Facebook"
-                  className="footer-social-icon"
-                >
-                  <Facebook />
-                </SafeLink>
-                <SafeLink
-                  href="https://instagram.com"
-                  newTab={true}
-                  aria-label="Instagram"
-                  className="footer-social-icon"
-                >
-                  <Instagram />
-                </SafeLink>
-                <SafeLink
-                  href="https://twitter.com"
-                  newTab={true}
-                  aria-label="Twitter"
-                  className="footer-social-icon"
-                >
-                  <Twitter />
-                </SafeLink>
-              </div>
+              <p className="ft-story">{t('brandStory')}</p>
             </div>
 
-            {/* Links Column */}
-            <div className="footer-links-column">
-              <div className="footer-nav-groups">
-                <div className="footer-nav-group">
-                  <h3 className="footer-group-title">{t('shopTitle')}</h3>
-                  <ul className="footer-link-list">
-                    {shopLinks.map((item) => (
-                      <li key={item.href}>
-                        <SafeLink href={item.href} newTab={false} className="footer-nav-link">
-                          {item.label}
-                        </SafeLink>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="footer-nav-group">
-                  <h3 className="footer-group-title">{t('aboutTitle')}</h3>
-                  <ul className="footer-link-list">
-                    {aboutLinks.map((item) => (
-                      <li key={item.href}>
-                        <SafeLink href={item.href} newTab={false} className="footer-nav-link">
-                          {item.label}
-                        </SafeLink>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              <div className="footer-utility-area">
-                <div className="footer-lang-switcher">
-                  <div className="footer-lang-label">
-                    <svg
-                      width="20"
-                      height="20"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10M2 12h20" />
-                    </svg>
-                    <span>{tc('language')}</span>
-                  </div>
-                  <div className="footer-lang-options">
-                    {locales.map((loc) => (
-                      <button
-                        key={loc}
-                        className={`footer-lang-btn ${loc === locale ? 'active' : ''}`}
-                        onClick={() => handleLocaleChange(loc)}
-                        disabled={isPending}
-                      >
-                        {LOCALE_LABEL[loc]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            {/* Pages */}
+            <div>
+              <h3 className="ft-col-title">{t('pagesTitle')}</h3>
+              <ul className="ft-links">
+                {pageLinks.map((l) => (
+                  <li key={l.href}>
+                    <SafeLink href={l.href} newTab={false} className="ft-link">
+                      {l.label}
+                    </SafeLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* About */}
+            <div>
+              <h3 className="ft-col-title">{t('aboutTitle')}</h3>
+              <ul className="ft-links">
+                {aboutLinks.map((l) => (
+                  <li key={l.href}>
+                    <SafeLink href={l.href} newTab={false} className="ft-link">
+                      {l.label}
+                    </SafeLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Social */}
+            <div>
+              <h3 className="ft-col-title">{t('followUs')}</h3>
+              <div className="ft-socials">
+                {socials.map((s) => (
+                  <SafeLink
+                    key={s.label}
+                    href={s.href || '#'}
+                    newTab={!!s.href}
+                    className="ft-social-btn"
+                    aria-label={s.label}
+                  >
+                    {s.icon}
+                    <span>{s.label}</span>
+                  </SafeLink>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Bottom Bar */}
-          <div className="footer-bottom-bar">
-            <p className="footer-copyright">
+          {/* ── Language switcher ───────────────────────── */}
+          <div className="ft-lang-area">
+            <div className="ft-lang-label">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10M2 12h20" />
+              </svg>
+              <span>{tc('language')}</span>
+            </div>
+            <div className="ft-lang-pills">
+              {locales.map((loc) => (
+                <button
+                  key={loc}
+                  className={`ft-lang-pill ${loc === locale ? 'active' : ''}`}
+                  onClick={() => handleLocaleChange(loc)}
+                  disabled={isPending}
+                >
+                  {LOCALE_LABEL[loc]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Bottom bar ──────────────────────────────── */}
+          <div className="ft-bottom">
+            <p className="ft-copy">
               © {currentYear} Rimoucha. {t('allRightsReserved')}
             </p>
-            <div className="footer-legal">
-              <div className="footer-legal-links">
-                <SafeLink href="#privacy" newTab={false} className="footer-legal-link">
-                  {t('privacyPolicy')}
-                </SafeLink>
-                <SafeLink href="#terms" newTab={false} className="footer-legal-link">
-                  {t('termsOfService')}
-                </SafeLink>
-              </div>
-              <div className="footer-made-with">
-                {t('madeWithLove', { heart: '♥' })}
-              </div>
+            <div className="ft-legal">
+              <SafeLink href="#privacy" newTab={false} className="ft-legal-link">
+                {t('privacyPolicy')}
+              </SafeLink>
+              <SafeLink href="#terms" newTab={false} className="ft-legal-link">
+                {t('termsOfService')}
+              </SafeLink>
+              <span className="ft-heart">
+                {t('madeWithLove', { heart: '' })} <span className="ft-heart-icon">♥</span>
+              </span>
             </div>
           </div>
         </div>

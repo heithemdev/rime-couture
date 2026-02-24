@@ -153,24 +153,25 @@
   },
   "footer": {
     "brandStory": "علامة تجارية عائلية جزائرية تصنع الذكريات من خلال فساتين الأطفال المخيطة يدوياً والمفروشات المنزلية المريحة. كل غرزة تحكي قصة حب وتقاليد وجودة حرفية.",
-    "shopTitle": "المتجر",
-    "shop": {
-      "newArrivals": "وصل حديثاً",
-      "bestSellers": "الأكثر مبيعاً",
-      "kidsDresses": "فساتين الأطفال",
-      "homeTextiles": "المفروشات المنزلية"
+    "pagesTitle": "الصفحات",
+    "pages": {
+      "home": "الرئيسية",
+      "shop": "المتجر",
+      "orders": "طلباتي",
+      "favorites": "المفضلة"
     },
     "aboutTitle": "عنا",
     "about": {
       "ourStory": "قصتنا",
       "howItsMade": "كيف يُصنع",
-      "faq": "الأسئلة الشائعة",
-      "contactUs": "اتصل بنا"
+      "whyMothersTrust": "لماذا تثق بنا الأمهات"
     },
+    "followUs": "تابعونا",
     "allRightsReserved": "جميع الحقوق محفوظة.",
     "privacyPolicy": "سياسة الخصوصية",
     "termsOfService": "شروط الخدمة",
-    "madeWithLove": "صنع بـ {heart} في الجزائر"  },
+    "madeWithLove": "صنع بـ {heart} في الجزائر"
+  },
   "shopping": {
     "title": "تسوق جميع المنتجات",
     "breadcrumb": {
@@ -342,6 +343,7 @@
     "welcomeBack": "!مرحباً بعودتك",
     "signInSubtitle": "سجّل دخولك لمتابعة طلباتك وحفظ مفضلاتك",
     "continueWithGoogle": "المتابعة مع جوجل",
+    "redirecting": "جاري التحويل...",
     "or": "أو",
     "emailPlaceholder": "البريد الإلكتروني",
     "passwordPlaceholder": "كلمة المرور",

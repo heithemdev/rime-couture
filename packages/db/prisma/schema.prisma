@@ -139,6 +139,10 @@ model User {
   displayName  String?
   passwordHash String?
 
+  // OAuth fields
+  googleId  String? @unique
+  avatarUrl String?
+
   preferredLocale    Locale    @default(EN)
   emailVerifiedAt    DateTime?
   emailNotifications Boolean   @default(true)

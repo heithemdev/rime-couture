@@ -13,6 +13,8 @@ import {
   checkForBot,
 } from '@/lib/api-security';
 import { sendOrderReceiptEmail } from '@/lib/email';
+import { validateSession } from '@/lib/auth/session';
+import { getWilayaById } from '@/lib/algeria/wilayas';
 
 // Retry helper for database operations
 async function withRetry<T>(
@@ -96,20 +98,26 @@ interface OrderInput {
 // ============================================================================
 export async function GET(request: NextRequest) {
   try {
+    // Check if user is logged in — if so, fetch by userId
+    const session = await validateSession();
+    const userId = session?.user?.id || null;
+
     const { searchParams } = new URL(request.url);
     const fingerprint = searchParams.get('fingerprint');
 
-    if (!fingerprint || fingerprint.length < 10) {
+    if (!userId && (!fingerprint || fingerprint.length < 10)) {
       return NextResponse.json(
-        { success: false, error: 'Invalid fingerprint' },
+        { success: false, error: 'Please log in or provide a valid fingerprint' },
         { status: 400 }
       );
     }
 
-    // Fetch orders with the given fingerprint (stored in sessionId)
+    // Logged-in users: fetch by userId. Guests: fetch by fingerprint.
     const orders = await withRetry(() => prisma.order.findMany({
       where: {
-        sessionId: fingerprint,
+        ...(userId
+          ? { userId }
+          : { sessionId: fingerprint }),
         deletedAt: null,
       },
       include: {
@@ -219,7 +227,6 @@ export async function POST(request: NextRequest) {
       address,
       notes,
       deliveryType,
-      shippingPrice,
       productId,
       variantId,
       quantity,
@@ -262,6 +269,30 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    
+    // ========== VALIDATE SHIPPING PRICE AGAINST WILAYA DATA ==========
+    
+    const wilayaData = getWilayaById(parseInt(wilayaCode, 10));
+    if (!wilayaData) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid wilaya' },
+        { status: 400 }
+      );
+    }
+    
+    // Validate delivery type vs stop desk availability
+    if (deliveryType === 'DESK' && !wilayaData.hasStopDesk) {
+      return NextResponse.json(
+        { success: false, error: 'Stop desk delivery is not available for this wilaya' },
+        { status: 400 }
+      );
+    }
+    
+    // Server-side shipping price — override client value to prevent tampering
+    const expectedShippingPrice = deliveryType === 'HOME'
+      ? wilayaData.homeDeliveryPrice
+      : wilayaData.centerDeliveryPrice;
+    const validatedShippingPrice = expectedShippingPrice;
     
     // Determine order items
     let orderItems: OrderItemInput[] = [];
@@ -403,8 +434,12 @@ export async function POST(request: NextRequest) {
     
     // ========== CREATE ORDER ==========
     
-    const shippingMinor = Math.round((shippingPrice || 0) * 100);
+    const shippingMinor = Math.round((validatedShippingPrice || 0) * 100);
     const totalMinor = subtotalMinor + shippingMinor;
+
+    // Link order to logged-in user if available
+    const orderSession = await validateSession();
+    const orderUserId = orderSession?.user?.id || null;
     
     const order = await withRetry(() => prisma.order.create({
       data: {
@@ -428,6 +463,7 @@ export async function POST(request: NextRequest) {
         customerNote: notes?.trim() || null,
         
         sessionId: fingerprint || null,
+        userId: orderUserId,
         
         items: {
           create: validatedItems.map(item => ({

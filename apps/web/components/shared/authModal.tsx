@@ -16,6 +16,8 @@ export interface AuthUser {
   displayName: string | null;
   role: string;
   phone?: string | null;
+  avatarUrl?: string | null;
+  isAdminSession?: boolean;
 }
 
 /**
@@ -232,6 +234,17 @@ export default function AuthModal({
   /* ---- email notifications ---- */
   const [emailNotifs, setEmailNotifs] = useState(true);
   const [notifLoading, setNotifLoading] = useState(false);
+
+  /* ---- Google OAuth ---- */
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = useCallback(() => {
+    setGoogleLoading(true);
+    // Close the modal so the redirect is clean
+    onClose();
+    // Redirect to Google OAuth initiation endpoint
+    window.location.href = '/api/auth/google';
+  }, [onClose]);
 
   /* ---- stash signup data for OTP verification ---- */
   const signupDataRef = useRef<{ name: string; email: string; phone: string; password: string } | null>(null);
@@ -458,12 +471,16 @@ export default function AuthModal({
   const handleLogout = useCallback(async () => {
     setIsLoading(true);
     try {
-      const isAdmin = currentUser?.role === 'ADMIN';
-      const logoutUrl = isAdmin ? '/api/auth/admin/logout' : '/api/auth/logout';
-      await apiPost(logoutUrl, {});
+      const isAdminSession = currentUser?.isAdminSession === true;
+      // Always clear the client session (used by Google OAuth & normal login)
+      await apiPost('/api/auth/logout', {});
+      // If admin session, also clear the admin session cookie
+      if (isAdminSession) {
+        await apiPost('/api/auth/admin/logout', {}).catch(() => {});
+      }
       onLogout?.();
       onClose();
-      if (isAdmin) {
+      if (isAdminSession) {
         window.location.href = '/admin/login';
       }
     } catch {
@@ -471,7 +488,7 @@ export default function AuthModal({
     } finally {
       setIsLoading(false);
     }
-  }, [onLogout, onClose, currentUser?.role]);
+  }, [onLogout, onClose, currentUser?.isAdminSession]);
 
   /** TOGGLE EMAIL NOTIFICATIONS */
   const handleToggleNotifs = useCallback(async () => {
@@ -522,7 +539,18 @@ export default function AuthModal({
         <>
           <div className="auth-profile-header">
             <div className="auth-profile-avatar">
-              <UserIcon size={36} />
+              {currentUser?.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.displayName || 'User'}
+                  width={48}
+                  height={48}
+                  style={{ borderRadius: '50%', objectFit: 'cover', width: 48, height: 48 }}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <UserIcon size={36} />
+              )}
             </div>
             <h2 id="auth-title" className="auth-title">
               {t('profileGreeting', { name: currentUser?.displayName || 'User' })}
@@ -608,8 +636,8 @@ export default function AuthModal({
           <h2 id="auth-title" className="auth-title">{t('welcomeBack')}</h2>
           <p className="auth-subtitle">{t('signInSubtitle')}</p>
 
-          <button type="button" className="auth-google-btn" data-testid="auth-google">
-            <GoogleIcon /><span>{t('continueWithGoogle')}</span>
+          <button type="button" className="auth-google-btn" data-testid="auth-google" onClick={handleGoogleLogin} disabled={googleLoading}>
+            <GoogleIcon /><span>{googleLoading ? t('redirecting') : t('continueWithGoogle')}</span>
           </button>
           <div className="auth-divider"><span>{t('or')}</span></div>
 
@@ -663,8 +691,8 @@ export default function AuthModal({
           <h2 id="auth-title" className="auth-title">{t('createAccount')}</h2>
           <p className="auth-subtitle">{t('signupSubtitle')}</p>
 
-          <button type="button" className="auth-google-btn" data-testid="auth-google">
-            <GoogleIcon /><span>{t('continueWithGoogle')}</span>
+          <button type="button" className="auth-google-btn" data-testid="auth-google" onClick={handleGoogleLogin} disabled={googleLoading}>
+            <GoogleIcon /><span>{googleLoading ? t('redirecting') : t('continueWithGoogle')}</span>
           </button>
           <div className="auth-divider"><span>{t('or')}</span></div>
 

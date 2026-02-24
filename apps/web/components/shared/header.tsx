@@ -8,6 +8,7 @@ import type { Locale } from '@/i18n/routing';
 import SafeLink from '@/components/shared/SafeLink';
 import { useCart } from '@/lib/cart-context';
 import { useNavigating } from '@/lib/use-navigating';
+import { useSearchParams } from 'next/navigation';
 import { 
   Search, 
   ShoppingCart, 
@@ -28,6 +29,7 @@ export default function Header() {
   const locale = useLocale() as Locale;
   const { push } = useNavigating();
   const { items } = useCart();
+  const searchParams = useSearchParams();
   // Show number of unique products in cart, not total quantity
   const cartItemCount = items.length;
   const [isPending, startTransition] = useTransition();
@@ -43,8 +45,8 @@ export default function Header() {
   const langRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
 
-  // Check if user is admin
-  const isAdmin = authUser?.role === 'ADMIN';
+  // Check if user is admin (only when logged in via admin session, not regular Google OAuth)
+  const isAdmin = authUser?.isAdminSession === true;
 
   /* ---- Check auth status on mount ---- */
   useEffect(() => {
@@ -53,6 +55,29 @@ export default function Header() {
       .then(data => { if (data.user) setAuthUser(data.user); })
       .catch(() => {});
   }, []);
+
+  /* ---- Handle Google OAuth redirect (detect auth_error or new session) ---- */
+  useEffect(() => {
+    const authError = searchParams.get('auth_error');
+    if (authError) {
+      // Clean the URL silently
+      const url = new URL(window.location.href);
+      url.searchParams.delete('auth_error');
+      window.history.replaceState({}, '', url.pathname + url.search);
+      // Show error in auth modal
+      setAuthMode('login');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    // After Google OAuth redirect, a session cookie is set — re-check user
+    // This runs on every searchParams change but the fetch is cheap
+    if (!authUser) {
+      fetch('/api/auth/me')
+        .then(res => res.json())
+        .then(data => { if (data.user) setAuthUser(data.user); })
+        .catch(() => {});
+    }
+  }, [searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---- Listen for auth modal events from other pages ---- */
   useEffect(() => {
@@ -721,7 +746,20 @@ export default function Header() {
                 onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
                 title={isAdmin ? "Admin Account" : "My Account"}
               >
-                {isAdmin ? <ShieldCheck size={22} /> : <User size={22} />}
+                {isAdmin ? (
+                  <ShieldCheck size={22} />
+                ) : authUser?.avatarUrl ? (
+                  <img
+                    src={authUser.avatarUrl}
+                    alt={authUser.displayName || 'User'}
+                    width={28}
+                    height={28}
+                    referrerPolicy="no-referrer"
+                    style={{ borderRadius: '50%', objectFit: 'cover', width: 28, height: 28 }}
+                  />
+                ) : (
+                  <User size={22} />
+                )}
               </button>
               
               {/* Cart Button Fixed - Hidden for Admin */}
@@ -822,7 +860,20 @@ export default function Header() {
               onClick={() => { setIsMobileMenuOpen(false); setAuthMode('login'); setIsAuthModalOpen(true); }}
             >
               <span className="mobile-nav-icon">
-                {isAdmin ? <ShieldCheck size={20} /> : <User size={20} />}
+                {isAdmin ? (
+                  <ShieldCheck size={20} />
+                ) : authUser?.avatarUrl ? (
+                  <img
+                    src={authUser.avatarUrl}
+                    alt={authUser.displayName || 'User'}
+                    width={24}
+                    height={24}
+                    referrerPolicy="no-referrer"
+                    style={{ borderRadius: '50%', objectFit: 'cover', width: 24, height: 24 }}
+                  />
+                ) : (
+                  <User size={20} />
+                )}
               </span>
               {isAdmin ? "Admin Account" : tc('myAccount')}
             </button>

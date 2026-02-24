@@ -145,15 +145,17 @@ export default function OrdersPage() {
     setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
   };
 
-  // Fetch orders
+  // Fetch orders — logged-in users fetch by session (userId on server), guests by fingerprint
   const fetchOrders = useCallback(async () => {
-    if (!fingerprint) return;
-    
     setIsLoading(true);
     setError(null);
     
     try {
-      const res = await fetch(`/api/orders?fingerprint=${fingerprint}`);
+      // Always send fingerprint as fallback; server will prefer userId if session exists
+      const params = new URLSearchParams();
+      if (fingerprint) params.set('fingerprint', fingerprint);
+      
+      const res = await fetch(`/api/orders?${params.toString()}`);
       const data = await res.json();
       
       if (data.success) {
@@ -170,9 +172,7 @@ export default function OrdersPage() {
   }, [fingerprint]);
 
   useEffect(() => {
-    if (fingerprint) {
-      fetchOrders();
-    }
+    fetchOrders();
   }, [fingerprint, fetchOrders]);
 
   return (

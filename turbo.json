@@ -13,7 +13,12 @@
     "SMTP_PASS",
     "MAIL_FROM",
     "NEXT_PUBLIC_APP_URL",
-    "INTERNAL_APP_URL"
+    "INTERNAL_APP_URL",
+    "GEMINI_API_KEY",
+    "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME",
+    "NEXT_PUBLIC_CLOUDINARY_API_KEY",
+    "CLOUDINARY_API_SECRET",
+    "CLOUDINARY_URL"
   ],
   "tasks": {
     "build": {
@@ -29,7 +34,12 @@
         "SMTP_PASS",
         "MAIL_FROM",
         "NEXT_PUBLIC_APP_URL",
-        "INTERNAL_APP_URL"
+        "INTERNAL_APP_URL",
+        "GEMINI_API_KEY",
+        "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME",
+        "NEXT_PUBLIC_CLOUDINARY_API_KEY",
+        "CLOUDINARY_API_SECRET",
+        "CLOUDINARY_URL"
       ],
       "inputs": ["$TURBO_DEFAULT$", ".env*", "apps/*/.env*", "packages/*/.env*"],
       "outputs": [".next/**", "dist/**", "!.next/cache/**"]
@@ -46,7 +56,8 @@
         "SMTP_PASS",
         "MAIL_FROM",
         "NEXT_PUBLIC_APP_URL",
-        "INTERNAL_APP_URL"
+        "INTERNAL_APP_URL",
+        "GEMINI_API_KEY"
       ]
     },
     "check-types": {
