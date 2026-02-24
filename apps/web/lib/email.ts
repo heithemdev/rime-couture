@@ -15,8 +15,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const MAIL_FROM = process.env.MAIL_FROM || 'Rimoucha <noreply@rimoucha.com>';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://rimoucha.com';
+const MAIL_FROM = process.env.MAIL_FROM || 'Rimoucha <noreply@rimoocha.com>';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://rimoocha.com';
 
 /**
  * Send a 5-digit OTP code via email
@@ -93,7 +93,7 @@ function emailWrapper(title: string, body: string): string {
   </td></tr>
   <tr><td style="padding:20px 24px;text-align:center;border-top:1px solid #f0e8e5;background:#fef7f5;">
     <p style="margin:0 0 4px;color:#cfc5bf;font-size:12px;">© ${new Date().getFullYear()} Rimoucha. Made with ♥ in Bouira, Algeria</p>
-    <a href="${SITE_URL}" style="color:#ff4d81;font-size:12px;text-decoration:none;">rimoucha.com</a>
+    <a href="${SITE_URL}" style="color:#ff4d81;font-size:12px;text-decoration:none;">rimoocha.com</a>
   </td></tr>
 </table>
 </body></html>`;

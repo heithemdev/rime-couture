@@ -52,10 +52,10 @@ const mPlusRounded = M_PLUS_Rounded_1c({
 
 // 2. Metadata (SEO + Social)
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://rymoucha.com'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://rimoocha.com'),
   title: {
-    template: '%s | Rymoucha',
-    default: 'Rymoucha - Premium Kids Clothing & Home Textiles',
+    template: '%s | Rimoucha',
+    default: 'Rimoucha - Premium Kids Clothing & Home Textiles',
   },
   description: 'Hand-sewn dresses for little girls and premium home textiles in Algeria.',
   keywords: ['kids clothing', 'dresses', 'home textiles', 'Algeria', 'handmade'],
@@ -63,10 +63,24 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  icons: {
+    icon: [
+      { url: '/icon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icon-180x180.png', sizes: '180x180', type: 'image/png' },
+    ],
+    other: [
+      { rel: 'icon', url: '/icon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+  },
+  manifest: '/manifest.json',
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    siteName: 'Rymoucha',
+    siteName: 'Rimoucha',
   },
 };
 

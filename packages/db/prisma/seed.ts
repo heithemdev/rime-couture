@@ -155,7 +155,7 @@ async function seedAdmin() {
   const hash = await argon2.hash(ADMIN_PASSWORD);
   await prisma.user.create({
     data: {
-      email: "admin@rimecouture.dz",
+      email: "heithem1980@gmail.com",
       passwordHash: hash,
       role: "ADMIN",
       displayName: "Admin",
@@ -164,7 +164,7 @@ async function seedAdmin() {
       emailVerifiedAt: new Date(),
     },
   });
-  console.log("   admin@rimecouture.dz\n");
+  console.log("   heithem1980@gmail.com\n");
 }
 
 async function seedCategories() {
