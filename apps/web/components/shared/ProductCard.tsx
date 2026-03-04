@@ -53,6 +53,7 @@ export interface ProductCardProps {
   sizes?: Size[];
   colors?: Color[];
   variants?: Variant[];
+  categorySlug?: string;
   onAddToCart?: (id: string) => void;
   onAddToWishlist?: (id: string) => void;
   onQuickView?: (id: string) => void;
@@ -79,6 +80,7 @@ export default function ProductCard({
   sizes = [],
   colors = [],
   variants = [],
+  categorySlug,
   onAddToCart,
   onAddToWishlist,
   onQuickView,
@@ -616,6 +618,7 @@ export default function ProductCard({
           sizes,
           colors,
           variants,
+          categorySlug,
         }}
       />
 

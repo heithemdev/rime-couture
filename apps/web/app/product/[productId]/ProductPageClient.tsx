@@ -45,6 +45,7 @@ import ImageQuickViewModal from '@/components/shared/ImageQuickViewModal';
 import ProductCard from '@/components/shared/ProductCard';
 import SafeLink from '@/components/shared/SafeLink';
 import { useCart, useFingerprint } from '@/lib/cart-context';
+import { isSizeLessCategory } from '@/lib/constants';
 
 // ============================================================================
 // TYPES
@@ -171,9 +172,15 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   // --------------------------------------------------------------------------
   // STATE
   // --------------------------------------------------------------------------
+  // Determine if this category has no sizes (e.g. kitchen-stuff)
+  const isKitchenStuff = isSizeLessCategory(product.category.slug);
+
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null);
-  const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
+  const [selectedColorId, setSelectedColorId] = useState<string | null>(
+    // Auto-select if only one color available
+    product.colors.length === 1 ? product.colors[0]!.id : null,
+  );
   const [quantity, setQuantity] = useState(1);
   const [showCheckout, setShowCheckout] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -461,6 +468,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   }, [product.variants]);
 
   const availableSizeIds = useMemo(() => {
+    if (isKitchenStuff) return new Set<string>();
     if (!selectedColorId) {
       return new Set(inStockVariants.map((v) => v.size?.id).filter(Boolean));
     }
@@ -470,7 +478,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         .map((v) => v.size?.id)
         .filter(Boolean)
     );
-  }, [selectedColorId, inStockVariants]);
+  }, [selectedColorId, inStockVariants, isKitchenStuff]);
 
   const availableColorIds = useMemo(() => {
     if (!selectedSizeId) {
@@ -484,21 +492,29 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
     );
   }, [selectedSizeId, inStockVariants]);
 
+  // General stock for kitchen stuff (sum of all variant stocks)
+  const generalStock = useMemo(() => {
+    if (!isKitchenStuff) return 0;
+    return product.variants.reduce((sum, v) => sum + v.stock, 0);
+  }, [isKitchenStuff, product.variants]);
+
   const selectedVariant = useMemo(() => {
-    if ((product.sizes.length > 0 && !selectedSizeId) || (product.colors.length > 0 && !selectedColorId)) {
+    const needsSize = !isKitchenStuff && product.sizes.length > 0 && !selectedSizeId;
+    const needsColor = product.colors.length > 0 && !selectedColorId;
+    if (needsSize || needsColor) {
       return null;
     }
     return product.variants.find((v) => {
-      const sizeMatch = product.sizes.length === 0 || v.size?.id === selectedSizeId;
+      const sizeMatch = isKitchenStuff || product.sizes.length === 0 || v.size?.id === selectedSizeId;
       const colorMatch = product.colors.length === 0 || v.color?.id === selectedColorId;
       return sizeMatch && colorMatch;
     });
-  }, [product.variants, product.sizes.length, product.colors.length, selectedSizeId, selectedColorId]);
+  }, [product.variants, product.sizes.length, product.colors.length, selectedSizeId, selectedColorId, isKitchenStuff]);
 
   const currentPrice = selectedVariant?.price ?? product.price.base;
   
   const isSelectionComplete = 
-    (product.sizes.length === 0 || !!selectedSizeId) && 
+    (isKitchenStuff || product.sizes.length === 0 || !!selectedSizeId) && 
     (product.colors.length === 0 || !!selectedColorId);
   
   const canOrder = isSelectionComplete && selectedVariant && selectedVariant.stock > 0;
@@ -1423,8 +1439,8 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
               )}
             </div>
 
-            {/* Size Selection */}
-            {product.sizes.length > 0 && (
+            {/* Size Selection — hidden for kitchen stuff */}
+            {!isKitchenStuff && product.sizes.length > 0 && (
               <div className="variant-section">
                 <div className="variant-label">
                   <Ruler size={16} /> {t('selectSize')}
@@ -1499,7 +1515,11 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 </button>
               </div>
               
-              {isSelectionComplete && selectedVariant ? (
+              {isKitchenStuff && !selectedVariant ? (
+                <span style={{ fontSize: 'var(--font-size-xs)', color: generalStock < 10 ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
+                  {generalStock} {t('unitsAvailable')}
+                </span>
+              ) : isSelectionComplete && selectedVariant ? (
                 <span style={{ fontSize: 'var(--font-size-xs)', color: selectedVariant.stock < 10 ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
                   {selectedVariant.stock} {t('unitsAvailable')}
                 </span>
@@ -1705,6 +1725,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                   sizes={rp.sizes}
                   colors={rp.colors}
                   variants={rp.variants}
+                  categorySlug={product.category.slug}
                 />
               ))}
             </div>

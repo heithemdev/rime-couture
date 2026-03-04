@@ -123,6 +123,7 @@ export default function ProductGrid({
       sizes: product.sizes || [],
       colors: product.colors || [],
       variants: transformedVariants,
+      categorySlug: product.category?.slug,
     };
   }, []);
 

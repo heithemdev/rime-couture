@@ -54,6 +54,8 @@ import {
   COLOR_CODE_TO_FRONTEND,
   SIZE_CODE_TO_FRONTEND,
   CATEGORY_SLUG_TO_FRONTEND,
+  isSizeLessCategory,
+  CATEGORY_SLUG_MAP,
 } from '@/lib/constants';
 
 // ============================================================================
@@ -407,6 +409,12 @@ export default function AdminProductPage({
     () => SUBCATEGORIES[formData.categoryId] || [],
     [formData.categoryId],
   );
+
+  // Determine if selected category is size-less (e.g. kitchen-stuff)
+  const isKitchenStuff = useMemo(() => {
+    const slug = CATEGORY_SLUG_MAP[formData.categoryId] || '';
+    return isSizeLessCategory(slug);
+  }, [formData.categoryId]);
 
   const priceDA = Math.round(formData.basePriceMinor / 100);
   const originalPriceDA = formData.originalPriceMinor ? Math.round(formData.originalPriceMinor / 100) : 0;
@@ -2426,10 +2434,14 @@ export default function AdminProductPage({
                             key={cat.id}
                             className={`dropdown-item ${formData.categoryId === cat.id ? 'selected' : ''}`}
                             onClick={() => {
+                              const slug = cat.slug || CATEGORY_SLUG_MAP[cat.id] || '';
+                              const isSizeLess = isSizeLessCategory(slug);
                               setFormData((prev) => ({
                                 ...prev,
                                 categoryId: cat.id,
                                 subcategoryId: '',
+                                // Clear sizes when switching to a size-less category
+                                ...(isSizeLess ? { sizes: [] } : {}),
                               }));
                               setCategoryDropdownOpen(false);
                             }}
@@ -2637,7 +2649,8 @@ export default function AdminProductPage({
               )}
             </div>
 
-            {/* Size Selection */}
+            {/* Size Selection — hidden for kitchen-stuff */}
+            {!isKitchenStuff && (
             <div className="variant-section">
               <div className="variant-label">
                 <Ruler size={16} />{' '}
@@ -2668,6 +2681,7 @@ export default function AdminProductPage({
                 )}
               </div>
             </div>
+            )}
 
             {/* Color Selection */}
             <div className="variant-section">
@@ -2757,6 +2771,7 @@ export default function AdminProductPage({
                             type="number"
                             min="0"
                             value={getVariantStock(null, size.id)}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) =>
                               updateVariantStock(
                                 null,
@@ -2781,6 +2796,7 @@ export default function AdminProductPage({
                             type="number"
                             min="0"
                             value={getVariantStock(color.id, null)}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) =>
                               updateVariantStock(
                                 color.id,
@@ -2815,6 +2831,7 @@ export default function AdminProductPage({
                                     color.id,
                                     size.id,
                                   )}
+                                  onFocus={(e) => e.target.select()}
                                   onChange={(e) =>
                                     updateVariantStock(
                                       color.id,

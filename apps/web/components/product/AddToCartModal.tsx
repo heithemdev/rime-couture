@@ -20,6 +20,7 @@ import {
   Loader2,
   Package,
 } from 'lucide-react';
+import { isSizeLessCategory } from '@/lib/constants';
 
 interface Size {
   id: string;
@@ -56,6 +57,7 @@ interface AddToCartModalProps {
     sizes: Size[];
     colors: Color[];
     variants: Variant[];
+    categorySlug?: string;
   };
 }
 
@@ -65,9 +67,14 @@ export default function AddToCartModal({
   onAddToCart,
   product,
 }: AddToCartModalProps) {
+  // Determine if this is a size-less category (e.g. kitchen-stuff)
+  const isKitchenStuff = isSizeLessCategory(product.categorySlug || '');
+
   // Selection state
   const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null);
-  const [selectedColorId, setSelectedColorId] = useState<string | null>(null);
+  const [selectedColorId, setSelectedColorId] = useState<string | null>(
+    product.colors.length === 1 ? product.colors[0]!.id : null,
+  );
   const [quantity, setQuantity] = useState(1);
 
   // UI state
@@ -79,13 +86,13 @@ export default function AddToCartModal({
   useEffect(() => {
     if (isOpen) {
       setSelectedSizeId(null);
-      setSelectedColorId(null);
+      setSelectedColorId(product.colors.length === 1 ? product.colors[0]!.id : null);
       setQuantity(1);
       setError(null);
       setSuccess(false);
       setIsAdding(false);
     }
-  }, [isOpen]);
+  }, [isOpen, product.colors]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -117,6 +124,7 @@ export default function AddToCartModal({
 
   // Available sizes based on selected color
   const availableSizeIds = useMemo(() => {
+    if (isKitchenStuff) return new Set<string>();
     if (!selectedColorId) {
       return new Set(inStockVariants.map((v) => v.size?.id).filter(Boolean));
     }
@@ -126,7 +134,7 @@ export default function AddToCartModal({
         .map((v) => v.size?.id)
         .filter(Boolean)
     );
-  }, [selectedColorId, inStockVariants]);
+  }, [selectedColorId, inStockVariants, isKitchenStuff]);
 
   // Available colors based on selected size
   const availableColorIds = useMemo(() => {
@@ -143,27 +151,26 @@ export default function AddToCartModal({
 
   // Find selected variant
   const selectedVariant = useMemo(() => {
-    if (
-      (product.sizes.length > 0 && !selectedSizeId) ||
-      (product.colors.length > 0 && !selectedColorId)
-    ) {
+    const needsSize = !isKitchenStuff && product.sizes.length > 0 && !selectedSizeId;
+    const needsColor = product.colors.length > 0 && !selectedColorId;
+    if (needsSize || needsColor) {
       return null;
     }
 
     return product.variants.find((v) => {
-      const sizeMatch = product.sizes.length === 0 || v.size?.id === selectedSizeId;
+      const sizeMatch = isKitchenStuff || product.sizes.length === 0 || v.size?.id === selectedSizeId;
       const colorMatch = product.colors.length === 0 || v.color?.id === selectedColorId;
       return sizeMatch && colorMatch;
     });
-  }, [product.variants, product.sizes.length, product.colors.length, selectedSizeId, selectedColorId]);
+  }, [product.variants, product.sizes.length, product.colors.length, selectedSizeId, selectedColorId, isKitchenStuff]);
 
   // Check if selection is complete
   const isSelectionComplete = useMemo(() => {
     return (
-      (product.sizes.length === 0 || !!selectedSizeId) &&
+      (isKitchenStuff || product.sizes.length === 0 || !!selectedSizeId) &&
       (product.colors.length === 0 || !!selectedColorId)
     );
-  }, [product.sizes.length, product.colors.length, selectedSizeId, selectedColorId]);
+  }, [product.sizes.length, product.colors.length, selectedSizeId, selectedColorId, isKitchenStuff]);
 
   const canAddToCart = isSelectionComplete && selectedVariant && selectedVariant.stock > 0;
 
@@ -632,8 +639,8 @@ export default function AddToCartModal({
               </div>
             )}
 
-            {/* Size Selection */}
-            {product.sizes.length > 0 && (
+            {/* Size Selection — hidden for kitchen stuff */}
+            {!isKitchenStuff && product.sizes.length > 0 && (
               <div className="selection-section">
                 <div className="section-label">
                   <span>Select Size</span>

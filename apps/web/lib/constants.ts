@@ -230,3 +230,18 @@ export const PRICE_RANGES = [
   { id: '5000to10000',  label: '5,000 - 10,000 DZD' },
   { id: 'over10000',    label: '> 10,000 DZD' },
 ] as const;
+
+// ============================================================================
+// CATEGORY HELPERS
+// ============================================================================
+
+/** Category slugs that have NO size selection (color-only variants) */
+export const SIZE_LESS_CATEGORY_SLUGS = new Set(['kitchen-stuff']);
+
+/**
+ * Check if a category slug is size-less (e.g. kitchen-stuff).
+ * Products in these categories only have colors, no sizes.
+ */
+export function isSizeLessCategory(slug: string): boolean {
+  return SIZE_LESS_CATEGORY_SLUGS.has(slug);
+}

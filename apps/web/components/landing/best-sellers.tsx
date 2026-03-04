@@ -51,6 +51,7 @@ interface ProductData {
   sizes: Size[];
   variants: Variant[];
   category: string;
+  categorySlug?: string;
 }
 
 const BESTSELLERS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -400,6 +401,7 @@ export default function BestSellers() {
                       sizes={product.sizes || []}
                       colors={product.colors || []}
                       variants={transformedVariants}
+                      categorySlug={product.categorySlug}
                       onAddToWishlist={handleAddToWishlist}
                       onQuickView={handleQuickView}
                     />
