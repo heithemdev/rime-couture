@@ -248,11 +248,11 @@ export default function ImageQuickViewModal({
         }
 
         .nav-btn.prev {
-          left: var(--spacing-lg);
+          inset-inline-start: var(--spacing-lg);
         }
 
         .nav-btn.next {
-          right: var(--spacing-lg);
+          inset-inline-end: var(--spacing-lg);
         }
 
         .quick-view-thumbnails {
@@ -319,11 +319,11 @@ export default function ImageQuickViewModal({
           }
 
           .nav-btn.prev {
-            left: var(--spacing-sm);
+            inset-inline-start: var(--spacing-sm);
           }
 
           .nav-btn.next {
-            right: var(--spacing-sm);
+            inset-inline-end: var(--spacing-sm);
           }
 
           .quick-view-thumbnails {

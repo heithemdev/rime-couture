@@ -170,7 +170,7 @@ export default function Testimonials() {
           opacity: 0.25;
           position: absolute;
           top: -28px;
-          left: -4px;
+          inset-inline-start: -4px;
           line-height: 1;
         }
 
@@ -194,7 +194,7 @@ export default function Testimonials() {
           flex-shrink: 0;
         }
         .test-meta {
-          text-align: left;
+          text-align: start;
         }
         .test-name {
           font-size: 15px;

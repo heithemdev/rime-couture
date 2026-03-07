@@ -240,7 +240,7 @@ export default function Header() {
       <style jsx>{`
         .header-wrapper {
           top: 0;
-          left: 0;
+          inset-inline-start: 0;
           width: 100%;
           z-index: 1000;
           position: fixed;
@@ -381,7 +381,7 @@ export default function Header() {
         .header-cart-badge {
           /* Adjusted to be relative to the icon wrapper, not the button */
           top: -5px; 
-          right: -5px;
+          inset-inline-end: -5px;
           color: #fff;
           min-width: 18px;
           height: 18px;
@@ -402,7 +402,7 @@ export default function Header() {
         /* Language Switcher */
         .header-lang-switcher {
           position: relative;
-          margin-left: 8px;
+          margin-inline-start: 8px;
         }
         .header-lang-trigger {
           height: 36px;
@@ -425,7 +425,7 @@ export default function Header() {
         }
         .header-lang-dropdown {
           top: calc(100% + 6px);
-          right: 0;
+          inset-inline-end: 0;
           border: 1px solid #eee;
           display: flex;
           z-index: 100;
@@ -454,7 +454,7 @@ export default function Header() {
           font-size: 14px;
           background: transparent;
           transition: all 0.2s ease;
-          text-align: left;
+          text-align: start;
         }
         .header-lang-option:hover {
           color: #FF6B9D;
@@ -496,7 +496,7 @@ export default function Header() {
         }
         .mobile-menu {
           top: 0;
-          left: 0;
+          inset-inline-start: 0;
           width: 320px;
           height: 100%;
           z-index: 1600;
@@ -507,6 +507,9 @@ export default function Header() {
           display: flex;
           flex-direction: column;
           overflow: hidden;
+        }
+        :global([dir='rtl']) .mobile-menu {
+          transform: translateX(100%);
         }
         .mobile-menu.active {
           transform: translateX(0);

@@ -561,7 +561,7 @@ export default function ProductCheckoutModal({
           font-size: var(--font-size-xs);
           color: var(--color-on-surface-secondary);
           font-weight: normal;
-          margin-left: auto;
+          margin-inline-start: auto;
         }
         
         .form-input {
@@ -627,8 +627,8 @@ export default function ProductCheckoutModal({
         }
         .dropdown-trigger.open {
           border-color: var(--color-primary);
-          border-bottom-left-radius: 0;
-          border-bottom-right-radius: 0;
+          border-end-start-radius: 0;
+          border-end-end-radius: 0;
         }
         .dropdown-trigger-text {
           display: flex;
@@ -653,8 +653,8 @@ export default function ProductCheckoutModal({
         .dropdown-panel {
           position: absolute;
           top: 100%;
-          left: 0;
-          right: 0;
+          inset-inline-start: 0;
+          inset-inline-end: 0;
           background: var(--color-surface);
           border: 2px solid var(--color-primary);
           border-top: none;
@@ -688,7 +688,7 @@ export default function ProductCheckoutModal({
         }
         .dropdown-search-icon {
           position: absolute;
-          left: 16px;
+          inset-inline-start: 16px;
           top: 50%;
           transform: translateY(-50%);
           color: var(--color-on-surface-secondary);

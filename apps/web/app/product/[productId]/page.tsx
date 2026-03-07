@@ -9,38 +9,17 @@ import ProductPageClient from './ProductPageClient';
 import Header from '@/components/shared/header';
 import Footer from '@/components/shared/footer';
 import { validateSession } from '@/lib/auth/session';
+import { getProductById } from '@/lib/product-data';
 
 interface PageProps {
   params: Promise<{ productId: string }>;
-}
-
-// Fetch product data
-async function getProduct(productId: string, locale: string) {
-  // Always use internal URL for server-side fetches to avoid ngrok/proxy loops
-  const baseUrl = typeof window === 'undefined'
-    ? (process.env.INTERNAL_APP_URL || 'http://localhost:3000')
-    : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
-  
-  try {
-    const res = await fetch(`${baseUrl}/api/products/${productId}?locale=${locale}`, {
-      next: { revalidate: 60 },
-    });
-
-    if (!res.ok) {
-      return null;
-    }
-
-    return res.json();
-  } catch {
-    return null;
-  }
 }
 
 // Generate metadata
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { productId } = await params;
   const locale = await getLocale();
-  const product = await getProduct(productId, locale);
+  const product = await getProductById(productId, locale);
 
   if (!product) {
     return {
@@ -62,7 +41,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ProductPage({ params }: PageProps) {
   const { productId } = await params;
   const locale = await getLocale();
-  const product = await getProduct(productId, locale);
+  const product = await getProductById(productId, locale);
 
   // Check if user is admin
   const session = await validateSession();

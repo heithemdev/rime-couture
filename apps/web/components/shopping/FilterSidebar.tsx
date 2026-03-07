@@ -418,7 +418,7 @@ export default function FilterSidebar({
           font-weight: 600;
           color: #555;
           transition: all 0.2s ease;
-          text-align: left;
+          text-align: start;
         }
         .kitchen-type-btn:hover {
           border-color: #ffb8c9;

@@ -61,7 +61,7 @@ export default function ThankYouModal({ isOpen, onClose, orderNumber, onViewOrde
         .thankyou-close {
           position: absolute;
           top: 16px;
-          right: 16px;
+          inset-inline-end: 16px;
           background: rgba(255, 255, 255, 0.2);
           border: none;
           color: white;

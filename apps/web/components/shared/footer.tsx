@@ -137,19 +137,19 @@ export default function Footer() {
           z-index: 0;
         }
         .ft-orb--1 {
-          top: -60px; right: -40px;
+          top: -60px; inset-inline-end: -40px;
           width: 240px; height: 240px;
           background: radial-gradient(circle, color-mix(in srgb, #FF6B9D 18%, transparent), transparent 70%);
           animation: footerOrb 10s ease-in-out infinite;
         }
         .ft-orb--2 {
-          bottom: -40px; left: 10%;
+          bottom: -40px; inset-inline-start: 10%;
           width: 180px; height: 180px;
           background: radial-gradient(circle, color-mix(in srgb, #FF6B9D 12%, transparent), transparent 70%);
           animation: footerOrb 14s ease-in-out infinite reverse;
         }
         .ft-orb--3 {
-          top: 40%; left: 55%;
+          top: 40%; inset-inline-start: 55%;
           width: 140px; height: 140px;
           background: radial-gradient(circle, color-mix(in srgb, #FFC0D0 14%, transparent), transparent 70%);
           animation: footerOrb 18s ease-in-out infinite;
@@ -213,7 +213,7 @@ export default function Footer() {
         .ft-col-title::after {
           content: '';
           position: absolute;
-          left: 0; bottom: -4px;
+          inset-inline-start: 0; bottom: -4px;
           height: 2px;
           width: 32px;
           background: #FF6B9D;
@@ -221,8 +221,8 @@ export default function Footer() {
           animation: underlineDraw 1.2s ease forwards;
         }
         :global([dir='rtl']) .ft-col-title::after {
-          left: auto;
-          right: 0;
+          inset-inline-start: auto;
+          inset-inline-end: 0;
         }
 
         .ft-links {

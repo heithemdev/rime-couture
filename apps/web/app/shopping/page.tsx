@@ -555,8 +555,8 @@ export default function ShoppingPage() {
         .sort-menu {
           position: absolute;
           top: 100%;
-          left: 0;
-          right: 0;
+          inset-inline-start: 0;
+          inset-inline-end: 0;
           background: #fff;
           border: 2px solid #ff4d81;
           border-top: none;
@@ -577,7 +577,7 @@ export default function ShoppingPage() {
           border: none;
           background: none;
           width: 100%;
-          text-align: left;
+          text-align: start;
         }
         .sort-option:hover {
           background: #fff5f7;

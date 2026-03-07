@@ -527,8 +527,8 @@ export default function AddToCartModal({
           text-align: center;
           font-size: var(--font-size-lg);
           font-weight: var(--font-weight-medium);
-          border-left: 2px solid var(--color-border);
-          border-right: 2px solid var(--color-border);
+          border-inline-start: 2px solid var(--color-border);
+          border-inline-end: 2px solid var(--color-border);
           padding: var(--spacing-md) 0;
         }
 

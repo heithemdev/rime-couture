@@ -242,7 +242,7 @@ export default function CartPage() {
           font-size: var(--text-sm);
           font-weight: 500;
           color: var(--color-text-secondary);
-          margin-left: var(--space-2);
+          margin-inline-start: var(--space-2);
         }
         
         /* ================================================================
@@ -435,8 +435,8 @@ export default function CartPage() {
           text-align: center;
           font-size: var(--text-sm);
           font-weight: 600;
-          border-left: 1px solid var(--color-border);
-          border-right: 1px solid var(--color-border);
+          border-inline-start: 1px solid var(--color-border);
+          border-inline-end: 1px solid var(--color-border);
           height: 32px;
           display: flex;
           align-items: center;
@@ -449,7 +449,7 @@ export default function CartPage() {
         .stock-limit {
           font-size: var(--text-xs);
           color: var(--color-text-muted);
-          text-align: right;
+          text-align: end;
         }
         .stock-limit.low {
           color: var(--color-primary);
@@ -490,8 +490,8 @@ export default function CartPage() {
           color: var(--color-text-secondary);
           margin-bottom: var(--space-6);
           max-width: 320px;
-          margin-left: auto;
-          margin-right: auto;
+          margin-inline-start: auto;
+          margin-inline-end: auto;
         }
         
         .empty-cta {
@@ -731,7 +731,7 @@ export default function CartPage() {
           
           .trust-badge {
             flex-direction: row;
-            text-align: left;
+            text-align: start;
           }
         }
       `}</style>

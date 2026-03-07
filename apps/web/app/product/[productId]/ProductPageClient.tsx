@@ -721,8 +721,8 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           box-shadow: var(--shadow-level-2); transition: all 0.2s ease; z-index: 10;
         }
         .gallery-nav:hover { background: var(--color-primary); color: white; transform: translateY(-50%) scale(1.05); }
-        .gallery-nav.prev { left: var(--spacing-md); }
-        .gallery-nav.next { right: var(--spacing-md); }
+        .gallery-nav.prev { inset-inline-start: var(--spacing-md); }
+        .gallery-nav.next { inset-inline-end: var(--spacing-md); }
         
         .gallery-play {
           position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -734,7 +734,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         .gallery-play:hover { transform: translate(-50%, -50%) scale(1.1); }
         
         .gallery-expand {
-          position: absolute; bottom: var(--spacing-md); right: var(--spacing-md);
+          position: absolute; bottom: var(--spacing-md); inset-inline-end: var(--spacing-md);
           width: 44px; height: 44px; background: var(--color-surface);
           border: none; border-radius: var(--border-radius-full); cursor: pointer;
           display: flex; align-items: center; justify-content: center;
@@ -758,7 +758,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         .gallery-thumb img, .gallery-thumb video { width: 100%; height: 100%; object-fit: cover; }
         
         .featured-badge {
-          position: absolute; top: var(--spacing-md); left: var(--spacing-md);
+          position: absolute; top: var(--spacing-md); inset-inline-start: var(--spacing-md);
           background: linear-gradient(135deg, var(--color-accent) 0%, #FFB800 100%);
           color: var(--color-on-accent); padding: var(--spacing-xs) var(--spacing-md);
           border-radius: var(--border-radius-full); font-size: var(--font-size-xs);
@@ -919,8 +919,8 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         .quantity-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .quantity-value {
           width: 50px; text-align: center; font-size: var(--font-size-base);
-          font-weight: var(--font-weight-medium); border-left: 1px solid var(--color-border);
-          border-right: 1px solid var(--color-border); padding: var(--spacing-sm) 0;
+          font-weight: var(--font-weight-medium); border-inline-start: 1px solid var(--color-border);
+          border-inline-end: 1px solid var(--color-border); padding: var(--spacing-sm) 0;
         }
         
         .action-buttons { display: flex; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); }
@@ -1054,7 +1054,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           display: flex; align-items: center; justify-content: center; color: white;
         }
         .shipping-estimate-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-on-surface); }
-        .shipping-estimate-range { font-size: var(--font-size-xs); color: var(--color-on-surface-secondary); padding-left: 40px; display: flex; align-items: center; gap: var(--spacing-xs); }
+        .shipping-estimate-range { font-size: var(--font-size-xs); color: var(--color-on-surface-secondary); padding-inline-start: 40px; display: flex; align-items: center; gap: var(--spacing-xs); }
         .shipping-estimate-price { color: var(--color-secondary); font-weight: var(--font-weight-medium); }
         
         .details-section { margin-top: var(--spacing-3xl); }
@@ -1469,7 +1469,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                 <div className="variant-label">
                   <Palette size={16} /> {t('selectColor')}
                   {selectedColorId && (
-                    <span style={{ fontWeight: 'normal', marginLeft: 'auto' }}>
+                    <span style={{ fontWeight: 'normal', marginInlineStart: 'auto' }}>
                       {product.colors.find((c) => c.id === selectedColorId)?.label}
                     </span>
                   )}

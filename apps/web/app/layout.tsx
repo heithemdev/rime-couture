@@ -107,7 +107,7 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} dir={dir} suppressHydrationWarning>
-      <head>
+      <head suppressHydrationWarning>
         {/* Loader + FOUC prevention — all inline, works before any CSS loads */}
         <style dangerouslySetInnerHTML={{ __html: `
           /* FOUC prevention: body hidden until CSS + JS reveal it */

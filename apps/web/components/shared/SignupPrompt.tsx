@@ -113,7 +113,7 @@ export default function SignupPrompt({ onSignup }: SignupPromptProps) {
           content: '';
           position: absolute;
           top: -30px;
-          right: -30px;
+          inset-inline-end: -30px;
           width: 100px;
           height: 100px;
           background: rgba(255, 255, 255, 0.1);
@@ -123,7 +123,7 @@ export default function SignupPrompt({ onSignup }: SignupPromptProps) {
           content: '';
           position: absolute;
           bottom: -20px;
-          left: -20px;
+          inset-inline-start: -20px;
           width: 80px;
           height: 80px;
           background: rgba(255, 255, 255, 0.08);
@@ -132,7 +132,7 @@ export default function SignupPrompt({ onSignup }: SignupPromptProps) {
         .signup-close {
           position: absolute;
           top: 12px;
-          right: 12px;
+          inset-inline-end: 12px;
           background: rgba(255, 255, 255, 0.2);
           border: none;
           color: white;
@@ -199,6 +199,9 @@ export default function SignupPrompt({ onSignup }: SignupPromptProps) {
           transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           opacity: 0.6;
           transform: translateX(-8px);
+        }
+        :global([dir='rtl']) .signup-bubble {
+          transform: translateX(8px);
         }
         .signup-bubble.active {
           opacity: 1;

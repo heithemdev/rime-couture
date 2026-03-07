@@ -199,7 +199,7 @@ export default function ProductCard({
         }
         .product-badge {
           top: var(--spacing-md);
-          left: var(--spacing-md);
+          inset-inline-start: var(--spacing-md);
           color: white;
           z-index: 10;
           padding: var(--spacing-xs) var(--spacing-sm);
@@ -217,7 +217,7 @@ export default function ProductCard({
         .product-discount-sticker {
           position: absolute;
           bottom: var(--spacing-md);
-          left: var(--spacing-md);
+          inset-inline-start: var(--spacing-md);
           z-index: 10;
           display: flex;
           align-items: center;
@@ -238,7 +238,7 @@ export default function ProductCard({
         .product-top-seller {
           position: absolute;
           top: var(--spacing-md);
-          left: var(--spacing-md);
+          inset-inline-start: var(--spacing-md);
           z-index: 11;
           display: flex;
           align-items: center;
@@ -259,7 +259,7 @@ export default function ProductCard({
         
         .product-actions {
           top: var(--spacing-md);
-          right: var(--spacing-md);
+          inset-inline-end: var(--spacing-md);
           gap: var(--spacing-xs);
           display: flex;
           z-index: 10;
@@ -268,6 +268,9 @@ export default function ProductCard({
           opacity: 0;
           transform: translateX(10px);
           transition: all 0.3s ease;
+        }
+        :global([dir='rtl']) .product-actions {
+          transform: translateX(-10px);
         }
         .product-card:hover .product-actions {
           opacity: 1;
@@ -302,8 +305,8 @@ export default function ProductCard({
 
         /* Add to Cart - Desktop Default (Hidden) */
         .product-add-cart {
-          left: 0;
-          right: 0;
+          inset-inline-start: 0;
+          inset-inline-end: 0;
           bottom: 0;
           z-index: 10;
           display: flex;
@@ -463,7 +466,7 @@ export default function ProductCard({
         .product-discount-badge-unique {
           position: absolute;
           top: 0;
-          right: 0;
+          inset-inline-end: 0;
           z-index: 20;
           display: flex;
           align-items: center;
@@ -473,13 +476,13 @@ export default function ProductCard({
           color: #fff;
           font-size: 15px;
           font-weight: 800;
-          border-bottom-left-radius: 22px;
-          border-top-right-radius: 12px;
+          border-end-start-radius: 22px;
+          border-start-end-radius: 12px;
           box-shadow: 0 4px 18px 0 rgba(0,0,0,0.10);
           letter-spacing: 0.5px;
           text-shadow: 0 1px 8px rgba(0,0,0,0.10);
           border-top: 2.5px solid var(--color-surface);
-          border-right: 2.5px solid var(--color-surface);
+          border-inline-end: 2.5px solid var(--color-surface);
           animation: popBadge 1.2s cubic-bezier(.68,-0.55,.27,1.55);
         }
         .product-discount-badge-unique .discount-value {
@@ -509,7 +512,7 @@ export default function ProductCard({
             )}
             {discountPercent > 0 && (
               <span className="product-discount-badge-unique">
-                <Percent size={16} style={{ marginRight: 2 }} />
+                <Percent size={16} style={{ marginInlineEnd: 2 }} />
                 <span className="discount-value">Save {discountPercent}%</span>
               </span>
             )}

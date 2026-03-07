@@ -959,7 +959,7 @@ export default function AuthModal({
         @media (min-width:640px) { .auth-body { padding: var(--spacing-2xl); } }
 
         .auth-close {
-          position:absolute; top:14px; right:14px;
+          position:absolute; top:14px; inset-inline-end:14px;
           display:flex; align-items:center; justify-content:center;
           width:36px; height:36px;
           border-radius: var(--border-radius-full);
@@ -1017,16 +1017,18 @@ export default function AuthModal({
         .auth-form { display:flex; flex-direction:column; gap:12px; }
 
         .auth-field { display:flex; flex-direction:column; gap:4px; }
-        .auth-field-error { font-size:12px; color:#e53e3e; padding-left:4px; }
+        .auth-field-error { font-size:12px; color:#e53e3e; padding-inline-start:4px; }
 
         .auth-input-wrap { position:relative; }
         .auth-input-wrap.auth-input-error .auth-input { border-color:#e53e3e; }
         .auth-input-icon {
-          position:absolute; left:12px; top:50%; transform:translateY(-50%);
+          position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%);
           color: var(--color-on-surface-secondary); display:flex; pointer-events:none;
         }
         .auth-input {
           width:100%; height:44px; padding:0 12px 0 42px;
+          padding-inline-start: 42px;
+          padding-inline-end: 12px;
           border:1.5px solid var(--color-border); border-radius:10px;
           font-family: var(--font-family-body); font-size:16px;
           color: var(--color-on-surface); background: var(--color-surface);
@@ -1037,7 +1039,7 @@ export default function AuthModal({
           border-color: var(--color-primary);
           box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 15%, transparent);
         }
-        .auth-input-right { position:absolute; right:4px; top:50%; transform:translateY(-50%); display:flex; }
+        .auth-input-right { position:absolute; inset-inline-end:4px; top:50%; transform:translateY(-50%); display:flex; }
         .auth-eye-btn {
           display:flex; align-items:center; justify-content:center; width:36px; height:36px;
           border:none; background:transparent; color: var(--color-on-surface-secondary);
@@ -1060,7 +1062,7 @@ export default function AuthModal({
         }
         .otp-box-error { border-color:#e53e3e; }
 
-        .auth-forgot-row { text-align:right; margin-top:-4px; }
+        .auth-forgot-row { text-align:end; margin-top:-4px; }
         .auth-forgot-link {
           background:none; border:none; padding:0;
           font-family: var(--font-family-body); font-size: var(--font-size-sm);
@@ -1206,7 +1208,7 @@ export default function AuthModal({
         }
         .auth-notif-toggle-knob {
           position: absolute;
-          top: 2px; left: 2px;
+          top: 2px; inset-inline-start: 2px;
           width: 20px; height: 20px;
           border-radius: 50%;
           background: #fff;

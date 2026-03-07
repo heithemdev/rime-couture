@@ -94,7 +94,7 @@ export default function Hero() {
         }
         .hero-overlay {
           top: 0;
-          left: 0;
+          inset-inline-start: 0;
           width: 100%;
           height: 100%;
           z-index: 2;
@@ -129,7 +129,7 @@ export default function Hero() {
           }
         }
         :global([dir='rtl']) .hero-content {
-          text-align: right;
+          text-align: start;
         }
       `}</style>
 

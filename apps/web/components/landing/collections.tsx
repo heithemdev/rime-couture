@@ -162,7 +162,7 @@ export default function Collections() {
         .cx-pill {
           position: absolute;
           top: 18px;
-          left: 18px;
+          inset-inline-start: 18px;
           z-index: 2;
           padding: 5px 14px;
           border-radius: 100px;
@@ -208,7 +208,7 @@ export default function Collections() {
           content: '';
           position: absolute;
           bottom: -2px;
-          left: 0;
+          inset-inline-start: 0;
           width: 0;
           height: 1.5px;
           background: var(--color-primary, #ff4d81);

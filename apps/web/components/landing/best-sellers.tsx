@@ -210,8 +210,8 @@ export default function BestSellers() {
           margin-bottom: var(--spacing-3xl);
           justify-content: center;
           max-width: var(--content-max-width);
-          margin-left: auto;
-          margin-right: auto;
+          margin-inline-start: auto;
+          margin-inline-end: auto;
           padding: 0 var(--spacing-xl);
         }
         .bestsellers-title {

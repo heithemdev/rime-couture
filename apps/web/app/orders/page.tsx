@@ -374,7 +374,7 @@ export default function OrdersPage() {
           width: 100%;
           cursor: pointer;
           font-family: inherit;
-          text-align: left;
+          text-align: start;
           transition: background 0.15s ease;
         }
         .order-card-header:hover {
@@ -556,7 +556,7 @@ export default function OrdersPage() {
           font-size: var(--text-sm);
           font-weight: 600;
           color: var(--color-text);
-          text-align: right;
+          text-align: end;
           max-width: 60%;
         }
         
@@ -744,7 +744,7 @@ export default function OrdersPage() {
           
           .timeline-step {
             flex-direction: row;
-            text-align: left;
+            text-align: start;
             min-width: 100%;
           }
         }

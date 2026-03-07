@@ -250,8 +250,8 @@ export default function ProductCarousel({
           opacity: 0;
           pointer-events: none;
         }
-        .carousel-arrow-left { left: -24px; }
-        .carousel-arrow-right { right: -24px; }
+        .carousel-arrow-left { inset-inline-start: -24px; }
+        .carousel-arrow-right { inset-inline-end: -24px; }
 
         /* Dots */
         .carousel-dots {
@@ -278,8 +278,8 @@ export default function ProductCarousel({
         @media (max-width: 767px) {
           .carousel-arrow { display: none; }
           .carousel-track {
-            padding-left: var(--spacing-xl);
-            padding-right: var(--spacing-xl);
+            padding-inline-start: var(--spacing-xl);
+            padding-inline-end: var(--spacing-xl);
           }
         }
       `}</style>
