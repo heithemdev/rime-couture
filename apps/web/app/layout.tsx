@@ -3,7 +3,7 @@ import localFont from 'next/font/local';
 import { Pacifico, Work_Sans, M_PLUS_Rounded_1c } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
-import { isRtlLocale, type Locale } from '@/i18n/routing';
+import { type Locale } from '@/i18n/routing';
 import { CartProvider } from '@/lib/cart-context';
 import { LikesProvider } from '@/lib/likes-context';
 import './globals.css';
@@ -103,10 +103,8 @@ export default async function RootLayout({
   // Parallel fetch for better performance
   const [locale, messages] = await Promise.all([getLocale() as Promise<Locale>, getMessages()]);
 
-  const dir = isRtlLocale(locale) ? 'rtl' : 'ltr';
-
   return (
-    <html lang={locale} dir={dir} suppressHydrationWarning>
+    <html lang={locale} dir="ltr" suppressHydrationWarning>
       <head suppressHydrationWarning>
         {/* Loader + FOUC prevention — all inline, works before any CSS loads */}
         <style dangerouslySetInnerHTML={{ __html: `

@@ -44,7 +44,7 @@ import ThankYouModal from '@/components/shared/ThankYouModal';
 export interface SelectedVariant {
   id: string;
   size?: { code: string; label: string } | null;
-  color?: { code: string; label: string; hex?: string } | null;
+  color?: { code: string; label: string; hex?: string | null } | null;
   price: number;
 }
 
@@ -63,7 +63,7 @@ interface CartItemForCheckout {
   };
   variant: {
     size: { code: string; label: string } | null;
-    color: { code: string; label: string; hex?: string } | null;
+    color: { code: string; label: string; hex?: string | null } | null;
   };
   stock: number;
 }

@@ -53,15 +53,15 @@ import { isSizeLessCategory } from '@/lib/constants';
 
 interface Media {
   id: string;
-  kind: 'IMAGE' | 'VIDEO';
+  kind: 'IMAGE' | 'VIDEO' | 'PDF';
   url: string;
-  mimeType?: string;
-  width?: number;
-  height?: number;
-  durationS?: number;
+  mimeType: string | null;
+  width: number | null;
+  height: number | null;
+  durationS: number | null;
   isThumb: boolean;
   position: number;
-  colorId?: string | null;
+  colorId: string | null;
 }
 
 interface Size {
@@ -73,7 +73,7 @@ interface Size {
 interface Color {
   id: string;
   code: string;
-  hex?: string;
+  hex: string | null;
   label: string;
 }
 
@@ -90,23 +90,23 @@ interface Variant {
 interface Review {
   id: string;
   rating: number;
-  title?: string;
-  comment?: string;
+  title: string | null;
+  comment: string | null;
   reviewerName: string;
-  avatarUrl?: string | null;
-  createdAt: string;
+  avatarUrl: string | null;
+  createdAt: string | Date;
 }
 
 interface Product {
   id: string;
   slug: string;
   name: string;
-  description: string;
+  description: string | null;
   category: {
     id: string;
     slug: string;
     name: string;
-  };
+  } | null;
   price: {
     base: number;
     min: number;
@@ -120,7 +120,7 @@ interface Product {
     isMadeToOrder: boolean;
     isFeatured: boolean;
   };
-  leadTimeDays?: number;
+  leadTimeDays?: number | null;
   stats: {
     salesCount: number;
     reviewCount: number;
@@ -149,7 +149,7 @@ function formatPrice(price: number): string {
   return `${price.toLocaleString('fr-DZ', { maximumFractionDigits: 0 })} DA`;
 }
 
-function formatDate(dateStr: string, locale: string): string {
+function formatDate(dateStr: string | Date, locale: string): string {
   return new Date(dateStr).toLocaleDateString(locale === 'ar' ? 'ar-DZ' : locale === 'fr' ? 'fr-FR' : 'en-US', {
     year: 'numeric',
     month: 'short',
@@ -173,7 +173,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
   // STATE
   // --------------------------------------------------------------------------
   // Determine if this category has no sizes (e.g. kitchen-stuff)
-  const isKitchenStuff = isSizeLessCategory(product.category.slug);
+  const isKitchenStuff = isSizeLessCategory(product.category?.slug ?? '');
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedSizeId, setSelectedSizeId] = useState<string | null>(null);
@@ -287,7 +287,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
         setIsLoadingRelated(true);
         // Fetch products from same category, excluding current product
         const params = new URLSearchParams({
-          categoryId: product.category.id,
+          categoryId: product.category?.id ?? '',
           limit: '8',
           exclude: product.id,
           locale: locale.toUpperCase(),
@@ -364,7 +364,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
 
     fetchRelatedProducts();
     return () => controller.abort();
-  }, [product.id, product.category.id, locale]);
+  }, [product.id, product.category?.id, locale]);
 
   // --------------------------------------------------------------------------
   // HANDLERS - LIKE
@@ -591,7 +591,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
       if (navigator.share) {
         await navigator.share({
           title: product.name,
-          text: product.description,
+          text: product.description || '',
           url: window.location.href,
         });
       } else {
@@ -1262,8 +1262,12 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           <span className="breadcrumb-separator">/</span>
           <Link href="/shopping">{t('breadcrumb.shop')}</Link>
           <span className="breadcrumb-separator">/</span>
-          <Link href={`/shopping?category=${product.category.slug}`}>{product.category.name}</Link>
-          <span className="breadcrumb-separator">/</span>
+          {product.category && (
+            <>
+              <Link href={`/shopping?category=${product.category.slug}`}>{product.category.name}</Link>
+              <span className="breadcrumb-separator">/</span>
+            </>
+          )}
           <span>{product.name}</span>
         </nav>
 
@@ -1403,7 +1407,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
             )}
 
             <div className="panel-header">
-              <div className="panel-category"><Tag size={12} />{product.category.name}</div>
+              <div className="panel-category"><Tag size={12} />{product.category?.name}</div>
               <h1 className="panel-name">{product.name}</h1>
               
               <div className="panel-rating">
@@ -1704,7 +1708,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
           <section className="related-products-section">
             <div className="related-products-header">
               <h2 className="section-title"><Package size={24} /> {t('youMayAlsoLike')}</h2>
-              <SafeLink href={`/shopping?category=${product.category.slug}`} className="view-all-link">
+              <SafeLink href={`/shopping?category=${product.category?.slug ?? ''}`} className="view-all-link">
                 {t('viewAll')} <ChevronRight size={18} />
               </SafeLink>
             </div>
@@ -1725,7 +1729,7 @@ export default function ProductPageClient({ product, locale, isAdmin = false }: 
                   sizes={rp.sizes}
                   colors={rp.colors}
                   variants={rp.variants}
-                  categorySlug={product.category.slug}
+                  categorySlug={product.category?.slug ?? ''}
                 />
               ))}
             </div>
