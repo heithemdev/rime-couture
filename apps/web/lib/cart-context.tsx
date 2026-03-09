@@ -84,7 +84,7 @@ function generateFingerprint(): string {
   // Plugins count
   components.push(String(navigator.plugins?.length || 0));
   
-  // Canvas fingerprint (simplified)
+  // Canvas fingerprint — wrapped so Brave/privacy browsers don't kill it
   try {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -92,20 +92,28 @@ function generateFingerprint(): string {
       ctx.textBaseline = 'top';
       ctx.font = '14px Arial';
       ctx.fillText('fingerprint', 2, 2);
-      components.push(canvas.toDataURL().slice(-50));
+      const data = canvas.toDataURL();
+      // Brave returns a blank/randomized canvas — detect and skip
+      if (data && data.length > 100) {
+        components.push(data.slice(-50));
+      } else {
+        components.push('canvas-blocked');
+      }
     }
   } catch {
     components.push('no-canvas');
   }
   
-  // WebGL vendor
+  // WebGL vendor — also blocked by some privacy browsers
   try {
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl');
     if (gl) {
       const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
       if (debugInfo) {
-        components.push(gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || '');
+        components.push(gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || 'webgl-blocked');
+      } else {
+        components.push('no-debug-info');
       }
     }
   } catch {

@@ -189,9 +189,33 @@ export default async function RootLayout({
           }
         `}} />
 
-        {/* Loader lifecycle — 3s min on landing, waits for CSS sentinel */}
+        {/* Loader lifecycle — only on first visit per session, waits for CSS sentinel */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
+            /* Skip loader entirely if this isn't the first page in the session */
+            var hasVisited = false;
+            try { hasVisited = !!sessionStorage.getItem('rc_visited'); } catch(e){}
+
+            if (hasVisited) {
+              /* No loader needed — just reveal body once CSS is ready */
+              function quickReveal() {
+                if (document.body) document.body.classList.add('css-ready');
+                var el = document.getElementById('rimoucha-loader');
+                if (el) { el.style.display = 'none'; }
+              }
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', quickReveal);
+              } else {
+                quickReveal();
+              }
+              /* Still expose the API but as no-ops for navigating hook */
+              window.__rimouchaLoader = { start: function(){}, stop: function(){}, test: function(){} };
+              return;
+            }
+
+            /* Mark as visited for future page loads in this tab */
+            try { sessionStorage.setItem('rc_visited', '1'); } catch(e){}
+
             var shown = true, safetyTimer = null, pollId = null;
             var cssReady = false, minTimeReady = false;
 
