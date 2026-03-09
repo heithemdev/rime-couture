@@ -17,34 +17,13 @@ function normalizeLocale(locale: string): string {
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Retry wrapper for DB operations that may fail due to connection issues. */
-async function withRetry<T>(operation: () => Promise<T>, maxRetries = 2, baseDelay = 400): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (err) {
-      lastError = err;
-      const msg = err instanceof Error ? err.message : '';
-      const isRetryable = msg.includes('Connection terminated') ||
-                          msg.includes('timeout') ||
-                          msg.includes('connection') ||
-                          msg.includes('ECONNRESET') ||
-                          msg.includes('pool');
-      if (!isRetryable || attempt === maxRetries) throw err;
-      await new Promise(r => setTimeout(r, baseDelay * Math.pow(2, attempt)));
-    }
-  }
-  throw lastError;
-}
-
 export async function getProductById(productId: string, rawLocale: string) {
   if (!UUID_REGEX.test(productId)) return null;
 
   const locale = normalizeLocale(rawLocale);
 
   try {
-    const product = await withRetry(() => prisma.product.findFirst({
+    const product = await prisma.product.findFirst({
       where: {
         id: productId,
         status: 'PUBLISHED',
@@ -83,7 +62,7 @@ export async function getProductById(productId: string, rawLocale: string) {
           take: 10,
         },
       },
-    }));
+    });
 
     if (!product) return null;
 

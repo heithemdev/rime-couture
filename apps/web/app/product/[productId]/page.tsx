@@ -43,14 +43,9 @@ export default async function ProductPage({ params }: PageProps) {
   const locale = await getLocale();
   const product = await getProductById(productId, locale);
 
-  // Check if user is admin (non-blocking — don't crash the page if session check fails)
-  let isAdmin = false;
-  try {
-    const session = await validateSession();
-    isAdmin = session?.user?.role === 'ADMIN';
-  } catch {
-    // Session check failed — continue as non-admin
-  }
+  // Check if user is admin
+  const session = await validateSession();
+  const isAdmin = session?.user?.role === 'ADMIN';
 
   if (!product) {
     return (
