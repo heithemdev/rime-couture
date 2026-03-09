@@ -189,38 +189,15 @@ export default async function RootLayout({
           }
         `}} />
 
-        {/* Loader lifecycle — only on landing page /, once per session */}
+        {/* Loader lifecycle — 3s min on landing, waits for CSS sentinel */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
-            var isLanding = (location.pathname === '/' || location.pathname === '');
-            var hasVisited = false;
-            try { hasVisited = !!sessionStorage.getItem('rc_visited'); } catch(e){}
-
-            /* Show loader ONLY on landing page AND only the first time in this session */
-            var showLoaderScreen = isLanding && !hasVisited;
-
-            if (!showLoaderScreen) {
-              /* No loader — just reveal body once CSS is ready */
-              function quickReveal() {
-                if (document.body) document.body.classList.add('css-ready');
-                var el = document.getElementById('rimoucha-loader');
-                if (el) { el.style.display = 'none'; }
-              }
-              if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', quickReveal);
-              } else {
-                quickReveal();
-              }
-              window.__rimouchaLoader = { start: function(){}, stop: function(){}, test: function(){} };
-              return;
-            }
-
-            /* Mark as visited so loader never shows again this session */
-            try { sessionStorage.setItem('rc_visited', '1'); } catch(e){}
-
             var shown = true, safetyTimer = null, pollId = null;
             var cssReady = false, minTimeReady = false;
-            var MIN_SHOW = 3000;
+
+            /* Is this the landing page (first visit)? */
+            var isLanding = (location.pathname === '/' || location.pathname === '');
+            var MIN_SHOW = isLanding ? 3000 : 0;
 
             function isCssLoaded() {
               try {
@@ -249,6 +226,14 @@ export default async function RootLayout({
               tryHide();
             }
 
+            function showLoader() {
+              var el = document.getElementById('rimoucha-loader');
+              if (el) {
+                el.classList.remove('fade-out');
+                shown = true;
+              }
+            }
+
             /* Minimum display timer */
             setTimeout(function() {
               minTimeReady = true;
@@ -271,6 +256,7 @@ export default async function RootLayout({
               }, 50);
             }
 
+            /* Start polling once body exists */
             if (document.readyState === 'loading') {
               document.addEventListener('DOMContentLoaded', waitForCss);
             } else {
@@ -280,8 +266,25 @@ export default async function RootLayout({
             /* Safety: max 12s then force hide + reveal */
             safetyTimer = setTimeout(function() { hideLoader(); }, 12000);
 
-            /* No-op API — loader is never re-shown after initial landing */
-            window.__rimouchaLoader = { start: function(){}, stop: function(){}, test: function(){} };
+            /* API for client-side route changes (useNavigating hook) */
+            window.__rimouchaLoader = {
+              start: function(customDelay) {
+                if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+                if (pollId) { clearInterval(pollId); pollId = null; }
+                cssReady = true; minTimeReady = false;
+                shown = false;
+                setTimeout(showLoader, typeof customDelay === 'number' ? customDelay : 1000);
+                setTimeout(function() { minTimeReady = true; tryHide(); }, 800);
+                safetyTimer = setTimeout(hideLoader, 6000);
+              },
+              stop: hideLoader,
+              test: function() {
+                shown = false;
+                showLoader();
+                if (safetyTimer) clearTimeout(safetyTimer);
+                safetyTimer = setTimeout(hideLoader, 3000);
+              }
+            };
           })();
         `}} />
       </head>
