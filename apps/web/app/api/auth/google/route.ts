@@ -9,13 +9,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
-const REDIRECT_URI = `${APP_URL}/api/auth/google/callback`;
+
+/** Derive the app origin from the incoming request (works in both dev & prod). */
+function getAppUrl(request: NextRequest): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  const proto = request.headers.get('x-forwarded-proto') || (IS_PROD ? 'https' : 'http');
+  const host = request.headers.get('host') || 'localhost:3000';
+  return `${proto}://${host}`;
+}
 
 export async function GET(request: NextRequest) {
+  const APP_URL = getAppUrl(request);
+  const REDIRECT_URI = `${APP_URL}/api/auth/google/callback`;
+
   // Generate CSRF state token (32 bytes = 256 bits of entropy)
   const state = randomBytes(32).toString('hex');
 

@@ -19,12 +19,18 @@ import {
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
-const REDIRECT_URI = `${APP_URL}/api/auth/google/callback`;
+
+/** Derive the app origin from the incoming request (works in both dev & prod). */
+function getAppUrl(request: NextRequest): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  const proto = request.headers.get('x-forwarded-proto') || (IS_PROD ? 'https' : 'http');
+  const host = request.headers.get('host') || 'localhost:3000';
+  return `${proto}://${host}`;
+}
 
 interface GoogleUserInfo {
   id: string;          // Google's unique user ID (sub)
@@ -37,6 +43,9 @@ interface GoogleUserInfo {
 }
 
 export async function GET(request: NextRequest) {
+  const APP_URL = getAppUrl(request);
+  const REDIRECT_URI = `${APP_URL}/api/auth/google/callback`;
+
   try {
     const { searchParams } = request.nextUrl;
     const code = searchParams.get('code');
