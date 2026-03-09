@@ -22,49 +22,54 @@ export async function getProductById(productId: string, rawLocale: string) {
 
   const locale = normalizeLocale(rawLocale);
 
-  try {
-    const product = await prisma.product.findFirst({
-      where: {
-        id: productId,
-        status: 'PUBLISHED',
-        isActive: true,
-        deletedAt: null,
-      },
-      include: {
-        translations: true,
-        category: {
-          include: { translations: true },
+  // Retry up to 2 times on transient DB connection errors
+  const MAX_RETRIES = 2;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const product = await prisma.product.findFirst({
+        where: {
+          id: productId,
+          status: 'PUBLISHED',
+          isActive: true,
+          deletedAt: null,
         },
-        media: {
-          include: { media: true },
-          orderBy: { position: 'asc' },
-        },
-        variants: {
-          where: { isActive: true },
-          include: {
-            size: { include: { translations: true } },
-            color: { include: { translations: true } },
+        include: {
+          translations: true,
+          category: {
+            include: { translations: true },
           },
-        },
-        tags: {
-          include: {
-            tag: { include: { translations: true } },
+          media: {
+            include: { media: true },
+            orderBy: { position: 'asc' },
           },
-        },
-        reviews: {
-          where: { isHidden: false },
-          include: {
-            user: {
-              select: { displayName: true, avatarUrl: true },
+          variants: {
+            where: { isActive: true },
+            include: {
+              size: { include: { translations: true } },
+              color: { include: { translations: true } },
             },
           },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
+          tags: {
+            include: {
+              tag: { include: { translations: true } },
+            },
+          },
+          reviews: {
+            where: { isHidden: false },
+            include: {
+              user: {
+                select: { displayName: true, avatarUrl: true },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 10,
+          },
         },
-      },
-    });
+      });
 
-    if (!product) return null;
+      if (!product) return null;
 
     // Resolve translations
     const translation =
@@ -211,8 +216,28 @@ export async function getProductById(productId: string, rawLocale: string) {
         createdAt: r.createdAt,
       })),
     };
-  } catch (error) {
-    console.error('[getProductById] Error:', error);
-    return null;
+    } catch (error) {
+      lastError = error;
+      const msg = error instanceof Error ? error.message : '';
+      const isTransient = msg.includes('Connection') ||
+        msg.includes('timeout') ||
+        msg.includes('ECONNRESET') ||
+        msg.includes('pool') ||
+        msg.includes('ETIMEDOUT') ||
+        msg.includes('connect');
+
+      if (isTransient && attempt < MAX_RETRIES) {
+        console.warn(`[getProductById] Transient DB error (attempt ${attempt + 1}), retrying...`, msg);
+        await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+        continue;
+      }
+
+      // Non-transient or exhausted retries — throw so the page can show a proper error
+      console.error('[getProductById] DB error:', error);
+      throw error;
+    }
   }
+
+  // Should not reach here, but just in case
+  throw lastError;
 }

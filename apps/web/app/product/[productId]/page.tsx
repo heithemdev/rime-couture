@@ -41,11 +41,57 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ProductPage({ params }: PageProps) {
   const { productId } = await params;
   const locale = await getLocale();
-  const product = await getProductById(productId, locale);
 
-  // Check if user is admin
-  const session = await validateSession();
-  const isAdmin = session?.user?.role === 'ADMIN';
+  let product;
+  let dbError = false;
+
+  try {
+    product = await getProductById(productId, locale);
+  } catch {
+    // DB connection failed — don't show "Not Found", show a retry page
+    dbError = true;
+  }
+
+  if (dbError) {
+    return (
+      <>
+        <Header />
+        <div style={{
+          minHeight: '60vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '2rem',
+          textAlign: 'center',
+          gap: '1rem',
+        }}>
+          <h1 style={{ fontSize: '1.5rem' }}>
+            Temporary connection issue
+          </h1>
+          <p style={{ color: '#666', maxWidth: '400px' }}>
+            We couldn&apos;t load this product right now. This usually resolves in a few seconds.
+          </p>
+          <a
+            href={`/product/${productId}`}
+            style={{
+              display: 'inline-block',
+              padding: '12px 32px',
+              background: '#2dafaa',
+              color: '#fff',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontWeight: 600,
+              marginTop: '0.5rem',
+            }}
+          >
+            Try Again
+          </a>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   if (!product) {
     return (
@@ -70,6 +116,15 @@ export default async function ProductPage({ params }: PageProps) {
         <Footer />
       </>
     );
+  }
+
+  // Check if user is admin (non-blocking)
+  let isAdmin = false;
+  try {
+    const session = await validateSession();
+    isAdmin = session?.user?.role === 'ADMIN';
+  } catch {
+    // Session check failed — continue as non-admin
   }
 
   return (
