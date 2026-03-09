@@ -6,6 +6,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@repo/db';
+import { validateSession } from '@/lib/auth/session';
+
+/**
+ * When a user is logged in, use a user-scoped fingerprint so different
+ * accounts on the same device are completely isolated.
+ */
+async function getEffectiveFingerprint(rawFingerprint: string): Promise<{ fingerprint: string; userId: string | null }> {
+  const session = await validateSession();
+  if (session?.user?.id) {
+    return { fingerprint: `user:${session.user.id}`, userId: session.user.id };
+  }
+  return { fingerprint: rawFingerprint, userId: null };
+}
 
 // Retry wrapper for database operations
 async function withRetry<T>(
@@ -90,6 +103,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid fingerprint' }, { status: 400 });
     }
 
+    // Use user-scoped fingerprint when logged in
+    const { fingerprint: effectiveFp, userId } = await getEffectiveFingerprint(fingerprint);
+
     return withRetry(async () => {
       // Check if product exists
       const product = await prisma.product.findFirst({
@@ -110,7 +126,7 @@ export async function POST(request: NextRequest) {
         where: {
           productId_fingerprint: {
             productId,
-            fingerprint,
+            fingerprint: effectiveFp,
           },
         },
       });
@@ -137,7 +153,8 @@ export async function POST(request: NextRequest) {
         await prisma.productLike.create({
           data: {
             productId,
-            fingerprint,
+            fingerprint: effectiveFp,
+            userId,
           },
         });
 
@@ -183,6 +200,11 @@ export async function GET(request: NextRequest) {
   const fingerprint = searchParams.get('fingerprint');
 
   try {
+    // Resolve effective fingerprint for logged-in users
+    const { fingerprint: effectiveFp } = fingerprint
+      ? await getEffectiveFingerprint(fingerprint)
+      : { fingerprint: '' };
+
     // BATCH MODE: Multiple product IDs
     if (productIds) {
       const ids = productIds.split(',').filter(id => isValidUUID(id.trim())).map(id => id.trim());
@@ -208,13 +230,13 @@ export async function GET(request: NextRequest) {
           select: { id: true, likeCount: true },
         });
 
-        // Get user's likes for these products (if fingerprint provided)
+        // Get user's likes for these products
         let userLikes: Set<string> = new Set();
-        if (fingerprint) {
+        if (effectiveFp) {
           const likes = await prisma.productLike.findMany({
             where: {
               productId: { in: ids },
-              fingerprint,
+              fingerprint: effectiveFp,
             },
             select: { productId: true },
           });
@@ -258,12 +280,12 @@ export async function GET(request: NextRequest) {
       }
 
       let isLiked = false;
-      if (fingerprint) {
+      if (effectiveFp) {
         const existingLike = await prisma.productLike.findUnique({
           where: {
             productId_fingerprint: {
               productId,
-              fingerprint,
+              fingerprint: effectiveFp,
             },
           },
         });

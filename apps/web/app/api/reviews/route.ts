@@ -9,6 +9,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@repo/db';
 import { validateSession } from '@/lib/auth/session';
 
+/**
+ * When a user is logged in, use a user-scoped fingerprint so different
+ * accounts on the same device are completely isolated.
+ */
+async function getEffectiveFingerprint(rawFingerprint: string): Promise<{ fingerprint: string; userId: string | null }> {
+  const session = await validateSession();
+  if (session?.user?.id) {
+    return { fingerprint: `user:${session.user.id}`, userId: session.user.id };
+  }
+  return { fingerprint: rawFingerprint, userId: null };
+}
+
 // Retry helper for database operations
 async function withRetry<T>(
   operation: () => Promise<T>,
@@ -133,8 +145,7 @@ export async function POST(request: NextRequest) {
 
     // ========== PURCHASE VERIFICATION ==========
     // Check if the user (via fingerprint OR userId) has actually purchased this product
-    const session = await validateSession();
-    const userId = session?.user?.id || null;
+    const { fingerprint: effectiveFp, userId } = await getEffectiveFingerprint(fingerprint);
 
     const purchaseWhere: Parameters<typeof prisma.order.findFirst>[0] = {
       where: {
@@ -165,12 +176,12 @@ export async function POST(request: NextRequest) {
     const reviewUserId = userId || null;
     // ===========================================
 
-    // Check if user already reviewed this product (by fingerprint)
+    // Check if user already reviewed this product (by effective fingerprint)
     const existingReview = await withRetry(() => prisma.review.findUnique({
       where: {
         productId_fingerprint: {
           productId,
-          fingerprint,
+          fingerprint: effectiveFp,
         },
       },
     }));
@@ -190,7 +201,7 @@ export async function POST(request: NextRequest) {
         title: title ? sanitizeText(title, 200) : null,
         comment: comment ? sanitizeText(comment, 2000) : null,
         reviewerName: reviewerName ? sanitizeText(reviewerName, 50) : 'Anonymous',
-        fingerprint,
+        fingerprint: effectiveFp,
         userId: reviewUserId,
       },
     }));
@@ -295,12 +306,15 @@ export async function GET(request: NextRequest) {
     let hasPurchased = false; // Flag for frontend to disable/enable review button
 
     if (fingerprint) {
+      // Resolve effective fingerprint for logged-in users
+      const { fingerprint: effectiveFp, userId: currentUserId } = await getEffectiveFingerprint(fingerprint);
+
       // 1. Check for existing review
       const existingReview = await withRetry(() => prisma.review.findUnique({
         where: {
           productId_fingerprint: {
             productId,
-            fingerprint,
+            fingerprint: effectiveFp,
           },
         },
         select: {
@@ -316,9 +330,6 @@ export async function GET(request: NextRequest) {
       userReview = existingReview;
 
       // 2. Check for purchase (by fingerprint OR userId)
-      const currentSession = await validateSession();
-      const currentUserId = currentSession?.user?.id || null;
-
       const purchaseCount = await withRetry(() => prisma.order.count({
         where: {
           items: {
@@ -384,12 +395,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Rating must be between 1 and 5' }, { status: 400 });
     }
 
-    // Find existing review
+    // Find existing review using effective fingerprint
+    const { fingerprint: effectiveFp } = await getEffectiveFingerprint(fingerprint);
+
     const existingReview = await withRetry(() => prisma.review.findUnique({
       where: {
         productId_fingerprint: {
           productId,
-          fingerprint,
+          fingerprint: effectiveFp,
         },
       },
     }));
